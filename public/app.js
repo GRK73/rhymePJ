@@ -7,6 +7,55 @@ const searchBtn = document.getElementById('searchBtn');
 const resultsList = document.getElementById('resultsList');
 const langRadios = document.getElementsByName('lang');
 
+// Intersection Observer for lazy loading meanings
+const meaningObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const el = entry.target;
+            const word = el.dataset.word;
+            const lang = el.dataset.lang;
+            const meaningEl = el.querySelector('.result-meaning');
+            
+            if (meaningEl && !meaningEl.dataset.loaded) {
+                meaningEl.dataset.loaded = 'true';
+                
+                if (lang === 'en') {
+                    fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&dt=t&q=${encodeURIComponent(word)}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data && data[0] && data[0][0]) {
+                                meaningEl.textContent = data[0][0][0];
+                            } else {
+                                meaningEl.textContent = '뜻 정보 없음';
+                            }
+                        })
+                        .catch(() => {
+                            meaningEl.textContent = '뜻을 불러올 수 없음';
+                        });
+                } else {
+                    // Korean: Try Wikipedia
+                    fetch(`https://ko.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&exsentences=1&titles=${encodeURIComponent(word)}&format=json&origin=*`)
+                        .then(res => res.json())
+                        .then(data => {
+                            const pages = data.query.pages;
+                            const pageId = Object.keys(pages)[0];
+                            if (pageId !== '-1' && pages[pageId].extract) {
+                                meaningEl.textContent = pages[pageId].extract;
+                            } else {
+                                // Fallback for Korean words: link to dict
+                                meaningEl.innerHTML = `<a href="https://ko.dict.naver.com/#/search?query=${encodeURIComponent(word)}" target="_blank" class="dict-link">사전 검색 ↗</a>`;
+                            }
+                        })
+                        .catch(() => {
+                            meaningEl.innerHTML = `<a href="https://ko.dict.naver.com/#/search?query=${encodeURIComponent(word)}" target="_blank" class="dict-link">사전 검색 ↗</a>`;
+                        });
+                }
+            }
+            observer.unobserve(el);
+        }
+    });
+}, { rootMargin: '100px' });
+
 // Load dictionary
 async function loadDictionary() {
     try {
@@ -215,6 +264,9 @@ function displayResults(results) {
     results.forEach(res => {
         const li = document.createElement('li');
         li.className = 'result-item';
+        li.dataset.word = res.word;
+        li.dataset.lang = res.lang;
+        
         // 'phonemes' array is displayed
         const displayPhonemes = res.phonemes || res.vowels || [];
         const phonemesHtml = displayPhonemes.map((p, idx) => {
@@ -233,8 +285,12 @@ function displayResults(results) {
                     <span class="lang-badge ${res.lang}">${res.lang === 'ko' ? '한국어' : '영어'}</span>
                 </div>
             </div>
+            <div class="result-meaning">
+                <div class="meaning-spinner"></div>
+            </div>
         `;
         resultsList.appendChild(li);
+        meaningObserver.observe(li);
     });
 }
 

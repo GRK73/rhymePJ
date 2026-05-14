@@ -183,3 +183,39 @@ header p {
 .tts-icon:active {
     transform: scale(0.9);
 }
+
+.result-meaning {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--border-color);
+    font-size: 0.85rem;
+    color: #475569;
+    line-height: 1.4;
+    min-height: 2.5rem;
+}
+
+.dict-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.dict-link:hover {
+    text-decoration: underline;
+}
+
+.meaning-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid #e2e8f0;
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
