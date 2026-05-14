@@ -14,7 +14,7 @@
         <aside class="sidebar">
             <div class="filter-group">
                 <h3>가중치 조절</h3>
-                
+
                 <div class="slider-container">
                     <label for="consoWeight">자음 가중치</label>
                     <div class="slider-row">
@@ -22,7 +22,7 @@
                         <span id="consoVal" class="slider-val">1.0</span>
                     </div>
                 </div>
-                
+
                 <div class="slider-container">
                     <label for="vowelWeight">모음 가중치</label>
                     <div class="slider-row">
@@ -30,7 +30,7 @@
                         <span id="vowelVal" class="slider-val">2.5</span>
                     </div>
                 </div>
-                
+
                 <div class="slider-container">
                     <label for="freqWeight">빈도수 가중치</label>
                     <div class="slider-row">
@@ -39,7 +39,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="filter-group">
                 <h3>언어 필터</h3>
                 <div class="filters">
@@ -51,7 +51,7 @@
 
             <div class="filter-group">
                 <h3>단어 배제</h3>
-                <input type="text" id="excludeInput" placeholder="산업, 반어" class="exclude-input">
+                <input type="text" id="excludeInput" placeholder="단어 입력" class="exclude-input">
                 <p class="detail-desc" style="margin-top: 0.5rem; margin-bottom: 0;">포함시키지 않을 단어를 쉼표(,)로 구분하여 입력하세요.</p>
             </div>
         </aside>
@@ -85,9 +85,12 @@
                 </label>
                 <p class="detail-desc">적용 시 기존 자음/모음 가중치는 무시됩니다.</p>
                 <div id="detailSlidersContainer">
-                    <div class="empty-detail-msg" style="color: #64748b; font-size: 0.9rem; text-align: center; margin-top: 2rem;">검색을 하면 음소 단위로<br>가중치를 설정할 수 있습니다.</div>
+                    <div class="empty-detail-msg"
+                        style="color: #64748b; font-size: 0.9rem; text-align: center; margin-top: 2rem;">검색을 하면 음소
+                        단위로<br>가중치를 설정할 수 있습니다.</div>
                 </div>
-                <button id="reSearchBtn" class="re-search-btn" style="display: none; width: 100%; margin-top: 1rem;">재검색</button>
+                <button id="reSearchBtn" class="re-search-btn"
+                    style="display: none; width: 100%; margin-top: 1rem;">재검색</button>
             </div>
         </aside>
     </div>
