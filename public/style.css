@@ -133,6 +133,12 @@ header p {
     color: #94a3b8;
     display: flex;
     justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.result-meta span:first-child {
+    word-break: break-word;
 }
 
 .lang-badge {
@@ -141,6 +147,8 @@ header p {
     border-radius: 4px;
     font-size: 0.75rem;
     text-transform: uppercase;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 .lang-badge.en {
     background: #dbeafe;
