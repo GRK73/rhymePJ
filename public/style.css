@@ -126,6 +126,9 @@ header p {
     font-weight: bold;
     color: var(--text-color);
     margin-bottom: 0.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .result-meta {

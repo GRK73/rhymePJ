@@ -277,11 +277,13 @@ function displayResults(results) {
         }).join(', ');
 
         li.innerHTML = `
-            <div class="result-word">${res.display}</div>
+            <div class="result-word">
+                <span>${res.display}</span>
+                <img src="sound_icon.png" class="tts-icon" onclick="playTTS('${res.word.replace(/'/g, "\\'")}', '${res.lang}')" alt="Listen" title="발음 듣기"/>
+            </div>
             <div class="result-meta">
                 <span>[${phonemesHtml}]</span>
                 <div class="badge-container">
-                    <img src="sound_icon.png" class="tts-icon" onclick="playTTS('${res.word.replace(/'/g, "\\'")}', '${res.lang}')" alt="Listen" title="발음 듣기"/>
                     <span class="lang-badge ${res.lang}">${res.lang === 'ko' ? '한국어' : '영어'}</span>
                 </div>
             </div>
