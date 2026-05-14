@@ -127,6 +127,21 @@ body {
     background-color: var(--primary-hover);
 }
 
+#detailSlidersContainer {
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+#detailSlidersContainer::-webkit-scrollbar {
+    width: 6px;
+}
+
+#detailSlidersContainer::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 4px;
+}
+
 .container {
     flex: 0 1 800px;
     width: 100%;
