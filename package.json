@@ -1,0 +1,19 @@
+{
+  "name": "rhymepj",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.16.0",
+    "hangul-js": "^0.2.6",
+    "p-limit": "^7.3.0",
+    "rhymez": "^3.0.4"
+  }
+}
