@@ -21,8 +21,6 @@ const detailGroup = document.getElementById('detailGroup');
 const detailSlidersContainer = document.getElementById('detailSlidersContainer');
 
 let currentQueryPhonemeData = { phonemes: [], charMap: [] };
-
-let currentQueryPhonemeData = { phonemes: [], charMap: [] };
 let lastQueryWord = '';
 
 const reSearchBtn = document.getElementById('reSearchBtn');
