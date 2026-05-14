@@ -58,14 +58,28 @@ const meaningObserver = new IntersectionObserver((entries, observer) => {
                 meaningEl.dataset.loaded = 'true';
                 
                 if (lang === 'en') {
-                    fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&dt=t&q=${encodeURIComponent(word)}`)
+                    fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&dt=t&dt=bd&q=${encodeURIComponent(word)}`)
                         .then(res => res.json())
                         .then(data => {
-                            if (data && data[0] && data[0][0]) {
-                                meaningEl.textContent = data[0][0][0];
+                            let meaningText = '';
+                            if (data && data[1]) {
+                                // Extract all dictionary meanings across different parts of speech
+                                let meanings = [];
+                                data[1].forEach(pos => {
+                                    if (pos[1] && Array.isArray(pos[1])) {
+                                        meanings = meanings.concat(pos[1]);
+                                    }
+                                });
+                                // Remove duplicates and limit to top 8 meanings
+                                meanings = [...new Set(meanings)];
+                                meaningText = meanings.slice(0, 8).join(', ');
+                            } else if (data && data[0] && data[0][0]) {
+                                // Fallback to simple translation if no dictionary data
+                                meaningText = data[0][0][0];
                             } else {
-                                meaningEl.textContent = '뜻 정보 없음';
+                                meaningText = '뜻 정보 없음';
                             }
+                            meaningEl.textContent = meaningText;
                         })
                         .catch(() => {
                             meaningEl.textContent = '뜻을 불러올 수 없음';
