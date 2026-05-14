@@ -25,9 +25,6 @@ function updateSliderVals() {
 [consoWeightInput, vowelWeightInput, freqWeightInput].forEach(el => {
     el.addEventListener('input', () => {
         updateSliderVals();
-        if (searchInput.value.trim() !== '') {
-            handleSearch();
-        }
     });
 });
 
