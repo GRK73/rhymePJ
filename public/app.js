@@ -228,7 +228,10 @@ function displayResults(results) {
             <div class="result-word">${res.display}</div>
             <div class="result-meta">
                 <span>[${phonemesHtml}]</span>
-                <span class="lang-badge ${res.lang}">${res.lang === 'ko' ? '한국어' : '영어'}</span>
+                <div class="badge-container">
+                    <img src="sound_icon.png" class="tts-icon" onclick="playTTS('${res.word.replace(/'/g, "\\'")}', '${res.lang}')" alt="Listen" title="발음 듣기"/>
+                    <span class="lang-badge ${res.lang}">${res.lang === 'ko' ? '한국어' : '영어'}</span>
+                </div>
             </div>
         `;
         resultsList.appendChild(li);
@@ -279,6 +282,18 @@ searchBtn.addEventListener('click', handleSearch);
 searchInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleSearch();
 });
+
+// TTS Function
+window.playTTS = function(word, lang) {
+    if (!window.speechSynthesis) {
+        alert("이 브라우저는 TTS(음성 합성)를 지원하지 않습니다.");
+        return;
+    }
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.lang = lang === 'ko' ? 'ko-KR' : 'en-US';
+    window.speechSynthesis.cancel(); // Stop any currently playing TTS
+    window.speechSynthesis.speak(utterance);
+}
 
 // Init
 loadDictionary();
