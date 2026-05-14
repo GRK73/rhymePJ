@@ -121,49 +121,87 @@ function get_score_1d(ipa1, ipa2) {
 }
 
 function calculateScore(targetPhonemes, queryPhonemes) {
-    if (queryPhonemes.length === 0 || targetPhonemes.length === 0) return 0;
+    if (queryPhonemes.length === 0 || targetPhonemes.length === 0) return { score: 0, matchIndices: [] };
     
     const targetStr = targetPhonemes.join('');
     const queryStr = queryPhonemes.join('');
 
-    if (targetStr === queryStr) return 100;
+    if (targetStr === queryStr) return { score: 100, matchIndices: targetPhonemes.map((_, i) => i) };
 
     if (targetStr.includes(queryStr)) {
-        return 80 - (targetPhonemes.length - queryPhonemes.length); 
+        let startIndex = targetStr.indexOf(queryStr) / (targetStr.length / targetPhonemes.length); // Rough approx, better to recalculate
+        // Let sliding window handle substring exact matches perfectly with max score
     }
 
     // Phonetic DP algorithm based on PronunciationEvaluator
-    let previousRow = Array.from({length: queryPhonemes.length + 1}, (_, i) => i);
-    
-    for (let i = 0; i < targetPhonemes.length; i++) {
-        let currentRow = [i + 1];
-        for (let j = 0; j < queryPhonemes.length; j++) {
-            let insertions = previousRow[j + 1] + 1;
-            let deletions = currentRow[j] + 1;
-            let substitutions = previousRow[j] + (1 - get_score_1d(targetPhonemes[i], queryPhonemes[j]));
-            currentRow.push(Math.min(insertions, deletions, substitutions));
+    let dpMatrix = Array.from({length: targetPhonemes.length + 1}, () => Array(queryPhonemes.length + 1).fill(0));
+    for (let i = 0; i <= targetPhonemes.length; i++) dpMatrix[i][0] = i;
+    for (let j = 0; j <= queryPhonemes.length; j++) dpMatrix[0][j] = j;
+
+    for (let i = 1; i <= targetPhonemes.length; i++) {
+        for (let j = 1; j <= queryPhonemes.length; j++) {
+            let insertions = dpMatrix[i][j - 1] + 1;
+            let deletions = dpMatrix[i - 1][j] + 1;
+            let substitutions = dpMatrix[i - 1][j - 1] + (1 - get_score_1d(targetPhonemes[i - 1], queryPhonemes[j - 1]));
+            dpMatrix[i][j] = Math.min(insertions, deletions, substitutions);
         }
-        previousRow = currentRow;
     }
     
-    let dist = previousRow[queryPhonemes.length];
+    let dist = dpMatrix[targetPhonemes.length][queryPhonemes.length];
     let maxLen = Math.max(targetPhonemes.length, queryPhonemes.length);
     let dpScore = Math.max(1 - (dist / maxLen), 0) * 80;
 
+    // Backtrack to find matched indices
+    let dpIndices = [];
+    let i = targetPhonemes.length;
+    let j = queryPhonemes.length;
+    while (i > 0 && j > 0) {
+        let current = dpMatrix[i][j];
+        let sub = dpMatrix[i-1][j-1];
+        let ins = dpMatrix[i][j-1];
+        let rm = dpMatrix[i-1][j];
+        
+        let cost = 1 - get_score_1d(targetPhonemes[i-1], queryPhonemes[j-1]);
+        // Javascript floating point comparison workaround
+        if (Math.abs(current - (sub + cost)) < 0.001) {
+            if (cost < 0.6) { // If similarity is > 0.4
+                dpIndices.push(i-1);
+            }
+            i--; j--;
+        } else if (current === rm + 1) {
+            i--;
+        } else {
+            j--;
+        }
+    }
+
     // Sliding window phonetic match for substring matching (rhymes, partial words)
     let maxSlidingScore = 0;
+    let bestSlidingIndices = [];
     if (targetPhonemes.length >= queryPhonemes.length) {
         for (let i = 0; i <= targetPhonemes.length - queryPhonemes.length; i++) {
             let currentScore = 0;
+            let currentIndices = [];
             for (let j = 0; j < queryPhonemes.length; j++) {
-                currentScore += get_score_1d(targetPhonemes[i+j], queryPhonemes[j]);
+                let s = get_score_1d(targetPhonemes[i+j], queryPhonemes[j]);
+                currentScore += s;
+                if (s > 0.4) {
+                    currentIndices.push(i + j);
+                }
             }
-            let percentage = (currentScore / queryPhonemes.length) * 75; 
-            if (percentage > maxSlidingScore) maxSlidingScore = percentage;
+            let percentage = (currentScore / queryPhonemes.length) * 80; 
+            if (percentage > maxSlidingScore) {
+                maxSlidingScore = percentage;
+                bestSlidingIndices = currentIndices;
+            }
         }
     }
     
-    return Math.max(dpScore, maxSlidingScore);
+    if (dpScore > maxSlidingScore) {
+        return { score: dpScore, matchIndices: dpIndices };
+    } else {
+        return { score: maxSlidingScore, matchIndices: bestSlidingIndices };
+    }
 }
 
 function displayResults(results) {
@@ -179,10 +217,17 @@ function displayResults(results) {
         li.className = 'result-item';
         // 'phonemes' array is displayed
         const displayPhonemes = res.phonemes || res.vowels || [];
+        const phonemesHtml = displayPhonemes.map((p, idx) => {
+            if (res.matchIndices && res.matchIndices.includes(idx)) {
+                return `<span style="color: #3498db; font-weight: bold;">${p}</span>`;
+            }
+            return p;
+        }).join(', ');
+
         li.innerHTML = `
             <div class="result-word">${res.display}</div>
             <div class="result-meta">
-                <span>[${displayPhonemes.join(', ')}]</span>
+                <span>[${phonemesHtml}]</span>
                 <span class="lang-badge ${res.lang}">${res.lang === 'ko' ? '한국어' : '영어'}</span>
             </div>
         `;
@@ -217,9 +262,9 @@ function handleSearch() {
         if (item.word.toLowerCase() === query.toLowerCase()) continue;
 
         const phonemes = item.phonemes || item.vowels || []; // Backwards compatibility just in case
-        const score = calculateScore(phonemes, queryPhonemes);
-        if (score > 50) { // Only high confidence matches
-            results.push({ ...item, score });
+        const result = calculateScore(phonemes, queryPhonemes);
+        if (result.score > 50) { // Only high confidence matches
+            results.push({ ...item, score: result.score, matchIndices: result.matchIndices });
         }
     }
 
