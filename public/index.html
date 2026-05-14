@@ -41,6 +41,19 @@
             </div>
             
             <div class="filter-group">
+                <label class="toggle-label">
+                    <input type="checkbox" id="useDetailWeights">
+                    단어 세부 가중치 사용
+                </label>
+                <div id="detailGroup" class="detail-group">
+                    <p class="detail-desc">검색어의 각 글자별로 중요도를 설정하세요.</p>
+                    <div id="detailSlidersContainer">
+                        <!-- Sliders will be injected here via JS -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="filter-group">
                 <h3>언어 필터</h3>
                 <div class="filters">
                     <label><input type="radio" name="lang" value="all" checked> 전체</label>

@@ -16,6 +16,21 @@ const consoVal = document.getElementById('consoVal');
 const vowelVal = document.getElementById('vowelVal');
 const freqVal = document.getElementById('freqVal');
 
+const useDetailWeights = document.getElementById('useDetailWeights');
+const detailGroup = document.getElementById('detailGroup');
+const detailSlidersContainer = document.getElementById('detailSlidersContainer');
+
+let currentQueryPhonemeData = { phonemes: [], charMap: [] };
+
+useDetailWeights.addEventListener('change', () => {
+    if (useDetailWeights.checked) {
+        detailGroup.classList.add('active');
+        renderDetailSliders();
+    } else {
+        detailGroup.classList.remove('active');
+    }
+});
+
 function updateSliderVals() {
     consoVal.textContent = parseFloat(consoWeightInput.value).toFixed(1);
     vowelVal.textContent = parseFloat(vowelWeightInput.value).toFixed(1);
@@ -135,7 +150,9 @@ const KOREAN_JONG_MAPPED = ['', 'k', 'k', 'k', 'n', 'n', 'n', 't', 'l', 'k', 'm'
 
 function getKoreanIpaPhonemes(word) {
     const phonemes = [];
+    const charMap = [];
     for (let i = 0; i < word.length; i++) {
+        const startIdx = phonemes.length;
         const code = word.charCodeAt(i);
         if (code >= 44032 && code <= 55203) {
             const charCode = code - 44032;
@@ -147,8 +164,11 @@ function getKoreanIpaPhonemes(word) {
             phonemes.push(KOREAN_JUNG[jung]);
             if (KOREAN_JONG_MAPPED[jong] !== '') phonemes.push(KOREAN_JONG_MAPPED[jong]);
         }
+        if (phonemes.length > startIdx) {
+            charMap.push({ char: word[i], startIndex: startIdx, endIndex: phonemes.length });
+        }
     }
-    return phonemes;
+    return { phonemes, charMap };
 }
 
 function getQueryPhonemes(query) {
@@ -159,9 +179,12 @@ function getQueryPhonemes(query) {
         const lowerQuery = query.toLowerCase();
         const found = dictionary.find(d => d.word === lowerQuery && d.lang === 'en');
         if (found) {
-            return found.phonemes;
+            const phonemes = found.phonemes || found.vowels || [];
+            // Map each phoneme individually for English
+            const charMap = phonemes.map((p, idx) => ({ char: p, startIndex: idx, endIndex: idx + 1 }));
+            return { phonemes, charMap };
         }
-        return [];
+        return { phonemes: [], charMap: [] };
     }
 }
 
@@ -194,7 +217,7 @@ function get_score_1d(ipa1, ipa2) {
     return 0;
 }
 
-function calculateScore(targetPhonemes, queryPhonemes) {
+function calculateScore(targetPhonemes, queryPhonemes, detailMultipliers = []) {
     if (queryPhonemes.length === 0 || targetPhonemes.length === 0) return { score: 0, matchIndices: [] };
     
     const targetStr = targetPhonemes.join('');
@@ -214,7 +237,11 @@ function calculateScore(targetPhonemes, queryPhonemes) {
     let consoWeight = parseFloat(consoWeightInput.value);
 
     let targetWeights = targetPhonemes.map(p => ipaFeatures[p] ? vowelWeight : consoWeight);
-    let queryWeights = queryPhonemes.map(p => ipaFeatures[p] ? vowelWeight : consoWeight);
+    let queryWeights = queryPhonemes.map((p, idx) => {
+        let baseWeight = ipaFeatures[p] ? vowelWeight : consoWeight;
+        let detailMult = detailMultipliers[idx] !== undefined ? detailMultipliers[idx] : 1.0;
+        return baseWeight * detailMult;
+    });
 
     for (let i = 1; i <= targetPhonemes.length; i++) dpMatrix[i][0] = dpMatrix[i-1][0] + targetWeights[i-1];
     for (let j = 1; j <= queryPhonemes.length; j++) dpMatrix[0][j] = dpMatrix[0][j-1] + queryWeights[j-1];
@@ -370,15 +397,33 @@ function handleSearch() {
         if (radio.checked) selectedLang = radio.value;
     }
 
-    const queryPhonemes = getQueryPhonemes(query);
+    currentQueryPhonemeData = getQueryPhonemes(query);
+    const queryPhonemes = currentQueryPhonemeData.phonemes;
+    
     if (queryPhonemes.length === 0) {
         statusEl.textContent = '해당 단어의 발음을 분석할 수 없습니다.';
         return;
     }
 
+    if (useDetailWeights.checked) {
+        renderDetailSliders();
+    }
+
     statusEl.textContent = `"${query}"의 발음 [${queryPhonemes.join(', ')}]와 비슷한 단어를 찾습니다...`;
 
     let freqWeight = parseFloat(freqWeightInput.value);
+
+    // Build detail multipliers array
+    let detailMultipliers = new Array(queryPhonemes.length).fill(1.0);
+    if (useDetailWeights.checked && currentQueryPhonemeData.charMap.length > 0) {
+        currentQueryPhonemeData.charMap.forEach((item, index) => {
+            const slider = document.getElementById(`detailWeight_${index}`);
+            let mult = slider ? parseFloat(slider.value) : 1.0;
+            for (let i = item.startIndex; i < item.endIndex; i++) {
+                detailMultipliers[i] = mult;
+            }
+        });
+    }
 
     // Filter and score
     let results = [];
@@ -389,7 +434,7 @@ function handleSearch() {
         if (item.word.toLowerCase() === query.toLowerCase()) continue;
 
         const phonemes = item.phonemes || item.vowels || []; // Backwards compatibility just in case
-        const result = calculateScore(phonemes, queryPhonemes);
+        const result = calculateScore(phonemes, queryPhonemes, detailMultipliers);
         
         // Base score threshold to filter out completely irrelevant words
         if (result.score > 40) { 
@@ -414,6 +459,30 @@ searchBtn.addEventListener('click', handleSearch);
 searchInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleSearch();
 });
+
+function renderDetailSliders() {
+    detailSlidersContainer.innerHTML = '';
+    if (!useDetailWeights.checked || currentQueryPhonemeData.charMap.length === 0) return;
+    
+    currentQueryPhonemeData.charMap.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'slider-container detail-slider-container';
+        div.innerHTML = `
+            <label for="detailWeight_${index}">${item.char} 가중치</label>
+            <div class="slider-row">
+                <input type="range" id="detailWeight_${index}" min="0" max="10" step="0.5" value="1.0">
+                <span id="detailVal_${index}" class="slider-val">1.0</span>
+            </div>
+        `;
+        detailSlidersContainer.appendChild(div);
+        
+        const input = document.getElementById(`detailWeight_${index}`);
+        const valSpan = document.getElementById(`detailVal_${index}`);
+        input.addEventListener('input', () => {
+            valSpan.textContent = parseFloat(input.value).toFixed(1);
+        });
+    });
+}
 
 // TTS Function
 // Load voices in advance
