@@ -366,14 +366,21 @@ searchInput.addEventListener('keypress', (e) => {
 
 // TTS Function
 window.playTTS = function(word, lang) {
-    if (!window.speechSynthesis) {
-        alert("이 브라우저는 TTS(음성 합성)를 지원하지 않습니다.");
-        return;
+    if (lang === 'ko') {
+        // Use Google Translate TTS for Korean due to better quality
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ko&client=tw-ob&q=${encodeURIComponent(word)}`;
+        const audio = new Audio(url);
+        audio.play().catch(e => console.error("Audio play failed:", e));
+    } else {
+        if (!window.speechSynthesis) {
+            alert("이 브라우저는 TTS(음성 합성)를 지원하지 않습니다.");
+            return;
+        }
+        const utterance = new SpeechSynthesisUtterance(word);
+        utterance.lang = 'en-US';
+        window.speechSynthesis.cancel(); // Stop any currently playing TTS
+        window.speechSynthesis.speak(utterance);
     }
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = lang === 'ko' ? 'ko-KR' : 'en-US';
-    window.speechSynthesis.cancel(); // Stop any currently playing TTS
-    window.speechSynthesis.speak(utterance);
 }
 
 // Init
