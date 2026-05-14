@@ -142,6 +142,21 @@ body {
     border-radius: 4px;
 }
 
+.exclude-input {
+    width: 100%;
+    padding: 0.8rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+}
+
+.exclude-input:focus {
+    border-color: var(--primary-color);
+}
+
 .container {
     flex: 0 1 800px;
     width: 100%;

@@ -16,6 +16,8 @@ const consoVal = document.getElementById('consoVal');
 const vowelVal = document.getElementById('vowelVal');
 const freqVal = document.getElementById('freqVal');
 
+const excludeInput = document.getElementById('excludeInput');
+
 const useDetailWeights = document.getElementById('useDetailWeights');
 const detailGroup = document.getElementById('detailGroup');
 const detailSlidersContainer = document.getElementById('detailSlidersContainer');
@@ -448,6 +450,13 @@ function handleSearch() {
         });
     }
 
+    // Get excluded words
+    const excludeStr = excludeInput.value.trim();
+    let excludeWords = [];
+    if (excludeStr) {
+        excludeWords = excludeStr.split(',').map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
+    }
+
     // Filter and score
     let results = [];
     for (const item of dictionary) {
@@ -455,6 +464,19 @@ function handleSearch() {
         
         // Skip exact same word
         if (item.word.toLowerCase() === query.toLowerCase()) continue;
+
+        // Skip excluded words
+        if (excludeWords.length > 0) {
+            const lowerWord = item.word.toLowerCase();
+            let isExcluded = false;
+            for (const exWord of excludeWords) {
+                if (lowerWord.includes(exWord)) {
+                    isExcluded = true;
+                    break;
+                }
+            }
+            if (isExcluded) continue;
+        }
 
         const phonemes = item.phonemes || item.vowels || []; // Backwards compatibility just in case
         const result = calculateScore(phonemes, queryPhonemes, detailMultipliers);
@@ -491,6 +513,9 @@ function handleSearch() {
 
 searchBtn.addEventListener('click', handleSearch);
 searchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleSearch();
+});
+excludeInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleSearch();
 });
 
