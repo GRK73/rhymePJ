@@ -308,6 +308,15 @@ header p {
     color: #be185d;
 }
 
+.layer-badge {
+    background: #ecfdf5;
+    color: #047857;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+}
+
 .badge-container {
     display: flex;
     flex-direction: column;

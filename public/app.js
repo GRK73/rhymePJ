@@ -6,6 +6,7 @@ const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const resultsList = document.getElementById('resultsList');
 const langRadios = document.getElementsByName('lang');
+const pronunciationModeRadios = document.getElementsByName('pronunciationMode');
 const loadMoreBtn = document.getElementById('loadMoreBtn');
 
 const consoWeightInput = document.getElementById('consoWeight');
@@ -172,6 +173,84 @@ const KOREAN_CHO_JAMO = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ',
 const KOREAN_JUNG_JAMO = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'];
 const KOREAN_JONG_JAMO = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
 
+const KOREANIZED_CHUNKS = [
+    ['tion', ['s', 'ʌ', 'n']],
+    ['sion', ['s', 'ʌ', 'n']],
+    ['ture', ['tɕ', 'ʌ']],
+    ['sure', ['s', 'ʌ']],
+    ['ch', ['tɕʰ']],
+    ['sh', ['s']],
+    ['th', ['s']],
+    ['ph', ['p']],
+    ['ck', ['k']],
+    ['qu', ['k', 'w']],
+    ['x', ['k', 's']]
+];
+
+const KOREANIZED_SINGLE = {
+    a: ['a'], b: ['p'], c: ['k'], d: ['t'], e: ['e'], f: ['p'], g: ['k'],
+    h: ['h'], i: ['i'], j: ['tɕ'], k: ['k'], l: ['ɾ'], m: ['m'], n: ['n'],
+    o: ['o'], p: ['p'], q: ['k'], r: ['ɾ'], s: ['s'], t: ['t'], u: ['u'],
+    v: ['p'], w: ['w'], y: ['i'], z: ['tɕ']
+};
+
+const KOREANIZED_VOWELS = new Set(['a', 'e', 'i', 'o', 'u', 'y']);
+const KOREANIZED_STOPS = new Set(['p', 't', 'k', 'm', 'n', 'l', 'tɕ', 'tɕʰ', 's']);
+
+function isKoreanizedVowelLetter(char) {
+    return KOREANIZED_VOWELS.has(char);
+}
+
+function getKoreanizedEnglishPhonemes(word) {
+    const cleanWord = word.toLowerCase().replace(/[^a-z]/g, '');
+    const phonemes = [];
+
+    for (let i = 0; i < cleanWord.length; i++) {
+        const char = cleanWord[i];
+        const prev = cleanWord[i - 1] || '';
+        const next = cleanWord[i + 1] || '';
+
+        if (char === 'e' && i === cleanWord.length - 1 && cleanWord.length > 2) {
+            continue;
+        }
+
+        let matched = false;
+        for (const [chunk, mapped] of KOREANIZED_CHUNKS) {
+            if (cleanWord.startsWith(chunk, i)) {
+                phonemes.push(...mapped);
+                i += chunk.length - 1;
+                matched = true;
+                break;
+            }
+        }
+        if (matched) continue;
+
+        if (char === 'l' && isKoreanizedVowelLetter(prev) && isKoreanizedVowelLetter(next)) {
+            phonemes.push('l', 'ɾ');
+            continue;
+        }
+
+        if (char === 'r' && !isKoreanizedVowelLetter(next)) {
+            continue;
+        }
+
+        const mapped = KOREANIZED_SINGLE[char];
+        if (!mapped) continue;
+
+        phonemes.push(...mapped);
+
+        if (!isKoreanizedVowelLetter(char) && next && !isKoreanizedVowelLetter(next)) {
+            const last = mapped[mapped.length - 1];
+            if (KOREANIZED_STOPS.has(last)) phonemes.push('ɯ');
+        }
+    }
+
+    const last = phonemes[phonemes.length - 1];
+    if (KOREANIZED_STOPS.has(last)) phonemes.push('ɯ');
+
+    return phonemes;
+}
+
 function getKoreanIpaPhonemes(word) {
     const phonemes = [];
     const charMap = [];
@@ -205,13 +284,15 @@ function getQueryPhonemes(query) {
     } else {
         const lowerQuery = query.toLowerCase();
         const found = dictionary.find(d => d.word === lowerQuery && d.lang === 'en');
+        const koreanizedPhonemes = getKoreanizedEnglishPhonemes(lowerQuery);
         if (found) {
             const phonemes = found.phonemes || found.vowels || [];
             // Map each phoneme individually for English
             const charMap = phonemes.map((p, idx) => ({ char: p, startIndex: idx, endIndex: idx + 1 }));
-            return { phonemes, charMap };
+            return { phonemes, koreanizedPhonemes, charMap };
         }
-        return { phonemes: [], charMap: [] };
+        const charMap = koreanizedPhonemes.map((p, idx) => ({ char: p, startIndex: idx, endIndex: idx + 1 }));
+        return { phonemes: koreanizedPhonemes, koreanizedPhonemes, charMap };
     }
 }
 
@@ -354,6 +435,75 @@ function calculateScore(targetPhonemes, queryPhonemes, detailMultipliers = []) {
     }
 }
 
+function getSelectedPronunciationMode() {
+    for (const radio of pronunciationModeRadios) {
+        if (radio.checked) return radio.value;
+    }
+    return 'hybrid';
+}
+
+function getPronunciationModeLabel(mode) {
+    if (mode === 'native') return '실제 영어';
+    if (mode === 'koreanized') return '한국식 영어';
+    return '혼합 추천';
+}
+
+function scoreCandidate(targetPhonemes, queryPhonemes, detailMultipliers, matchLayer, matchLayerLabel, penalty = 1) {
+    const result = calculateScore(targetPhonemes, queryPhonemes, detailMultipliers);
+    return {
+        ...result,
+        score: result.score * penalty,
+        matchPhonemes: targetPhonemes,
+        matchLayer,
+        matchLayerLabel
+    };
+}
+
+function calculatePronunciationScore(item, queryPhonemeData, detailMultipliers, mode) {
+    const nativePhonemes = item.phonemes || item.vowels || [];
+    const queryNative = queryPhonemeData.phonemes || [];
+    const queryKoreanized = queryPhonemeData.koreanizedPhonemes || queryNative;
+
+    if (item.lang !== 'en') {
+        return scoreCandidate(nativePhonemes, queryNative, detailMultipliers, 'native', '');
+    }
+
+    const koreanizedPhonemes = item.koreanizedPhonemes || getKoreanizedEnglishPhonemes(item.word);
+    item.koreanizedPhonemes = koreanizedPhonemes;
+
+    const candidates = [];
+
+    if (mode === 'native') {
+        candidates.push(scoreCandidate(nativePhonemes, queryNative, detailMultipliers, 'native', '실제'));
+    } else if (mode === 'koreanized') {
+        candidates.push(scoreCandidate(koreanizedPhonemes, queryKoreanized, [], 'koreanized', '한국식'));
+    } else {
+        candidates.push(scoreCandidate(nativePhonemes, queryNative, detailMultipliers, 'native', '실제', 0.98));
+        candidates.push(scoreCandidate(koreanizedPhonemes, queryKoreanized, [], 'koreanized', '한국식'));
+
+        if (queryKoreanized !== queryNative) {
+            candidates.push(scoreCandidate(nativePhonemes, queryKoreanized, [], 'bridge', '교차', 0.92));
+        }
+    }
+
+    return candidates.reduce((best, current) => current.score > best.score ? current : best, candidates[0]);
+}
+
+function applyFrequencyWeight(score, zipf, freqWeight) {
+    if (zipf >= 3.5) {
+        // Positive Zone: Asymptotic gap closing for common words
+        let zipfNorm = Math.min(1.0, (zipf - 3.5) / 4.5); // Normalize 3.5~8.0 to 0.0~1.0
+        let boostFactor = zipfNorm * (freqWeight / 10) * 0.8; // Max 80% gap closing
+        return score + (100 - score) * boostFactor;
+    }
+
+    // Penalty Zone: Exponential reduction for rare words
+    let x = 3.5 - Math.max(0, zipf); // x goes from 0 (at 3.5) to 3.5 (at 0)
+    let penaltyMultiplier = Math.pow(x / 3.5, 2.5);
+    let penalty = penaltyMultiplier * (freqWeight / 10);
+    return score * (1 - penalty);
+}
+
 function displayResults(results) {
     currentFilteredResults = results;
     resultsShown = 0;
@@ -377,14 +527,15 @@ function renderMoreResults() {
         li.dataset.word = res.word;
         li.dataset.lang = res.lang;
         
-        // 'phonemes' array is displayed
-        const displayPhonemes = res.phonemes || res.vowels || [];
+        // Display the pronunciation layer that actually won the match.
+        const displayPhonemes = res.matchPhonemes || res.phonemes || res.vowels || [];
         const phonemesHtml = displayPhonemes.map((p, idx) => {
             if (res.matchIndices && res.matchIndices.includes(idx)) {
                 return `<span style="color: #3498db; font-weight: bold;">${p}</span>`;
             }
             return p;
         }).join(', ');
+        const matchLayerBadge = res.matchLayerLabel ? `<span class="layer-badge">${res.matchLayerLabel}</span>` : '';
 
         li.innerHTML = `
             <div class="result-score">환산 유사도 : ${res.score.toFixed(1)}%</div>
@@ -396,6 +547,7 @@ function renderMoreResults() {
                 <span>[${phonemesHtml}]</span>
                 <div class="badge-container">
                     <span class="lang-badge ${res.lang}">${res.lang === 'ko' ? '한국어' : '영어'}</span>
+                    ${matchLayerBadge}
                 </div>
             </div>
             <div class="result-meaning">
@@ -426,6 +578,7 @@ function handleSearch() {
     for (const radio of langRadios) {
         if (radio.checked) selectedLang = radio.value;
     }
+    const pronunciationMode = getSelectedPronunciationMode();
 
     if (query !== lastQueryWord) {
         currentQueryPhonemeData = getQueryPhonemes(query);
@@ -440,7 +593,7 @@ function handleSearch() {
         return;
     }
 
-    statusEl.textContent = `"${query}"의 발음 [${queryPhonemes.join(', ')}]와 비슷한 단어를 찾습니다...`;
+    statusEl.textContent = `"${query}"의 발음 [${queryPhonemes.join(', ')}]와 비슷한 단어를 찾습니다... (${getPronunciationModeLabel(pronunciationMode)})`;
 
     let freqWeight = parseFloat(freqWeightInput.value);
 
@@ -484,30 +637,21 @@ function handleSearch() {
             if (isExcluded) continue;
         }
 
-        const phonemes = item.phonemes || item.vowels || []; // Backwards compatibility just in case
-        const result = calculateScore(phonemes, queryPhonemes, detailMultipliers);
+        const result = calculatePronunciationScore(item, currentQueryPhonemeData, detailMultipliers, pronunciationMode);
         
         // Base score threshold to filter out completely irrelevant words
         if (result.score > 40) { 
             let zipf = item.zipf !== undefined ? item.zipf : 1.0; // Default 1.0 if not found
-            let totalScore = result.score;
-            
-            if (zipf >= 3.5) {
-                // Positive Zone: Asymptotic gap closing for common words
-                let zipfNorm = Math.min(1.0, (zipf - 3.5) / 4.5); // Normalize 3.5~8.0 to 0.0~1.0
-                let boostFactor = zipfNorm * (freqWeight / 10) * 0.8; // Max 80% gap closing
-                totalScore = totalScore + (100 - totalScore) * boostFactor;
-            } else {
-                // Penalty Zone: Exponential reduction for rare words
-                let x = 3.5 - Math.max(0, zipf); // x goes from 0 (at 3.5) to 3.5 (at 0)
-                // Use power of 2.5 for a sharp exponential curve
-                let penaltyMultiplier = Math.pow(x / 3.5, 2.5); 
-                let penalty = penaltyMultiplier * (freqWeight / 10);
-                
-                totalScore = totalScore * (1 - penalty);
-            }
+            let totalScore = applyFrequencyWeight(result.score, zipf, freqWeight);
 
-            results.push({ ...item, score: totalScore, matchIndices: result.matchIndices });
+            results.push({
+                ...item,
+                score: totalScore,
+                matchIndices: result.matchIndices,
+                matchPhonemes: result.matchPhonemes,
+                matchLayer: result.matchLayer,
+                matchLayerLabel: result.matchLayerLabel
+            });
         }
     }
 
