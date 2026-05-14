@@ -1,4 +1,5 @@
 let dictionary = [];
+let loanwordOverrides = {};
 let isReady = false;
 
 const statusEl = document.getElementById('status');
@@ -123,8 +124,19 @@ async function loadDictionary() {
         const response = await fetch('rhyme_dict_practical.json');
         if (!response.ok) throw new Error('Network response was not ok');
         dictionary = await response.json();
+
+        try {
+            const loanwordResponse = await fetch('loanword_overrides.json');
+            if (loanwordResponse.ok) {
+                loanwordOverrides = await loanwordResponse.json();
+            }
+        } catch (error) {
+            console.warn('Loanword overrides are not available:', error);
+        }
+
         isReady = true;
-        statusEl.textContent = `사전 로드 완료! (총 ${dictionary.length.toLocaleString()} 단어)`;
+        const loanwordCount = Object.keys(loanwordOverrides).length;
+        statusEl.textContent = `사전 로드 완료! (총 ${dictionary.length.toLocaleString()} 단어, 외래어 ${loanwordCount.toLocaleString()}개)`;
     } catch (error) {
         console.error('Failed to load dictionary:', error);
         statusEl.textContent = '사전 데이터를 불러오는데 실패했습니다.';
@@ -251,6 +263,47 @@ function getKoreanizedEnglishPhonemes(word) {
     return phonemes;
 }
 
+function getLoanwordForms(word) {
+    const key = word.toLowerCase();
+    if (!Object.prototype.hasOwnProperty.call(loanwordOverrides, key)) return [];
+
+    const forms = loanwordOverrides[key];
+    return Array.isArray(forms) ? forms : [];
+}
+
+function uniquePhonemeCandidates(candidates) {
+    const seen = new Set();
+    return candidates.filter(candidate => {
+        if (!candidate.phonemes || candidate.phonemes.length === 0) return false;
+
+        const key = candidate.phonemes.join('|');
+        if (seen.has(key)) return false;
+
+        seen.add(key);
+        return true;
+    });
+}
+
+function getKoreanizedEnglishCandidates(word) {
+    const candidates = [];
+
+    getLoanwordForms(word).forEach(form => {
+        candidates.push({
+            phonemes: getKoreanIpaPhonemes(form).phonemes,
+            label: '외래어',
+            form
+        });
+    });
+
+    candidates.push({
+        phonemes: getKoreanizedEnglishPhonemes(word),
+        label: '한국식',
+        form: ''
+    });
+
+    return uniquePhonemeCandidates(candidates);
+}
+
 function getKoreanIpaPhonemes(word) {
     const phonemes = [];
     const charMap = [];
@@ -284,15 +337,16 @@ function getQueryPhonemes(query) {
     } else {
         const lowerQuery = query.toLowerCase();
         const found = dictionary.find(d => d.word === lowerQuery && d.lang === 'en');
-        const koreanizedPhonemes = getKoreanizedEnglishPhonemes(lowerQuery);
+        const koreanizedCandidates = getKoreanizedEnglishCandidates(lowerQuery);
+        const koreanizedPhonemes = koreanizedCandidates[0]?.phonemes || [];
         if (found) {
             const phonemes = found.phonemes || found.vowels || [];
             // Map each phoneme individually for English
             const charMap = phonemes.map((p, idx) => ({ char: p, startIndex: idx, endIndex: idx + 1 }));
-            return { phonemes, koreanizedPhonemes, charMap };
+            return { phonemes, koreanizedPhonemes, koreanizedCandidates, charMap };
         }
         const charMap = koreanizedPhonemes.map((p, idx) => ({ char: p, startIndex: idx, endIndex: idx + 1 }));
-        return { phonemes: koreanizedPhonemes, koreanizedPhonemes, charMap };
+        return { phonemes: koreanizedPhonemes, koreanizedPhonemes, koreanizedCandidates, charMap };
     }
 }
 
@@ -462,28 +516,36 @@ function scoreCandidate(targetPhonemes, queryPhonemes, detailMultipliers, matchL
 function calculatePronunciationScore(item, queryPhonemeData, detailMultipliers, mode) {
     const nativePhonemes = item.phonemes || item.vowels || [];
     const queryNative = queryPhonemeData.phonemes || [];
-    const queryKoreanized = queryPhonemeData.koreanizedPhonemes || queryNative;
+    const queryKoreanizedCandidates = queryPhonemeData.koreanizedCandidates || [
+        { phonemes: queryPhonemeData.koreanizedPhonemes || queryNative, label: '한국식' }
+    ];
 
     if (item.lang !== 'en') {
         return scoreCandidate(nativePhonemes, queryNative, detailMultipliers, 'native', '');
     }
 
-    const koreanizedPhonemes = item.koreanizedPhonemes || getKoreanizedEnglishPhonemes(item.word);
-    item.koreanizedPhonemes = koreanizedPhonemes;
+    const koreanizedCandidates = item.koreanizedCandidates || getKoreanizedEnglishCandidates(item.word);
+    item.koreanizedCandidates = koreanizedCandidates;
 
     const candidates = [];
 
     if (mode === 'native') {
         candidates.push(scoreCandidate(nativePhonemes, queryNative, detailMultipliers, 'native', '실제'));
     } else if (mode === 'koreanized') {
-        candidates.push(scoreCandidate(koreanizedPhonemes, queryKoreanized, [], 'koreanized', '한국식'));
+        koreanizedCandidates.forEach(targetCandidate => {
+            queryKoreanizedCandidates.forEach(queryCandidate => {
+                candidates.push(scoreCandidate(targetCandidate.phonemes, queryCandidate.phonemes, [], 'koreanized', targetCandidate.label));
+            });
+        });
     } else {
         candidates.push(scoreCandidate(nativePhonemes, queryNative, detailMultipliers, 'native', '실제', 0.98));
-        candidates.push(scoreCandidate(koreanizedPhonemes, queryKoreanized, [], 'koreanized', '한국식'));
 
-        if (queryKoreanized !== queryNative) {
-            candidates.push(scoreCandidate(nativePhonemes, queryKoreanized, [], 'bridge', '교차', 0.92));
-        }
+        koreanizedCandidates.forEach(targetCandidate => {
+            queryKoreanizedCandidates.forEach(queryCandidate => {
+                candidates.push(scoreCandidate(targetCandidate.phonemes, queryCandidate.phonemes, [], 'koreanized', targetCandidate.label));
+                candidates.push(scoreCandidate(nativePhonemes, queryCandidate.phonemes, [], 'bridge', '교차', 0.92));
+            });
+        });
     }
 
     return candidates.reduce((best, current) => current.score > best.score ? current : best, candidates[0]);
