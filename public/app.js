@@ -189,21 +189,31 @@ function calculateScore(targetPhonemes, queryPhonemes) {
 
     // Phonetic DP algorithm based on PronunciationEvaluator
     let dpMatrix = Array.from({length: targetPhonemes.length + 1}, () => Array(queryPhonemes.length + 1).fill(0));
-    for (let i = 0; i <= targetPhonemes.length; i++) dpMatrix[i][0] = i;
-    for (let j = 0; j <= queryPhonemes.length; j++) dpMatrix[0][j] = j;
+    
+    let targetWeights = targetPhonemes.map(p => ipaFeatures[p] ? 2.5 : 1.0);
+    let queryWeights = queryPhonemes.map(p => ipaFeatures[p] ? 2.5 : 1.0);
+
+    for (let i = 1; i <= targetPhonemes.length; i++) dpMatrix[i][0] = dpMatrix[i-1][0] + targetWeights[i-1];
+    for (let j = 1; j <= queryPhonemes.length; j++) dpMatrix[0][j] = dpMatrix[0][j-1] + queryWeights[j-1];
 
     for (let i = 1; i <= targetPhonemes.length; i++) {
         for (let j = 1; j <= queryPhonemes.length; j++) {
-            let insertions = dpMatrix[i][j - 1] + 1;
-            let deletions = dpMatrix[i - 1][j] + 1;
-            let substitutions = dpMatrix[i - 1][j - 1] + (1 - get_score_1d(targetPhonemes[i - 1], queryPhonemes[j - 1]));
+            let wT = targetWeights[i-1];
+            let wQ = queryWeights[j-1];
+            let maxW = Math.max(wT, wQ);
+            
+            let insertions = dpMatrix[i][j - 1] + wQ;
+            let deletions = dpMatrix[i - 1][j] + wT;
+            let substitutions = dpMatrix[i - 1][j - 1] + maxW * (1 - get_score_1d(targetPhonemes[i - 1], queryPhonemes[j - 1]));
             dpMatrix[i][j] = Math.min(insertions, deletions, substitutions);
         }
     }
     
     let dist = dpMatrix[targetPhonemes.length][queryPhonemes.length];
-    let maxLen = Math.max(targetPhonemes.length, queryPhonemes.length);
-    let dpScore = Math.max(1 - (dist / maxLen), 0) * 80;
+    let targetWeightSum = targetWeights.reduce((a,b)=>a+b, 0);
+    let queryWeightSum = queryWeights.reduce((a,b)=>a+b, 0);
+    let maxDist = Math.max(targetWeightSum, queryWeightSum);
+    let dpScore = Math.max(1 - (dist / maxDist), 0) * 100;
 
     // Backtrack to find matched indices
     let dpIndices = [];
@@ -215,14 +225,17 @@ function calculateScore(targetPhonemes, queryPhonemes) {
         let ins = dpMatrix[i][j-1];
         let rm = dpMatrix[i-1][j];
         
-        let cost = 1 - get_score_1d(targetPhonemes[i-1], queryPhonemes[j-1]);
-        // Javascript floating point comparison workaround
+        let wT = targetWeights[i-1];
+        let wQ = queryWeights[j-1];
+        let maxW = Math.max(wT, wQ);
+        let cost = maxW * (1 - get_score_1d(targetPhonemes[i-1], queryPhonemes[j-1]));
+        
         if (Math.abs(current - (sub + cost)) < 0.001) {
-            if (cost < 0.6) { // If similarity is > 0.4
+            if (get_score_1d(targetPhonemes[i-1], queryPhonemes[j-1]) > 0.4) {
                 dpIndices.push(i-1);
             }
             i--; j--;
-        } else if (current === rm + 1) {
+        } else if (Math.abs(current - (rm + wT)) < 0.001) {
             i--;
         } else {
             j--;
@@ -235,15 +248,18 @@ function calculateScore(targetPhonemes, queryPhonemes) {
     if (targetPhonemes.length >= queryPhonemes.length) {
         for (let i = 0; i <= targetPhonemes.length - queryPhonemes.length; i++) {
             let currentScore = 0;
+            let maxPossibleScore = 0;
             let currentIndices = [];
             for (let j = 0; j < queryPhonemes.length; j++) {
+                let weight = queryWeights[j];
+                maxPossibleScore += weight;
                 let s = get_score_1d(targetPhonemes[i+j], queryPhonemes[j]);
-                currentScore += s;
+                currentScore += s * weight;
                 if (s > 0.4) {
                     currentIndices.push(i + j);
                 }
             }
-            let percentage = (currentScore / queryPhonemes.length) * 80; 
+            let percentage = maxPossibleScore > 0 ? (currentScore / maxPossibleScore) * 100 : 0; 
             if (percentage > maxSlidingScore) {
                 maxSlidingScore = percentage;
                 bestSlidingIndices = currentIndices;
@@ -291,6 +307,7 @@ function renderMoreResults() {
         }).join(', ');
 
         li.innerHTML = `
+            <div class="result-score">유사도 : ${res.score.toFixed(1)}%</div>
             <div class="result-word">
                 <span>${res.display}</span>
                 <img src="sound_icon.png" class="tts-icon" onclick="playTTS('${res.word.replace(/'/g, "\\'")}', '${res.lang}')" alt="Listen" title="발음 듣기"/>
