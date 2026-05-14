@@ -22,11 +22,18 @@ body {
 }
 
 .app-layout {
-    max-width: 1100px;
+    max-width: 1400px;
     margin: 0 auto;
     display: flex;
+    justify-content: center;
     gap: 2rem;
     align-items: flex-start;
+}
+
+/* Dummy element to perfectly center the .container by balancing the .sidebar's width */
+.app-layout::after {
+    content: "";
+    flex: 0 0 250px;
 }
 
 .sidebar {
@@ -82,7 +89,8 @@ body {
 }
 
 .container {
-    flex: 1;
+    flex: 0 1 800px;
+    width: 100%;
     background-color: var(--card-bg);
     padding: 2rem;
     border-radius: 12px;
@@ -315,6 +323,13 @@ header p {
     color: var(--primary-color);
     margin-bottom: 0.25rem;
     text-align: right;
+}
+
+/* Remove dummy element on medium screens so container isn't squashed */
+@media (max-width: 1364px) {
+    .app-layout::after {
+        display: none;
+    }
 }
 
 @media (max-width: 768px) {
