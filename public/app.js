@@ -10,7 +10,7 @@ const langRadios = document.getElementsByName('lang');
 // Load dictionary
 async function loadDictionary() {
     try {
-        const response = await fetch('rhyme_dict.json');
+        const response = await fetch('rhyme_dict_practical.json');
         if (!response.ok) throw new Error('Network response was not ok');
         dictionary = await response.json();
         isReady = true;
