@@ -7,76 +7,72 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const OUTPUT_FILE = path.join(PUBLIC_DIR, 'rhyme_dict.json');
 
 // Vowel mapping from ARPAbet to IPA vowels
-const arpaToIpa = {
+const arpaToIpaVowels = {
     'AA': ['ɑ'], 'AE': ['æ'], 'AH': ['ʌ'], 'AO': ['ɔ'], 'AW': ['aʊ'],
     'AY': ['aɪ'], 'EH': ['ɛ'], 'ER': ['ɚ'], 'EY': ['eɪ'], 'IH': ['ɪ'],
     'IY': ['i'], 'OW': ['oʊ'], 'OY': ['ɔɪ'], 'UH': ['ʊ'], 'UW': ['u']
 };
 
-function getEnglishVowels(arpaPhonemes) {
-    const vowels = [];
-    const phonemes = arpaPhonemes.split(' ');
-    for (let p of phonemes) {
-        // Remove stress numbers (0, 1, 2)
+// Consonant mapping from ARPAbet to IPA
+const arpaToIpaConso = {
+    'B': ['b'], 'CH': ['tʃ'], 'D': ['d'], 'DH': ['ð'], 'F': ['f'], 'G': ['ɡ'],
+    'HH': ['h'], 'JH': ['dʒ'], 'K': ['k'], 'L': ['l'], 'M': ['m'], 'N': ['n'],
+    'NG': ['ŋ'], 'P': ['p'], 'R': ['ɹ'], 'S': ['s'], 'SH': ['ʃ'], 'T': ['t'],
+    'TH': ['θ'], 'V': ['v'], 'W': ['w'], 'Y': ['j'], 'Z': ['z'], 'ZH': ['ʒ']
+};
+
+function getEnglishPhonemes(arpaPhonemes) {
+    const phonemes = [];
+    const parts = arpaPhonemes.split(' ');
+    for (let p of parts) {
         const basePhoneme = p.replace(/[0-9]/g, '');
-        if (arpaToIpa[basePhoneme]) {
-            vowels.push(...arpaToIpa[basePhoneme]);
+        if (arpaToIpaVowels[basePhoneme]) {
+            phonemes.push(...arpaToIpaVowels[basePhoneme]);
+        } else if (arpaToIpaConso[basePhoneme]) {
+            phonemes.push(...arpaToIpaConso[basePhoneme]);
         }
     }
-    return vowels;
+    return phonemes;
 }
 
-// Allowed IPA vowels matching our feature set
-const allowedIpa = {
-    'i': ['i'], 'ɯ': ['ɯ'], 'u': ['u'], 'ɛ': ['ɛ'], 'ʌ': ['ʌ'], 'o': ['o'],
-    'a': ['a'], 'ɑ': ['ɑ'], 'æ': ['æ'], 'e': ['e'], 'ɔ': ['ɔ'], 'ɪ': ['ɪ'], 'ʊ': ['ʊ'],
-    'ə': ['ə'], 'ɚ': ['ɚ'], 'aɪ': ['aɪ'], 'eɪ': ['eɪ'], 'ɔɪ': ['ɔɪ'], 'aʊ': ['aʊ'], 'oʊ': ['oʊ'],
-    'ju': ['ju'], 'jʌ': ['jʌ'], 'jo': ['jo'], 'jɛ': ['jɛ'], 'ja': ['ja'], 'je': ['je'],
-    'wi': ['wi'], 'wʌ': ['wʌ'], 'wɛ': ['wɛ'], 'wa': ['wa'], 'we': ['we'], 'ɰi': ['ɰi']
-};
+// For IPA-dict, extract all relevant phonemes (vowels + consonants)
+const allowedIpaRegex = /tʃ|dʒ|aɪ|eɪ|ɔɪ|aʊ|oʊ|ju|jʌ|jo|jɛ|ja|je|wi|wʌ|wɛ|wa|we|ɰi|tɕʰ|tɕ\*|tɕ|dʑ|pʰ|p\*|tʰ|t\*|kʰ|k\*|s\*|i|ɯ|u|ɛ|ʌ|o|a|ɑ|æ|e|ɔ|ɪ|ʊ|ə|ɚ|b|d|f|ɡ|h|k|l|m|n|ŋ|p|ɹ|s|ʃ|t|θ|ð|v|w|j|z|ʒ|ɾ/g;
 
-function getEnglishVowelsFromIpa(ipaString) {
-    const vowels = [];
-    // Match two-character vowels first, then single characters
-    const regex = /aɪ|eɪ|ɔɪ|aʊ|oʊ|ju|jʌ|jo|jɛ|ja|je|wi|wʌ|wɛ|wa|we|ɰi|i|ɯ|u|ɛ|ʌ|o|a|ɑ|æ|e|ɔ|ɪ|ʊ|ə|ɚ/g;
+function getEnglishPhonemesFromIpa(ipaString) {
+    const phonemes = [];
     let match;
-    while ((match = regex.exec(ipaString)) !== null) {
-        if (allowedIpa[match[0]]) {
-            vowels.push(...allowedIpa[match[0]]);
-        }
+    while ((match = allowedIpaRegex.exec(ipaString)) !== null) {
+        phonemes.push(match[0]);
     }
-    return vowels;
+    return phonemes;
 }
 
-const koreanToIpa = {
-    'ㅏ': ['a'], 'ㅐ': ['ɛ'], 'ㅑ': ['ja'], 'ㅒ': ['jɛ'], 'ㅓ': ['ʌ'], 'ㅔ': ['e'],
-    'ㅕ': ['jʌ'], 'ㅖ': ['je'], 'ㅗ': ['o'], 'ㅘ': ['wa'], 'ㅙ': ['wɛ'], 'ㅚ': ['we'],
-    'ㅛ': ['jo'], 'ㅜ': ['u'], 'ㅝ': ['wʌ'], 'ㅞ': ['we'], 'ㅟ': ['wi'], 'ㅠ': ['ju'],
-    'ㅡ': ['ɯ'], 'ㅢ': ['ɰi'], 'ㅣ': ['i']
-};
+// Korean
+const KOREAN_CHO = ['k', 'k*', 'n', 't', 't*', 'ɾ', 'm', 'p', 'p*', 's', 's*', '', 'tɕ', 'tɕ*', 'tɕʰ', 'kʰ', 'tʰ', 'pʰ', 'h'];
+const KOREAN_JUNG = ['a', 'ɛ', 'ja', 'jɛ', 'ʌ', 'e', 'jʌ', 'je', 'o', 'wa', 'wɛ', 'we', 'jo', 'u', 'wʌ', 'we', 'wi', 'ju', 'ɯ', 'ɰi', 'i'];
+const KOREAN_JONG_MAPPED = ['', 'k', 'k', 'k', 'n', 'n', 'n', 't', 'l', 'k', 'm', 'l', 'l', 'l', 'p', 'l', 'm', 'p', 'p', 't', 't', 'ŋ', 't', 't', 'k', 't', 'p', 't'];
 
-const KOREAN_VOWELS = [
-    'ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 
-    'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'
-];
-
-function getKoreanVowels(word) {
-    const vowels = [];
+function getKoreanPhonemes(word) {
+    const phonemes = [];
     for (let i = 0; i < word.length; i++) {
         const code = word.charCodeAt(i);
-        if (code >= 44032 && code <= 55203) { // 가 ~ 힣
+        if (code >= 44032 && code <= 55203) {
             const charCode = code - 44032;
             const jong = charCode % 28;
             const jung = ((charCode - jong) / 28) % 21;
-            const jungChar = KOREAN_VOWELS[jung];
-            if (koreanToIpa[jungChar]) {
-                vowels.push(...koreanToIpa[jungChar]);
-            }
-        } else if (koreanToIpa[word[i]]) { // standalone vowel
-            vowels.push(...koreanToIpa[word[i]]);
+            const cho = Math.floor(charCode / (28 * 21));
+            
+            if (KOREAN_CHO[cho] !== '') phonemes.push(KOREAN_CHO[cho]);
+            phonemes.push(KOREAN_JUNG[jung]);
+            if (KOREAN_JONG_MAPPED[jong] !== '') phonemes.push(KOREAN_JONG_MAPPED[jong]);
+        } else if (code >= 12593 && code <= 12622) { // Standalone consonants
+            // Skipping standalone consonants for simplicity
+        } else if (code >= 12623 && code <= 12643) { // Standalone vowels
+            const jungIdx = code - 12623;
+            if (KOREAN_JUNG[jungIdx]) phonemes.push(KOREAN_JUNG[jungIdx]);
         }
     }
-    return vowels;
+    return phonemes;
 }
 
 async function buildDict() {
@@ -98,25 +94,17 @@ async function buildDict() {
         for (const line of lines) {
             if (line.startsWith(';;;') || line.trim() === '') continue;
             
-            // Format: WORD  PHONEME1 PHONEME2 ...
             const parts = line.trim().split('  ');
             if (parts.length === 2) {
                 const wordRaw = parts[0];
-                const phonemes = parts[1];
+                const phonemesRaw = parts[1];
                 
-                // Skip words with symbols (like ! or .)
                 if (/[^A-Za-z\(\)0-9]/.test(wordRaw)) continue;
+                const word = wordRaw.replace(/\([0-9]+\)/, '').toLowerCase(); 
                 
-                const word = wordRaw.replace(/\([0-9]+\)/, '').toLowerCase(); // Remove alternate pronunciation markers like (1)
-                
-                const vowels = getEnglishVowels(phonemes);
-                if (vowels.length > 0) {
-                    dict.push({
-                        word: word,
-                        lang: 'en',
-                        vowels: vowels,
-                        display: word
-                    });
+                const phonemes = getEnglishPhonemes(phonemesRaw);
+                if (phonemes.length > 0) {
+                    dict.push({ word: word, lang: 'en', phonemes: phonemes, display: word });
                     processedEnWords.add(word);
                     count++;
                 }
@@ -136,24 +124,17 @@ async function buildDict() {
         let countIpa = 0;
         for (const line of lines) {
             if (line.trim() === '') continue;
-            
-            // Format: word\t/IPA/, /IPA2/
             const parts = line.trim().split('\t');
             if (parts.length >= 2) {
                 const word = parts[0].toLowerCase();
-                if (processedEnWords.has(word)) continue; // Skip if already in CMUdict
-                if (/[^a-z]/.test(word)) continue; // Skip words with symbols/numbers/spaces
+                if (processedEnWords.has(word)) continue; 
+                if (/[^a-z]/.test(word)) continue; 
                 
                 const ipaString = parts[1];
-                const vowels = getEnglishVowelsFromIpa(ipaString);
+                const phonemes = getEnglishPhonemesFromIpa(ipaString);
                 
-                if (vowels.length > 0) {
-                    dict.push({
-                        word: word,
-                        lang: 'en',
-                        vowels: vowels,
-                        display: word
-                    });
+                if (phonemes.length > 0) {
+                    dict.push({ word: word, lang: 'en', phonemes: phonemes, display: word });
                     processedEnWords.add(word);
                     countIpa++;
                 }
@@ -177,21 +158,15 @@ async function buildDict() {
                 const spaceIndex = line.indexOf(' ');
                 if (spaceIndex !== -1) {
                     const wordRaw = line.substring(0, spaceIndex);
-                    const phonemes = line.substring(spaceIndex + 1).trim();
+                    const phonemesRaw = line.substring(spaceIndex + 1).trim();
                     
-                    // skip if it has numbers/symbols other than apostrophe
                     if (/[^a-zA-Z\']/.test(wordRaw)) continue; 
                     const word = wordRaw.toLowerCase();
-                    if (processedEnWords.has(word)) continue; // Skip if already in CMUdict/ipa-dict
+                    if (processedEnWords.has(word)) continue; 
                     
-                    const vowels = getEnglishVowels(phonemes);
-                    if (vowels.length > 0) {
-                        dict.push({
-                            word: word,
-                            lang: 'en',
-                            vowels: vowels,
-                            display: word
-                        });
+                    const phonemes = getEnglishPhonemes(phonemesRaw);
+                    if (phonemes.length > 0) {
+                        dict.push({ word: word, lang: 'en', phonemes: phonemes, display: word });
                         processedEnWords.add(word);
                         countRhymez++;
                     }
@@ -230,16 +205,10 @@ async function buildDict() {
             else if (item.vocab) koWord = item.vocab;
             
             if (koWord && !processedKoWords.has(koWord)) {
-                // Ensure it's purely korean characters
                 if (/^[가-힣]+$/.test(koWord)) {
-                    const vowels = getKoreanVowels(koWord);
-                    if (vowels.length > 0) {
-                        dict.push({
-                            word: koWord,
-                            lang: 'ko',
-                            vowels: vowels,
-                            display: koWord
-                        });
+                    const phonemes = getKoreanPhonemes(koWord);
+                    if (phonemes.length > 0) {
+                        dict.push({ word: koWord, lang: 'ko', phonemes: phonemes, display: koWord });
                         countKo++;
                         processedKoWords.add(koWord);
                     }
@@ -250,14 +219,9 @@ async function buildDict() {
     } catch (err) {
         console.error('Failed to fetch Korean dictionary:', err.message);
         console.log('Generating fallback Korean words...');
-        const fallbacks = ['사과', '바나나', '기차', '나비', '파이팅', '와이퍼', '드라이기', '학교', '사랑', '바다', '아침', '저녁'];
+        const fallbacks = ['사과', '바나나', '기차', '나비', '고양이', '슈퍼', '바라보기', '학교', '사랑', '바다', '아침', '점심'];
         for (const w of fallbacks) {
-            dict.push({
-                word: w,
-                lang: 'ko',
-                vowels: getKoreanVowels(w),
-                display: w
-            });
+            dict.push({ word: w, lang: 'ko', phonemes: getKoreanPhonemes(w), display: w });
         }
     }
 

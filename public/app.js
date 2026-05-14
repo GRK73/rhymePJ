@@ -36,46 +36,56 @@ const ipaFeatures = {
     'wa': [0.2, 1, -0.17], 'we': [0.85, 0.33, -0.17], 'ɰi': [1, 0.33, 0.17]
 };
 
-const koreanToIpa = {
-    'ㅏ': ['a'], 'ㅐ': ['ɛ'], 'ㅑ': ['ja'], 'ㅒ': ['jɛ'], 'ㅓ': ['ʌ'], 'ㅔ': ['e'],
-    'ㅕ': ['jʌ'], 'ㅖ': ['je'], 'ㅗ': ['o'], 'ㅘ': ['wa'], 'ㅙ': ['wɛ'], 'ㅚ': ['we'],
-    'ㅛ': ['jo'], 'ㅜ': ['u'], 'ㅝ': ['wʌ'], 'ㅞ': ['we'], 'ㅟ': ['wi'], 'ㅠ': ['ju'],
-    'ㅡ': ['ɯ'], 'ㅢ': ['ɰi'], 'ㅣ': ['i']
+const ipaConsoFeatures = {
+    // Korean
+    'p': [0, 1, 0, 0], 'pʰ': [0, 1, 0.5, 0], 'p*': [0, 1, 1, 0], 'b': [0, 1, 0, 0.5],
+    'm': [0, 0.25, 0, 0.5],
+    't': [0.25, 1, 0, 0], 'tʰ': [0.25, 1, 0.5, 0], 't*': [0.25, 1, 1, 0], 'd': [0.25, 1, 0, 0.5],
+    's': [0.25, 0.5, 0.5, 0], 's*': [0.25, 0.5, 1, 0],
+    'n': [0.25, 0.25, 0, 0.5], 'ɾ': [0.25, 0, 0, 0.5], 'l': [0.25, 0, 0, 0.5],
+    'tɕ': [0.5, 0.75, 0, 0], 'tɕʰ': [0.5, 0.75, 0.5, 0], 'tɕ*': [0.5, 0.75, 1, 0], 'dʑ': [0.5, 0.75, 0, 0.5],
+    'k': [0.75, 1, 0, 0], 'kʰ': [0.75, 1, 0.5, 0], 'k*': [0.75, 1, 1, 0], 'ɡ': [0.75, 1, 0, 0.5],
+    'ŋ': [0.75, 0.25, 0, 0.5],
+    'h': [1, 0.5, 0.5, 0],
+    // English extras
+    'f': [0.1, 0.5, 0, 0], 'v': [0.1, 0.5, 0, 0.5],
+    'θ': [0.2, 0.5, 0, 0], 'ð': [0.2, 0.5, 0, 0.5],
+    'ʃ': [0.5, 0.5, 0, 0], 'ʒ': [0.5, 0.5, 0, 0.5],
+    'tʃ': [0.5, 0.75, 0.5, 0], 'dʒ': [0.5, 0.75, 0, 0.5],
+    'ɹ': [0.25, 0, 0, 0.5], 'w': [0, 0.1, 0, 0.5], 'j': [0.6, 0.1, 0, 0.5], 'z': [0.25, 0.5, 0, 0.5]
 };
 
-const KOREAN_VOWELS = [
-    'ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 
-    'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'
-];
+const KOREAN_CHO = ['k', 'k*', 'n', 't', 't*', 'ɾ', 'm', 'p', 'p*', 's', 's*', '', 'tɕ', 'tɕ*', 'tɕʰ', 'kʰ', 'tʰ', 'pʰ', 'h'];
+const KOREAN_JUNG = ['a', 'ɛ', 'ja', 'jɛ', 'ʌ', 'e', 'jʌ', 'je', 'o', 'wa', 'wɛ', 'we', 'jo', 'u', 'wʌ', 'we', 'wi', 'ju', 'ɯ', 'ɰi', 'i'];
+const KOREAN_JONG_MAPPED = ['', 'k', 'k', 'k', 'n', 'n', 'n', 't', 'l', 'k', 'm', 'l', 'l', 'l', 'p', 'l', 'm', 'p', 'p', 't', 't', 'ŋ', 't', 't', 'k', 't', 'p', 't'];
 
-function getKoreanIpaVowels(word) {
-    const vowels = [];
+function getKoreanIpaPhonemes(word) {
+    const phonemes = [];
     for (let i = 0; i < word.length; i++) {
         const code = word.charCodeAt(i);
-        if (code >= 44032 && code <= 55203) { // 가 ~ 힣
+        if (code >= 44032 && code <= 55203) {
             const charCode = code - 44032;
             const jong = charCode % 28;
             const jung = ((charCode - jong) / 28) % 21;
-            const jungChar = KOREAN_VOWELS[jung];
-            if (koreanToIpa[jungChar]) {
-                vowels.push(...koreanToIpa[jungChar]);
-            }
-        } else if (koreanToIpa[word[i]]) {
-            vowels.push(...koreanToIpa[word[i]]);
+            const cho = Math.floor(charCode / (28 * 21));
+            
+            if (KOREAN_CHO[cho] !== '') phonemes.push(KOREAN_CHO[cho]);
+            phonemes.push(KOREAN_JUNG[jung]);
+            if (KOREAN_JONG_MAPPED[jong] !== '') phonemes.push(KOREAN_JONG_MAPPED[jong]);
         }
     }
-    return vowels;
+    return phonemes;
 }
 
-function getQueryVowels(query) {
+function getQueryPhonemes(query) {
     const isKorean = /[가-힣]/.test(query);
     if (isKorean) {
-        return getKoreanIpaVowels(query);
+        return getKoreanIpaPhonemes(query);
     } else {
         const lowerQuery = query.toLowerCase();
         const found = dictionary.find(d => d.word === lowerQuery && d.lang === 'en');
         if (found) {
-            return found.vowels;
+            return found.phonemes;
         }
         return [];
     }
@@ -83,56 +93,72 @@ function getQueryVowels(query) {
 
 function get_score_1d(ipa1, ipa2) {
     if (ipa1 === ipa2) return 1.0;
-    const v1 = ipaFeatures[ipa1];
-    const v2 = ipaFeatures[ipa2];
-    if (!v1 || !v2) return 0;
     
-    let score = 1.0;
-    score *= 1 - Math.abs(v1[0] - v2[0]);
-    score *= 1 - Math.abs(v1[1] - v2[1]);
-    score *= 1 - Math.abs(v1[2] - v2[2]);
-    return Math.max(0, score);
+    // Both vowels
+    if (ipaFeatures[ipa1] && ipaFeatures[ipa2]) {
+        const v1 = ipaFeatures[ipa1];
+        const v2 = ipaFeatures[ipa2];
+        let score = 1.0;
+        score *= 1 - Math.abs(v1[0] - v2[0]);
+        score *= 1 - Math.abs(v1[1] - v2[1]);
+        score *= 1 - Math.abs(v1[2] - v2[2]);
+        return Math.max(0, score);
+    } 
+    // Both consonants
+    else if (ipaConsoFeatures[ipa1] && ipaConsoFeatures[ipa2]) {
+        const c1 = ipaConsoFeatures[ipa1];
+        const c2 = ipaConsoFeatures[ipa2];
+        if (c1[0] !== c2[0] || c1[1] !== c2[1]) {
+            return 0; // If position or manner are different, score 0
+        }
+        let score = 1.0;
+        score *= 1 - Math.abs(c1[2] - c2[2]); // strength
+        score *= 1 - Math.abs(c1[3] - c2[3]); // voice
+        return Math.max(0, score);
+    } 
+    
+    return 0;
 }
 
-function calculateScore(targetVowels, queryVowels) {
-    if (queryVowels.length === 0 || targetVowels.length === 0) return 0;
+function calculateScore(targetPhonemes, queryPhonemes) {
+    if (queryPhonemes.length === 0 || targetPhonemes.length === 0) return 0;
     
-    const targetStr = targetVowels.join('');
-    const queryStr = queryVowels.join('');
+    const targetStr = targetPhonemes.join('');
+    const queryStr = queryPhonemes.join('');
 
     if (targetStr === queryStr) return 100;
 
     if (targetStr.includes(queryStr)) {
-        return 80 - (targetVowels.length - queryVowels.length); 
+        return 80 - (targetPhonemes.length - queryPhonemes.length); 
     }
 
     // Phonetic DP algorithm based on PronunciationEvaluator
-    let previousRow = Array.from({length: queryVowels.length + 1}, (_, i) => i);
+    let previousRow = Array.from({length: queryPhonemes.length + 1}, (_, i) => i);
     
-    for (let i = 0; i < targetVowels.length; i++) {
+    for (let i = 0; i < targetPhonemes.length; i++) {
         let currentRow = [i + 1];
-        for (let j = 0; j < queryVowels.length; j++) {
+        for (let j = 0; j < queryPhonemes.length; j++) {
             let insertions = previousRow[j + 1] + 1;
             let deletions = currentRow[j] + 1;
-            let substitutions = previousRow[j] + (1 - get_score_1d(targetVowels[i], queryVowels[j]));
+            let substitutions = previousRow[j] + (1 - get_score_1d(targetPhonemes[i], queryPhonemes[j]));
             currentRow.push(Math.min(insertions, deletions, substitutions));
         }
         previousRow = currentRow;
     }
     
-    let dist = previousRow[queryVowels.length];
-    let maxLen = Math.max(targetVowels.length, queryVowels.length);
+    let dist = previousRow[queryPhonemes.length];
+    let maxLen = Math.max(targetPhonemes.length, queryPhonemes.length);
     let dpScore = Math.max(1 - (dist / maxLen), 0) * 80;
 
-    // Sliding window phonetic match for rhyme substring matching
+    // Sliding window phonetic match for substring matching (rhymes, partial words)
     let maxSlidingScore = 0;
-    if (targetVowels.length >= queryVowels.length) {
-        for (let i = 0; i <= targetVowels.length - queryVowels.length; i++) {
+    if (targetPhonemes.length >= queryPhonemes.length) {
+        for (let i = 0; i <= targetPhonemes.length - queryPhonemes.length; i++) {
             let currentScore = 0;
-            for (let j = 0; j < queryVowels.length; j++) {
-                currentScore += get_score_1d(targetVowels[i+j], queryVowels[j]);
+            for (let j = 0; j < queryPhonemes.length; j++) {
+                currentScore += get_score_1d(targetPhonemes[i+j], queryPhonemes[j]);
             }
-            let percentage = (currentScore / queryVowels.length) * 75; 
+            let percentage = (currentScore / queryPhonemes.length) * 75; 
             if (percentage > maxSlidingScore) maxSlidingScore = percentage;
         }
     }
@@ -151,10 +177,12 @@ function displayResults(results) {
     results.forEach(res => {
         const li = document.createElement('li');
         li.className = 'result-item';
+        // 'phonemes' array is displayed
+        const displayPhonemes = res.phonemes || res.vowels || [];
         li.innerHTML = `
             <div class="result-word">${res.display}</div>
             <div class="result-meta">
-                <span>[${res.vowels.join(', ')}]</span>
+                <span>[${displayPhonemes.join(', ')}]</span>
                 <span class="lang-badge ${res.lang}">${res.lang === 'ko' ? '한국어' : '영어'}</span>
             </div>
         `;
@@ -172,13 +200,13 @@ function handleSearch() {
         if (radio.checked) selectedLang = radio.value;
     }
 
-    const queryVowels = getQueryVowels(query);
-    if (queryVowels.length === 0) {
-        statusEl.textContent = '해당 단어의 모음/발음을 분석할 수 없습니다.';
+    const queryPhonemes = getQueryPhonemes(query);
+    if (queryPhonemes.length === 0) {
+        statusEl.textContent = '해당 단어의 발음을 분석할 수 없습니다.';
         return;
     }
 
-    statusEl.textContent = `"${query}"의 모음 [${queryVowels.join(', ')}]와 비슷한 단어를 찾습니다...`;
+    statusEl.textContent = `"${query}"의 발음 [${queryPhonemes.join(', ')}]와 비슷한 단어를 찾습니다...`;
 
     // Filter and score
     let results = [];
@@ -188,7 +216,8 @@ function handleSearch() {
         // Skip exact same word
         if (item.word.toLowerCase() === query.toLowerCase()) continue;
 
-        const score = calculateScore(item.vowels, queryVowels);
+        const phonemes = item.phonemes || item.vowels || []; // Backwards compatibility just in case
+        const score = calculateScore(phonemes, queryPhonemes);
         if (score > 50) { // Only high confidence matches
             results.push({ ...item, score });
         }
