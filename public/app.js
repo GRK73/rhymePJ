@@ -6,6 +6,11 @@ const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const resultsList = document.getElementById('resultsList');
 const langRadios = document.getElementsByName('lang');
+const loadMoreBtn = document.getElementById('loadMoreBtn');
+
+let currentFilteredResults = [];
+let resultsShown = 0;
+const PAGE_SIZE = 99;
 
 // Intersection Observer for lazy loading meanings
 const meaningObserver = new IntersectionObserver((entries, observer) => {
@@ -254,14 +259,23 @@ function calculateScore(targetPhonemes, queryPhonemes) {
 }
 
 function displayResults(results) {
+    currentFilteredResults = results;
+    resultsShown = 0;
     resultsList.innerHTML = '';
     
     if (results.length === 0) {
         resultsList.innerHTML = '<li>검색 결과가 없습니다.</li>';
+        loadMoreBtn.style.display = 'none';
         return;
     }
 
-    results.forEach(res => {
+    renderMoreResults();
+}
+
+function renderMoreResults() {
+    const chunk = currentFilteredResults.slice(resultsShown, resultsShown + PAGE_SIZE);
+
+    chunk.forEach(res => {
         const li = document.createElement('li');
         li.className = 'result-item';
         li.dataset.word = res.word;
@@ -294,7 +308,17 @@ function displayResults(results) {
         resultsList.appendChild(li);
         meaningObserver.observe(li);
     });
+
+    resultsShown += chunk.length;
+
+    if (resultsShown >= currentFilteredResults.length) {
+        loadMoreBtn.style.display = 'none';
+    } else {
+        loadMoreBtn.style.display = 'block';
+    }
 }
+
+loadMoreBtn.addEventListener('click', renderMoreResults);
 
 function handleSearch() {
     if (!isReady) return;
@@ -329,11 +353,10 @@ function handleSearch() {
         }
     }
 
-    // Sort by score (desc) and limit to top 100
+    // Sort by score (desc)
     results.sort((a, b) => b.score - a.score);
-    const topResults = results.slice(0, 100);
 
-    displayResults(topResults);
+    displayResults(results);
 }
 
 searchBtn.addEventListener('click', handleSearch);

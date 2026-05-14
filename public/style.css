@@ -222,3 +222,26 @@ header p {
         transform: rotate(360deg);
     }
 }
+
+.load-more-btn {
+    display: block;
+    width: 100%;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    background-color: transparent;
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    line-height: 1;
+}
+
+.load-more-btn:hover {
+    background-color: var(--primary-color);
+    color: white;
+    border-style: solid;
+    border-color: var(--primary-color);
+}
