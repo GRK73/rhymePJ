@@ -30,12 +30,6 @@ body {
     align-items: flex-start;
 }
 
-/* Dummy element to perfectly center the .container by balancing the .sidebar's width */
-.app-layout::after {
-    content: "";
-    flex: 0 0 250px;
-}
-
 .sidebar {
     flex: 0 0 250px;
     background-color: var(--card-bg);
@@ -108,16 +102,7 @@ body {
 }
 
 .detail-group {
-    display: none;
-    margin-top: 1rem;
-    padding: 1rem;
-    background-color: var(--bg-color);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-}
-
-.detail-group.active {
-    display: block;
+    margin-top: 0;
 }
 
 .detail-desc {
@@ -126,11 +111,20 @@ body {
     margin-bottom: 1rem;
 }
 
-.detail-slider-container {
-    margin-bottom: 1rem;
+.re-search-btn {
+    padding: 0.8rem;
+    font-size: 1rem;
+    font-weight: bold;
+    color: white;
+    background-color: var(--primary-color);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
 }
-.detail-slider-container:last-child {
-    margin-bottom: 0;
+
+.re-search-btn:hover {
+    background-color: var(--primary-hover);
 }
 
 .container {
@@ -370,14 +364,14 @@ header p {
     text-align: right;
 }
 
-/* Remove dummy element on medium screens so container isn't squashed */
 @media (max-width: 1364px) {
-    .app-layout::after {
-        display: none;
+    /* Sidebars stack on smaller screens */
+    .right-sidebar {
+        display: none; /* or move to bottom if needed, but for now we can just let it stack if we don't hide it */
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .app-layout {
         flex-direction: column;
     }

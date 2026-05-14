@@ -41,19 +41,6 @@
             </div>
             
             <div class="filter-group">
-                <label class="toggle-label">
-                    <input type="checkbox" id="useDetailWeights">
-                    단어 세부 가중치 사용
-                </label>
-                <div id="detailGroup" class="detail-group">
-                    <p class="detail-desc">검색어의 각 글자별로 중요도를 설정하세요.</p>
-                    <div id="detailSlidersContainer">
-                        <!-- Sliders will be injected here via JS -->
-                    </div>
-                </div>
-            </div>
-            
-            <div class="filter-group">
                 <h3>언어 필터</h3>
                 <div class="filters">
                     <label><input type="radio" name="lang" value="all" checked> 전체</label>
@@ -83,6 +70,20 @@
                 </div>
             </main>
         </div>
+
+        <aside class="sidebar right-sidebar" id="rightSidebar">
+            <div class="filter-group detail-group" id="detailGroup">
+                <label class="toggle-label">
+                    <input type="checkbox" id="useDetailWeights">
+                    세부 가중치 적용
+                </label>
+                <p class="detail-desc">적용 시 기존 자음/모음 가중치는 무시됩니다.</p>
+                <div id="detailSlidersContainer">
+                    <div class="empty-detail-msg" style="color: #64748b; font-size: 0.9rem; text-align: center; margin-top: 2rem;">검색을 하면 음소 단위로<br>가중치를 설정할 수 있습니다.</div>
+                </div>
+                <button id="reSearchBtn" class="re-search-btn" style="display: none; width: 100%; margin-top: 1rem;">재검색</button>
+            </div>
+        </aside>
     </div>
 
     <!-- hangul-js for client-side processing -->

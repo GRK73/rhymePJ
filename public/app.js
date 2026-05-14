@@ -22,14 +22,14 @@ const detailSlidersContainer = document.getElementById('detailSlidersContainer')
 
 let currentQueryPhonemeData = { phonemes: [], charMap: [] };
 
-useDetailWeights.addEventListener('change', () => {
-    if (useDetailWeights.checked) {
-        detailGroup.classList.add('active');
-        renderDetailSliders();
-    } else {
-        detailGroup.classList.remove('active');
-    }
-});
+let currentQueryPhonemeData = { phonemes: [], charMap: [] };
+let lastQueryWord = '';
+
+const reSearchBtn = document.getElementById('reSearchBtn');
+reSearchBtn.addEventListener('click', handleSearch);
+
+// No auto-render on toggle since there's a research button, but we can toggle visibility of sliders
+// If detail weights is checked, we just leave it. If they uncheck it, they can also click re-search.
 
 function updateSliderVals() {
     consoVal.textContent = parseFloat(consoWeightInput.value).toFixed(1);
@@ -148,11 +148,14 @@ const KOREAN_CHO = ['k', 'k*', 'n', 't', 't*', 'ɾ', 'm', 'p', 'p*', 's', 's*', 
 const KOREAN_JUNG = ['a', 'ɛ', 'ja', 'jɛ', 'ʌ', 'e', 'jʌ', 'je', 'o', 'wa', 'wɛ', 'we', 'jo', 'u', 'wʌ', 'we', 'wi', 'ju', 'ɯ', 'ɰi', 'i'];
 const KOREAN_JONG_MAPPED = ['', 'k', 'k', 'k', 'n', 'n', 'n', 't', 'l', 'k', 'm', 'l', 'l', 'l', 'p', 'l', 'm', 'p', 'p', 't', 't', 'ŋ', 't', 't', 'k', 't', 'p', 't'];
 
+const KOREAN_CHO_JAMO = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', '', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+const KOREAN_JUNG_JAMO = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'];
+const KOREAN_JONG_JAMO = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+
 function getKoreanIpaPhonemes(word) {
     const phonemes = [];
     const charMap = [];
     for (let i = 0; i < word.length; i++) {
-        const startIdx = phonemes.length;
         const code = word.charCodeAt(i);
         if (code >= 44032 && code <= 55203) {
             const charCode = code - 44032;
@@ -160,12 +163,16 @@ function getKoreanIpaPhonemes(word) {
             const jung = ((charCode - jong) / 28) % 21;
             const cho = Math.floor(charCode / (28 * 21));
             
-            if (KOREAN_CHO[cho] !== '') phonemes.push(KOREAN_CHO[cho]);
+            if (KOREAN_CHO[cho] !== '') {
+                charMap.push({ char: KOREAN_CHO_JAMO[cho], startIndex: phonemes.length, endIndex: phonemes.length + 1 });
+                phonemes.push(KOREAN_CHO[cho]);
+            }
+            charMap.push({ char: KOREAN_JUNG_JAMO[jung], startIndex: phonemes.length, endIndex: phonemes.length + 1 });
             phonemes.push(KOREAN_JUNG[jung]);
-            if (KOREAN_JONG_MAPPED[jong] !== '') phonemes.push(KOREAN_JONG_MAPPED[jong]);
-        }
-        if (phonemes.length > startIdx) {
-            charMap.push({ char: word[i], startIndex: startIdx, endIndex: phonemes.length });
+            if (KOREAN_JONG_MAPPED[jong] !== '') {
+                charMap.push({ char: KOREAN_JONG_JAMO[jong], startIndex: phonemes.length, endIndex: phonemes.length + 1 });
+                phonemes.push(KOREAN_JONG_MAPPED[jong]);
+            }
         }
     }
     return { phonemes, charMap };
@@ -233,12 +240,15 @@ function calculateScore(targetPhonemes, queryPhonemes, detailMultipliers = []) {
     // Phonetic DP algorithm based on PronunciationEvaluator
     let dpMatrix = Array.from({length: targetPhonemes.length + 1}, () => Array(queryPhonemes.length + 1).fill(0));
     
-    let vowelWeight = parseFloat(vowelWeightInput.value);
-    let consoWeight = parseFloat(consoWeightInput.value);
+    let isDetailActive = document.getElementById('useDetailWeights').checked;
+    
+    // If detail is active, ignore global vowel/conso weights completely (use 1.0)
+    let baseVowelWeight = isDetailActive ? 1.0 : parseFloat(vowelWeightInput.value);
+    let baseConsoWeight = isDetailActive ? 1.0 : parseFloat(consoWeightInput.value);
 
-    let targetWeights = targetPhonemes.map(p => ipaFeatures[p] ? vowelWeight : consoWeight);
+    let targetWeights = targetPhonemes.map(p => ipaFeatures[p] ? baseVowelWeight : baseConsoWeight);
     let queryWeights = queryPhonemes.map((p, idx) => {
-        let baseWeight = ipaFeatures[p] ? vowelWeight : consoWeight;
+        let baseWeight = ipaFeatures[p] ? baseVowelWeight : baseConsoWeight;
         let detailMult = detailMultipliers[idx] !== undefined ? detailMultipliers[idx] : 1.0;
         return baseWeight * detailMult;
     });
@@ -397,16 +407,17 @@ function handleSearch() {
         if (radio.checked) selectedLang = radio.value;
     }
 
-    currentQueryPhonemeData = getQueryPhonemes(query);
+    if (query !== lastQueryWord) {
+        currentQueryPhonemeData = getQueryPhonemes(query);
+        lastQueryWord = query;
+        renderDetailSliders(); // Generate sliders for the new word
+    }
+    
     const queryPhonemes = currentQueryPhonemeData.phonemes;
     
     if (queryPhonemes.length === 0) {
         statusEl.textContent = '해당 단어의 발음을 분석할 수 없습니다.';
         return;
-    }
-
-    if (useDetailWeights.checked) {
-        renderDetailSliders();
     }
 
     statusEl.textContent = `"${query}"의 발음 [${queryPhonemes.join(', ')}]와 비슷한 단어를 찾습니다...`;
@@ -462,13 +473,18 @@ searchInput.addEventListener('keypress', (e) => {
 
 function renderDetailSliders() {
     detailSlidersContainer.innerHTML = '';
-    if (!useDetailWeights.checked || currentQueryPhonemeData.charMap.length === 0) return;
+    reSearchBtn.style.display = 'block';
+    
+    if (currentQueryPhonemeData.charMap.length === 0) {
+        detailSlidersContainer.innerHTML = '<div class="empty-detail-msg" style="color: #64748b; font-size: 0.9rem; text-align: center; margin-top: 2rem;">검색어의 발음을 분석할 수 없습니다.</div>';
+        return;
+    }
     
     currentQueryPhonemeData.charMap.forEach((item, index) => {
         const div = document.createElement('div');
         div.className = 'slider-container detail-slider-container';
         div.innerHTML = `
-            <label for="detailWeight_${index}">${item.char} 가중치</label>
+            <label for="detailWeight_${index}">[ ${item.char} ] 가중치</label>
             <div class="slider-row">
                 <input type="range" id="detailWeight_${index}" min="0" max="10" step="0.5" value="1.0">
                 <span id="detailVal_${index}" class="slider-val">1.0</span>
