@@ -305,7 +305,7 @@ function calculateScore(targetPhonemes, queryPhonemes, detailMultipliers = []) {
         let cost = maxW * (1 - get_score_1d(targetPhonemes[i-1], queryPhonemes[j-1]));
         
         if (Math.abs(current - (sub + cost)) < 0.001) {
-            if (get_score_1d(targetPhonemes[i-1], queryPhonemes[j-1]) > 0.4) {
+            if (get_score_1d(targetPhonemes[i-1], queryPhonemes[j-1]) > 0.4 && wQ > 0) {
                 dpIndices.push(i-1);
             }
             i--; j--;
@@ -329,7 +329,7 @@ function calculateScore(targetPhonemes, queryPhonemes, detailMultipliers = []) {
                 maxPossibleScore += weight;
                 let s = get_score_1d(targetPhonemes[i+j], queryPhonemes[j]);
                 currentScore += s * weight;
-                if (s > 0.4) {
+                if (s > 0.4 && weight > 0) {
                     currentIndices.push(i + j);
                 }
             }
