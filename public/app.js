@@ -447,13 +447,23 @@ function handleSearch() {
         
         // Base score threshold to filter out completely irrelevant words
         if (result.score > 40) { 
-            // zipf is roughly between 1.0 and 8.0. Normalize it to 0.0 ~ 1.0
-            let zipfNorm = Math.max(0, ((item.zipf || 1.0) - 1.0) / 7.0); 
-            // Calculate boost factor (max 80% gap closing when freqWeight is 10)
-            let boostFactor = zipfNorm * (freqWeight / 10) * 0.8;
+            let zipf = item.zipf !== undefined ? item.zipf : 1.0; // Default 1.0 if not found
+            let totalScore = result.score;
             
-            // Asymptotic gap closing: Only close the gap to 100% based on frequency
-            let totalScore = result.score + (100 - result.score) * boostFactor;
+            if (zipf >= 3.5) {
+                // Positive Zone: Asymptotic gap closing for common words
+                let zipfNorm = Math.min(1.0, (zipf - 3.5) / 4.5); // Normalize 3.5~8.0 to 0.0~1.0
+                let boostFactor = zipfNorm * (freqWeight / 10) * 0.8; // Max 80% gap closing
+                totalScore = totalScore + (100 - totalScore) * boostFactor;
+            } else {
+                // Penalty Zone: Exponential reduction for rare words
+                let x = 3.5 - Math.max(0, zipf); // x goes from 0 (at 3.5) to 3.5 (at 0)
+                // Use power of 2.5 for a sharp exponential curve
+                let penaltyMultiplier = Math.pow(x / 3.5, 2.5); 
+                let penalty = penaltyMultiplier * (freqWeight / 10);
+                
+                totalScore = totalScore * (1 - penalty);
+            }
 
             results.push({ ...item, score: totalScore, matchIndices: result.matchIndices });
         }
