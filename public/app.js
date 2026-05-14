@@ -96,7 +96,7 @@ const meaningObserver = new IntersectionObserver((entries, observer) => {
                             if (pageId !== '-1' && pages[pageId].extract) {
                                 const extract = pages[pageId].extract;
                                 // 동음이의어 문서(Disambiguation page)인지 판별
-                                if (extract.includes('다음을 가리') || extract.includes('뜻으로 쓰인') || extract.includes('다음을 의미') || extract.includes('동음이의')) {
+                                if (extract.includes('다음을 가리') || extract.includes('뜻으로 쓰인') || extract.includes('다음을 의미') || extract.includes('동음이의') || extract.includes('다른 뜻') || extract.includes('다음과 같')) {
                                     meaningEl.innerHTML = `<a href="https://ko.dict.naver.com/#/search?query=${encodeURIComponent(word)}" target="_blank" class="dict-link">사전 검색 ↗</a>`;
                                 } else {
                                     meaningEl.textContent = extract;
