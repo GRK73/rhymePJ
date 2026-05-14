@@ -18,12 +18,75 @@ body {
     background-color: var(--bg-color);
     color: var(--text-color);
     line-height: 1.6;
+    padding: 2rem;
+}
+
+.app-layout {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+.sidebar {
+    flex: 0 0 250px;
+    background-color: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 2rem;
+}
+
+.filter-group {
+    margin-bottom: 2rem;
+}
+
+.filter-group h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+.slider-container {
+    margin-bottom: 1.5rem;
+}
+
+.slider-container label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.slider-row input[type=range] {
+    flex: 1;
+    accent-color: var(--primary-color);
+}
+
+.slider-val {
+    min-width: 30px;
+    text-align: right;
+    font-weight: bold;
+    color: var(--primary-color);
 }
 
 .container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
+    flex: 1;
+    background-color: var(--card-bg);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 header {
@@ -252,4 +315,26 @@ header p {
     color: var(--primary-color);
     margin-bottom: 0.25rem;
     text-align: right;
+}
+
+@media (max-width: 768px) {
+    .app-layout {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        flex: none;
+        width: 100%;
+        position: static;
+        box-sizing: border-box;
+    }
+    
+    .filters {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    
+    body {
+        padding: 1rem;
+    }
 }

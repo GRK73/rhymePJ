@@ -10,31 +10,66 @@
 </head>
 
 <body>
-    <div class="container">
-        <header>
-            <h1>Rhyme Finder</h1>
-            <p>한국어/영어 단어 라임 검색기</p>
-        </header>
-
-        <main>
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="검색할 단어를 입력하세요" autocomplete="off">
-                <button id="searchBtn">검색</button>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="filter-group">
+                <h3>가중치 조절</h3>
+                
+                <div class="slider-container">
+                    <label for="consoWeight">자음 가중치</label>
+                    <div class="slider-row">
+                        <input type="range" id="consoWeight" min="0" max="10" step="0.5" value="1.0">
+                        <span id="consoVal" class="slider-val">1.0</span>
+                    </div>
+                </div>
+                
+                <div class="slider-container">
+                    <label for="vowelWeight">모음 가중치</label>
+                    <div class="slider-row">
+                        <input type="range" id="vowelWeight" min="0" max="10" step="0.5" value="2.5">
+                        <span id="vowelVal" class="slider-val">2.5</span>
+                    </div>
+                </div>
+                
+                <div class="slider-container">
+                    <label for="freqWeight">빈도수 가중치</label>
+                    <div class="slider-row">
+                        <input type="range" id="freqWeight" min="0" max="10" step="0.5" value="1.0">
+                        <span id="freqVal" class="slider-val">1.0</span>
+                    </div>
+                </div>
             </div>
-
-            <div class="filters">
-                <label><input type="radio" name="lang" value="all" checked> 전체</label>
-                <label><input type="radio" name="lang" value="ko"> 한국어</label>
-                <label><input type="radio" name="lang" value="en"> 영어</label>
+            
+            <div class="filter-group">
+                <h3>언어 필터</h3>
+                <div class="filters">
+                    <label><input type="radio" name="lang" value="all" checked> 전체</label>
+                    <label><input type="radio" name="lang" value="ko"> 한국어</label>
+                    <label><input type="radio" name="lang" value="en"> 영어</label>
+                </div>
             </div>
+        </aside>
 
-            <div id="status" class="status">데이터를 불러오는 중입니다...</div>
+        <div class="container">
+            <header>
+                <h1>Rhyme Finder</h1>
+                <p>한국어/영어 단어 라임 검색기</p>
+            </header>
 
-            <div class="results-container">
-                <ul id="resultsList" class="results-list"></ul>
-                <button id="loadMoreBtn" class="load-more-btn" style="display: none;">+</button>
-            </div>
-        </main>
+            <main>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="검색할 단어를 입력하세요" autocomplete="off">
+                    <button id="searchBtn">검색</button>
+                </div>
+
+                <div id="status" class="status">데이터를 불러오는 중입니다...</div>
+
+                <div class="results-container">
+                    <ul id="resultsList" class="results-list"></ul>
+                    <button id="loadMoreBtn" class="load-more-btn" style="display: none;">+</button>
+                </div>
+            </main>
+        </div>
     </div>
 
     <!-- hangul-js for client-side processing -->

@@ -2,7 +2,9 @@ import json
 import os
 import sys
 import re
-from wordfreq import word_frequency
+import math
+import collections
+from wordfreq import zipf_frequency
 
 try:
     from Korpora import Korpora
@@ -24,8 +26,9 @@ def load_dict():
         return json.load(f)
 
 def build_korean_vocab():
-    print("Building Korean vocabulary set from corpus...")
-    korean_vocab = set()
+    print("Building Korean vocabulary frequencies from corpus...")
+    korean_counter = collections.Counter()
+    total_words = 0
     
     # Korpora downloads to ~/Korpora/kowikitext/kowikitext_20200920.train
     home_dir = os.path.expanduser('~')
@@ -44,21 +47,22 @@ def build_korean_vocab():
                 print(f"Processed {i:,} lines of corpus...")
             words = korean_pattern.findall(line)
             for w in words:
-                korean_vocab.add(w)
+                korean_counter[w] += 1
+                total_words += 1
             
-    print(f"Korean vocabulary built: {len(korean_vocab):,} unique Korean words found in corpus.")
-    return korean_vocab
+    print(f"Korean vocabulary built: {len(korean_counter):,} unique Korean words, {total_words:,} total words found in corpus.")
+    return korean_counter, total_words
 
 def main():
     print("--- Rhyme Dictionary Practical Filter ---")
     data = load_dict()
     print(f"Total words before filtering: {len(data):,}")
     
-    korean_vocab = build_korean_vocab()
+    korean_counter, total_korean_words = build_korean_vocab()
     
     practical_data = []
     
-    print("Filtering words based on practical usage...")
+    print("Filtering words based on practical usage and adding Zipf frequencies...")
     for idx, item in enumerate(data):
         if idx % 50000 == 0 and idx > 0:
             print(f"Processed {idx:,}/{len(data):,} words...")
@@ -68,13 +72,18 @@ def main():
         
         if lang == 'en':
             # wordfreq combines Google Books Ngrams, Wikipedia, Twitter, etc.
-            # freq > 0.0 means it exists in the massive corpora
-            freq = word_frequency(word, 'en')
-            if freq > 0.0:
+            # zipf > 0.0 means it exists
+            zipf = zipf_frequency(word, 'en')
+            if zipf > 0.0:
+                item['zipf'] = round(zipf, 4)
                 practical_data.append(item)
         elif lang == 'ko':
             # Check if the exact korean word exists anywhere in the Wikipedia corpus
-            if word in korean_vocab:
+            count = korean_counter.get(word, 0)
+            if count > 0:
+                prob = count / total_korean_words
+                zipf = math.log10(prob) + 9
+                item['zipf'] = round(zipf, 4)
                 practical_data.append(item)
     
     print(f"\nTotal words after filtering: {len(practical_data):,}")

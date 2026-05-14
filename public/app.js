@@ -8,6 +8,29 @@ const resultsList = document.getElementById('resultsList');
 const langRadios = document.getElementsByName('lang');
 const loadMoreBtn = document.getElementById('loadMoreBtn');
 
+const consoWeightInput = document.getElementById('consoWeight');
+const vowelWeightInput = document.getElementById('vowelWeight');
+const freqWeightInput = document.getElementById('freqWeight');
+
+const consoVal = document.getElementById('consoVal');
+const vowelVal = document.getElementById('vowelVal');
+const freqVal = document.getElementById('freqVal');
+
+function updateSliderVals() {
+    consoVal.textContent = parseFloat(consoWeightInput.value).toFixed(1);
+    vowelVal.textContent = parseFloat(vowelWeightInput.value).toFixed(1);
+    freqVal.textContent = parseFloat(freqWeightInput.value).toFixed(1);
+}
+
+[consoWeightInput, vowelWeightInput, freqWeightInput].forEach(el => {
+    el.addEventListener('input', () => {
+        updateSliderVals();
+        if (searchInput.value.trim() !== '') {
+            handleSearch();
+        }
+    });
+});
+
 let currentFilteredResults = [];
 let resultsShown = 0;
 const PAGE_SIZE = 99;
@@ -190,8 +213,11 @@ function calculateScore(targetPhonemes, queryPhonemes) {
     // Phonetic DP algorithm based on PronunciationEvaluator
     let dpMatrix = Array.from({length: targetPhonemes.length + 1}, () => Array(queryPhonemes.length + 1).fill(0));
     
-    let targetWeights = targetPhonemes.map(p => ipaFeatures[p] ? 2.5 : 1.0);
-    let queryWeights = queryPhonemes.map(p => ipaFeatures[p] ? 2.5 : 1.0);
+    let vowelWeight = parseFloat(vowelWeightInput.value);
+    let consoWeight = parseFloat(consoWeightInput.value);
+
+    let targetWeights = targetPhonemes.map(p => ipaFeatures[p] ? vowelWeight : consoWeight);
+    let queryWeights = queryPhonemes.map(p => ipaFeatures[p] ? vowelWeight : consoWeight);
 
     for (let i = 1; i <= targetPhonemes.length; i++) dpMatrix[i][0] = dpMatrix[i-1][0] + targetWeights[i-1];
     for (let j = 1; j <= queryPhonemes.length; j++) dpMatrix[0][j] = dpMatrix[0][j-1] + queryWeights[j-1];
@@ -307,7 +333,7 @@ function renderMoreResults() {
         }).join(', ');
 
         li.innerHTML = `
-            <div class="result-score">유사도 : ${res.score.toFixed(1)}%</div>
+            <div class="result-score">환산 유사도 : ${res.score.toFixed(1)}%</div>
             <div class="result-word">
                 <span>${res.display}</span>
                 <img src="sound_icon.png" class="tts-icon" onclick="playTTS('${res.word.replace(/'/g, "\\'")}', '${res.lang}')" alt="Listen" title="발음 듣기"/>
@@ -355,6 +381,8 @@ function handleSearch() {
 
     statusEl.textContent = `"${query}"의 발음 [${queryPhonemes.join(', ')}]와 비슷한 단어를 찾습니다...`;
 
+    let freqWeight = parseFloat(freqWeightInput.value);
+
     // Filter and score
     let results = [];
     for (const item of dictionary) {
@@ -365,8 +393,17 @@ function handleSearch() {
 
         const phonemes = item.phonemes || item.vowels || []; // Backwards compatibility just in case
         const result = calculateScore(phonemes, queryPhonemes);
-        if (result.score > 50) { // Only high confidence matches
-            results.push({ ...item, score: result.score, matchIndices: result.matchIndices });
+        
+        // Base score threshold to filter out completely irrelevant words
+        if (result.score > 40) { 
+            // zipf is roughly between 1.0 and 8.0. Normalize it.
+            let zipfScore = (item.zipf || 1.0) / 8.0; 
+            // Apply boosting based on frequency weight
+            let totalScore = result.score * (1 + zipfScore * (freqWeight / 10));
+            // Cap at 100% maximum for clean UI display
+            totalScore = Math.min(totalScore, 100);
+
+            results.push({ ...item, score: totalScore, matchIndices: result.matchIndices });
         }
     }
 
