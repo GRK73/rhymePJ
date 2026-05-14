@@ -447,12 +447,13 @@ function handleSearch() {
         
         // Base score threshold to filter out completely irrelevant words
         if (result.score > 40) { 
-            // zipf is roughly between 1.0 and 8.0. Normalize it.
-            let zipfScore = (item.zipf || 1.0) / 8.0; 
-            // Apply boosting based on frequency weight
-            let totalScore = result.score * (1 + zipfScore * (freqWeight / 10));
-            // Cap at 100% maximum for clean UI display
-            totalScore = Math.min(totalScore, 100);
+            // zipf is roughly between 1.0 and 8.0. Normalize it to 0.0 ~ 1.0
+            let zipfNorm = Math.max(0, ((item.zipf || 1.0) - 1.0) / 7.0); 
+            // Calculate boost factor (max 80% gap closing when freqWeight is 10)
+            let boostFactor = zipfNorm * (freqWeight / 10) * 0.8;
+            
+            // Asymptotic gap closing: Only close the gap to 100% based on frequency
+            let totalScore = result.score + (100 - result.score) * boostFactor;
 
             results.push({ ...item, score: totalScore, matchIndices: result.matchIndices });
         }
