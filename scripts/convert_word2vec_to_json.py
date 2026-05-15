@@ -54,7 +54,7 @@ def load_vocab(language, include_all, max_vocab):
     return vocab
 
 
-def filter_and_write_vectors(vectors_iter, output_path, vocab):
+def filter_and_write_vectors(vectors_iter, output_path, vocab, precision=4):
     vectors = {}
     dims = None
 
@@ -63,7 +63,7 @@ def filter_and_write_vectors(vectors_iter, output_path, vocab):
         if vocab is not None and word not in vocab:
             continue
 
-        vector = [float(value) for value in vector]
+        vector = [round(float(value), precision) for value in vector]
         if dims is None:
             dims = len(vector)
         if len(vector) != dims:
@@ -154,7 +154,7 @@ def resolve_model_format(input_path, model_format):
     return "text"
 
 
-def convert(input_path, output_path, language="en", include_all=False, max_vocab=None, model_format="auto"):
+def convert(input_path, output_path, language="en", include_all=False, max_vocab=None, model_format="auto", precision=4):
     vocab = load_vocab(language, include_all, max_vocab)
     resolved_format = resolve_model_format(input_path, model_format)
 
@@ -163,7 +163,7 @@ def convert(input_path, output_path, language="en", include_all=False, max_vocab
     else:
         vectors_iter = iter_gensim_vectors(input_path, resolved_format)
 
-    filter_and_write_vectors(vectors_iter, output_path, vocab)
+    filter_and_write_vectors(vectors_iter, output_path, vocab, precision=precision)
 
 
 def main():
@@ -174,6 +174,7 @@ def main():
     parser.add_argument("--format", choices=["auto", "text", "binary", "gensim"], default="auto", help="Input model format.")
     parser.add_argument("--include-all", action="store_true", help="Keep every vector instead of filtering to project vocabulary.")
     parser.add_argument("--max-vocab", type=int, default=None, help="Optional cap for project vocabulary filtering.")
+    parser.add_argument("--precision", type=int, default=4, help="Decimal places to keep in output vectors.")
     args = parser.parse_args()
 
     output = pathlib.Path(args.output).expanduser() if args.output else DEFAULT_OUTPUTS[args.lang]
@@ -184,6 +185,7 @@ def main():
         include_all=args.include_all,
         max_vocab=args.max_vocab,
         model_format=args.format,
+        precision=args.precision,
     )
 
 

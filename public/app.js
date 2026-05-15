@@ -184,32 +184,22 @@ function mergeTopicTranslations(translations) {
     });
 }
 
-function shouldLoadLocalSemanticFiles() {
-    return !(window.location.hostname || '').endsWith('github.io');
-}
-
 async function ensureSemanticResourcesLoaded() {
     if (semanticResourcesLoaded) return getSemanticVectorCount();
     if (semanticResourcesLoadingPromise) return semanticResourcesLoadingPromise;
 
     semanticResourcesLoadingPromise = (async () => {
-        if (!shouldLoadLocalSemanticFiles()) {
-            mergeTopicTranslations(loadTopicTranslationCache());
-            semanticResourcesLoaded = true;
-            return 0;
-        }
-
-        const [koVectors, enVectors, legacyVectors, translations] = await Promise.all([
+        const [koVectors, enVectors, translations] = await Promise.all([
             loadOptionalJson('semantic_vectors_ko.json'),
             loadOptionalJson('semantic_vectors_en.json'),
-            loadOptionalJson('semantic_vectors.json'),
             loadOptionalJson('topic_translations.json')
         ]);
 
         if (koVectors) setSemanticStore('ko', koVectors);
         if (enVectors) setSemanticStore('en', enVectors);
 
-        if (legacyVectors && getSemanticVectorCount() === 0) {
+        if (getSemanticVectorCount() === 0) {
+            const legacyVectors = await loadOptionalJson('semantic_vectors.json');
             setSemanticStore('ko', legacyVectors);
             setSemanticStore('en', legacyVectors);
         }
