@@ -799,6 +799,20 @@ function applySemanticWeight(score, item, semanticContext) {
     };
 }
 
+function dedupeResultsByWordLang(results) {
+    const bestByKey = new Map();
+
+    results.forEach(result => {
+        const key = `${result.lang}:${result.word}`;
+        const current = bestByKey.get(key);
+        if (!current || result.score > current.score) {
+            bestByKey.set(key, result);
+        }
+    });
+
+    return Array.from(bestByKey.values());
+}
+
 function displayResults(results) {
     currentFilteredResults = results;
     resultsShown = 0;
@@ -978,7 +992,7 @@ async function handleSearch() {
         }
     }
 
-    // Sort by score (desc)
+    results = dedupeResultsByWordLang(results);
     results.sort((a, b) => b.score - a.score);
 
     displayResults(results);
