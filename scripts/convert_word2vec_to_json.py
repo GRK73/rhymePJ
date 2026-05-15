@@ -4,6 +4,7 @@ import csv
 import gzip
 import json
 import pathlib
+import re
 
 
 ROOT_DIR = pathlib.Path(__file__).resolve().parents[1]
@@ -24,6 +25,14 @@ def add_vocab_word(vocab, value):
     key = normalize_key(value)
     if key:
         vocab.add(key)
+
+
+def should_keep_token(word, language):
+    if language == "ko":
+        return bool(re.search(r"[\uac00-\ud7a3]", word)) and not re.search(r"[a-z]", word)
+    if language == "en":
+        return bool(re.search(r"[a-z]", word)) and not re.search(r"[\uac00-\ud7a3]", word)
+    return True
 
 
 def load_vocab(language, include_all, max_vocab):
@@ -54,12 +63,15 @@ def load_vocab(language, include_all, max_vocab):
     return vocab
 
 
-def filter_and_write_vectors(vectors_iter, output_path, vocab, precision=4, include_top=0):
+def filter_and_write_vectors(vectors_iter, output_path, vocab, language="en", precision=4, include_top=0):
     vectors = {}
     dims = None
 
     for index, (word, vector) in enumerate(vectors_iter, 1):
         word = normalize_key(word)
+        if not should_keep_token(word, language):
+            continue
+
         keep_by_rank = include_top > 0 and index <= include_top
         if vocab is not None and word not in vocab and not keep_by_rank:
             continue
@@ -164,7 +176,7 @@ def convert(input_path, output_path, language="en", include_all=False, max_vocab
     else:
         vectors_iter = iter_gensim_vectors(input_path, resolved_format)
 
-    filter_and_write_vectors(vectors_iter, output_path, vocab, precision=precision, include_top=include_top)
+    filter_and_write_vectors(vectors_iter, output_path, vocab, language=language, precision=precision, include_top=include_top)
 
 
 def main():

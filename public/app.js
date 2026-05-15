@@ -5,7 +5,7 @@ let topicTranslations = {};
 let semanticResourcesLoaded = false;
 let semanticResourcesLoadingPromise = null;
 let isReady = false;
-const OPTIONAL_ASSET_VERSION = '20260515-semantic-vectors';
+const OPTIONAL_ASSET_VERSION = '20260515-semantic-ko-filtered';
 
 const statusEl = document.getElementById('status');
 const searchInput = document.getElementById('searchInput');
@@ -580,6 +580,17 @@ function scoreCandidate(targetPhonemes, queryPhonemes, detailMultipliers, matchL
     };
 }
 
+function remapDetailMultipliers(detailMultipliers, sourceLength, targetLength) {
+    if (!Array.isArray(detailMultipliers) || targetLength <= 0) return [];
+    if (sourceLength === targetLength) return detailMultipliers.slice();
+    if (sourceLength <= 0) return new Array(targetLength).fill(1.0);
+
+    return Array.from({ length: targetLength }, (_, index) => {
+        const sourceIndex = Math.min(sourceLength - 1, Math.floor(index * sourceLength / targetLength));
+        return detailMultipliers[sourceIndex] ?? 1.0;
+    });
+}
+
 function calculatePronunciationScore(item, queryPhonemeData, detailMultipliers, mode) {
     const nativePhonemes = item.phonemes || item.vowels || [];
     const queryNative = queryPhonemeData.phonemes || [];
@@ -601,7 +612,8 @@ function calculatePronunciationScore(item, queryPhonemeData, detailMultipliers, 
     } else if (mode === 'koreanized') {
         koreanizedCandidates.forEach(targetCandidate => {
             queryKoreanizedCandidates.forEach(queryCandidate => {
-                candidates.push(scoreCandidate(targetCandidate.phonemes, queryCandidate.phonemes, [], 'koreanized', targetCandidate.label));
+                const candidateDetailMultipliers = remapDetailMultipliers(detailMultipliers, queryNative.length, queryCandidate.phonemes.length);
+                candidates.push(scoreCandidate(targetCandidate.phonemes, queryCandidate.phonemes, candidateDetailMultipliers, 'koreanized', targetCandidate.label));
             });
         });
     } else {
@@ -609,8 +621,9 @@ function calculatePronunciationScore(item, queryPhonemeData, detailMultipliers, 
 
         koreanizedCandidates.forEach(targetCandidate => {
             queryKoreanizedCandidates.forEach(queryCandidate => {
-                candidates.push(scoreCandidate(targetCandidate.phonemes, queryCandidate.phonemes, [], 'koreanized', targetCandidate.label));
-                candidates.push(scoreCandidate(nativePhonemes, queryCandidate.phonemes, [], 'bridge', '교차', 0.92));
+                const candidateDetailMultipliers = remapDetailMultipliers(detailMultipliers, queryNative.length, queryCandidate.phonemes.length);
+                candidates.push(scoreCandidate(targetCandidate.phonemes, queryCandidate.phonemes, candidateDetailMultipliers, 'koreanized', targetCandidate.label));
+                candidates.push(scoreCandidate(nativePhonemes, queryCandidate.phonemes, candidateDetailMultipliers, 'bridge', '교차', 0.92));
             });
         });
     }
