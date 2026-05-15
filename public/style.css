@@ -91,6 +91,20 @@ body {
     color: var(--primary-color);
 }
 
+.slider-container.disabled {
+    opacity: 0.45;
+}
+
+.slider-container.disabled label,
+.slider-container.disabled .slider-val {
+    color: #94a3b8;
+}
+
+.slider-container.disabled input[type=range] {
+    accent-color: #94a3b8;
+    cursor: not-allowed;
+}
+
 .toggle-label {
     display: flex;
     align-items: center;

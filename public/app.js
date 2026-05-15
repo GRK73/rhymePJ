@@ -26,6 +26,7 @@ const consoVal = document.getElementById('consoVal');
 const vowelVal = document.getElementById('vowelVal');
 const freqVal = document.getElementById('freqVal');
 const topicVal = document.getElementById('topicVal');
+const globalPhonemeWeightContainers = document.querySelectorAll('.global-phoneme-weight');
 
 const excludeInput = document.getElementById('excludeInput');
 
@@ -54,6 +55,18 @@ function updateSliderVals() {
         updateSliderVals();
     });
 });
+
+function syncDetailWeightControls() {
+    const isDetailActive = useDetailWeights.checked;
+    consoWeightInput.disabled = isDetailActive;
+    vowelWeightInput.disabled = isDetailActive;
+    globalPhonemeWeightContainers.forEach(container => {
+        container.classList.toggle('disabled', isDetailActive);
+    });
+}
+
+useDetailWeights.addEventListener('change', syncDetailWeightControls);
+syncDetailWeightControls();
 
 let currentFilteredResults = [];
 let resultsShown = 0;
