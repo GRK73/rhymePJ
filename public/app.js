@@ -6,6 +6,7 @@ let semanticResourcesLoaded = false;
 let semanticResourcesLoadingPromise = null;
 let isReady = false;
 const TOPIC_TRANSLATION_CACHE_KEY = 'rhymeFinderTopicTranslations';
+const OPTIONAL_ASSET_VERSION = '20260515-semantic-vectors';
 
 const statusEl = document.getElementById('status');
 const searchInput = document.getElementById('searchInput');
@@ -129,7 +130,8 @@ const meaningObserver = new IntersectionObserver((entries, observer) => {
 
 async function loadOptionalJson(path) {
     try {
-        const response = await fetch(path);
+        const separator = path.includes('?') ? '&' : '?';
+        const response = await fetch(`${path}${separator}v=${OPTIONAL_ASSET_VERSION}`, { cache: 'no-store' });
         if (!response.ok) return null;
         return await response.json();
     } catch (error) {
