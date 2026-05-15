@@ -934,12 +934,10 @@ async function handleSearch() {
         semanticContext = buildSemanticContext(topicWord, topicWeight);
     }
 
-    const translatedTopicText = semanticContext.translatedTopics && semanticContext.translatedTopics.length > 0
-        ? ` → ${semanticContext.translatedTopics.slice(0, 2).join(', ')}`
-        : '';
+    const topicLabels = [topicWord, ...(semanticContext.translatedTopics || []).slice(0, 2)].filter(Boolean);
     const topicText = topicWord
         ? semanticContext.active
-            ? ` / 주제: ${topicWord}${translatedTopicText}`
+            ? ` / 주제 : ${topicLabels.join(', ')}`
             : ` / 주제 벡터 없음: ${topicWord}`
         : '';
     statusEl.textContent = `"${query}"의 발음 [${queryPhonemes.join(', ')}]와 비슷한 단어를 찾습니다... (${getPronunciationModeLabel(pronunciationMode)}${topicText})`;
