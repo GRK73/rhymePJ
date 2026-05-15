@@ -2,4 +2,8 @@ node_modules/
 *.xlsx
 __pycache__/
 *.pyc
+public/semantic_vectors*.json
+!public/semantic_vectors*.example.json
+public/topic_translations.json
+!public/topic_translations.example.json
 scripts/scrape_progress.json

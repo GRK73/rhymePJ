@@ -35,10 +35,51 @@ function checkLoanwordOverrides() {
     assert(Array.isArray(overrides.touchdown) && overrides.touchdown.includes('터치다운'), 'missing touchdown -> 터치다운 override');
 }
 
+function checkSemanticVectorFile(relativePath) {
+    const vectorPath = path.join(ROOT_DIR, relativePath);
+    if (!fs.existsSync(vectorPath)) return;
+
+    const semantic = readJson(relativePath);
+    const vectors = semantic.words || semantic.vectors || semantic;
+    assert(vectors && typeof vectors === 'object' && !Array.isArray(vectors), `${relativePath} must be an object or contain a words/vectors object`);
+
+    const entries = Object.entries(vectors);
+    assert(entries.length > 0, `${relativePath} must contain at least one vector`);
+
+    const [word, vector] = entries[0];
+    assert(typeof word === 'string' && word.length > 0, `${relativePath} keys must be non-empty strings`);
+    assert(Array.isArray(vector) && vector.length > 0, `${relativePath} values must be numeric arrays`);
+    assert(vector.every(value => typeof value === 'number' && Number.isFinite(value)), `${relativePath} values must be finite numbers`);
+}
+
+function checkSemanticVectors() {
+    [
+        'public/semantic_vectors_ko.json',
+        'public/semantic_vectors_en.json',
+        'public/semantic_vectors.json',
+    ].forEach(checkSemanticVectorFile);
+}
+
+function checkTopicTranslations() {
+    const translationsPath = path.join(ROOT_DIR, 'public', 'topic_translations.json');
+    if (!fs.existsSync(translationsPath)) return;
+
+    const translations = readJson('public/topic_translations.json');
+    assert(translations && typeof translations === 'object' && !Array.isArray(translations), 'topic_translations.json must be an object');
+
+    Object.entries(translations).forEach(([topic, values]) => {
+        assert(typeof topic === 'string' && topic.length > 0, 'topic translation keys must be non-empty strings');
+        assert(Array.isArray(values), `topic translation for ${topic} must be an array`);
+        assert(values.every(value => typeof value === 'string' && value.length > 0), `topic translation values for ${topic} must be non-empty strings`);
+    });
+}
+
 function main() {
     checkAppSyntax();
     checkDictionary();
     checkLoanwordOverrides();
+    checkSemanticVectors();
+    checkTopicTranslations();
     console.log('Project check passed.');
 }
 

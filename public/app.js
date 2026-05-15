@@ -1,9 +1,15 @@
 let dictionary = [];
 let loanwordOverrides = {};
+let semanticVectorStores = { ko: {}, en: {} };
+let topicTranslations = {};
+let semanticResourcesLoaded = false;
+let semanticResourcesLoadingPromise = null;
 let isReady = false;
+const TOPIC_TRANSLATION_CACHE_KEY = 'rhymeFinderTopicTranslations';
 
 const statusEl = document.getElementById('status');
 const searchInput = document.getElementById('searchInput');
+const topicInput = document.getElementById('topicInput');
 const searchBtn = document.getElementById('searchBtn');
 const resultsList = document.getElementById('resultsList');
 const langRadios = document.getElementsByName('lang');
@@ -13,10 +19,12 @@ const loadMoreBtn = document.getElementById('loadMoreBtn');
 const consoWeightInput = document.getElementById('consoWeight');
 const vowelWeightInput = document.getElementById('vowelWeight');
 const freqWeightInput = document.getElementById('freqWeight');
+const topicWeightInput = document.getElementById('topicWeight');
 
 const consoVal = document.getElementById('consoVal');
 const vowelVal = document.getElementById('vowelVal');
 const freqVal = document.getElementById('freqVal');
+const topicVal = document.getElementById('topicVal');
 
 const excludeInput = document.getElementById('excludeInput');
 
@@ -37,9 +45,10 @@ function updateSliderVals() {
     consoVal.textContent = parseFloat(consoWeightInput.value).toFixed(1);
     vowelVal.textContent = parseFloat(vowelWeightInput.value).toFixed(1);
     freqVal.textContent = parseFloat(freqWeightInput.value).toFixed(1);
+    topicVal.textContent = parseFloat(topicWeightInput.value).toFixed(1);
 }
 
-[consoWeightInput, vowelWeightInput, freqWeightInput].forEach(el => {
+[consoWeightInput, vowelWeightInput, freqWeightInput, topicWeightInput].forEach(el => {
     el.addEventListener('input', () => {
         updateSliderVals();
     });
@@ -118,6 +127,93 @@ const meaningObserver = new IntersectionObserver((entries, observer) => {
     });
 }, { rootMargin: '100px' });
 
+async function loadOptionalJson(path) {
+    try {
+        const response = await fetch(path);
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (error) {
+        console.warn(`${path} is not available:`, error);
+        return null;
+    }
+}
+
+function setSemanticStore(lang, data) {
+    const store = extractSemanticVectorStore(data);
+    if (Object.keys(store).length > 0) {
+        semanticVectorStores[lang] = store;
+    }
+}
+
+function loadTopicTranslationCache() {
+    try {
+        const raw = localStorage.getItem(TOPIC_TRANSLATION_CACHE_KEY);
+        if (!raw) return {};
+        const data = JSON.parse(raw);
+        return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+    } catch (error) {
+        console.warn('Topic translation cache is not available:', error);
+        return {};
+    }
+}
+
+function saveTopicTranslationCache() {
+    try {
+        localStorage.setItem(TOPIC_TRANSLATION_CACHE_KEY, JSON.stringify(topicTranslations));
+    } catch (error) {
+        console.warn('Could not save topic translation cache:', error);
+    }
+}
+
+function mergeTopicTranslations(translations) {
+    if (!translations || typeof translations !== 'object' || Array.isArray(translations)) return;
+
+    Object.entries(translations).forEach(([topic, values]) => {
+        const key = normalizeSemanticKey(topic);
+        if (!key) return;
+
+        const nextValues = Array.isArray(values) ? values : [values];
+        const currentValues = Array.isArray(topicTranslations[key]) ? topicTranslations[key] : [];
+        const merged = [...currentValues, ...nextValues]
+            .map(value => normalizeSemanticKey(value))
+            .filter(Boolean);
+
+        if (merged.length > 0) {
+            topicTranslations[key] = [...new Set(merged)];
+        }
+    });
+}
+
+async function ensureSemanticResourcesLoaded() {
+    if (semanticResourcesLoaded) return getSemanticVectorCount();
+    if (semanticResourcesLoadingPromise) return semanticResourcesLoadingPromise;
+
+    semanticResourcesLoadingPromise = (async () => {
+        const [koVectors, enVectors, legacyVectors, translations] = await Promise.all([
+            loadOptionalJson('semantic_vectors_ko.json'),
+            loadOptionalJson('semantic_vectors_en.json'),
+            loadOptionalJson('semantic_vectors.json'),
+            loadOptionalJson('topic_translations.json')
+        ]);
+
+        if (koVectors) setSemanticStore('ko', koVectors);
+        if (enVectors) setSemanticStore('en', enVectors);
+
+        if (legacyVectors && getSemanticVectorCount() === 0) {
+            setSemanticStore('ko', legacyVectors);
+            setSemanticStore('en', legacyVectors);
+        }
+
+        mergeTopicTranslations(translations);
+        mergeTopicTranslations(loadTopicTranslationCache());
+
+        semanticResourcesLoaded = true;
+        return getSemanticVectorCount();
+    })();
+
+    return semanticResourcesLoadingPromise;
+}
+
 // Load dictionary
 async function loadDictionary() {
     try {
@@ -136,7 +232,7 @@ async function loadDictionary() {
 
         isReady = true;
         const loanwordCount = Object.keys(loanwordOverrides).length;
-        statusEl.textContent = `사전 로드 완료! (총 ${dictionary.length.toLocaleString()} 단어, 외래어 ${loanwordCount.toLocaleString()}개)`;
+        statusEl.textContent = `사전 로드 완료! (총 ${dictionary.length.toLocaleString()} 단어, 외래어 ${loanwordCount.toLocaleString()}개, 의미 벡터는 주제 입력 시 로드)`;
     } catch (error) {
         console.error('Failed to load dictionary:', error);
         statusEl.textContent = '사전 데이터를 불러오는데 실패했습니다.';
@@ -566,6 +662,173 @@ function applyFrequencyWeight(score, zipf, freqWeight) {
     return score * (1 - penalty);
 }
 
+function extractSemanticVectorStore(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+    if (data.words && typeof data.words === 'object' && !Array.isArray(data.words)) return data.words;
+    if (data.vectors && typeof data.vectors === 'object' && !Array.isArray(data.vectors)) return data.vectors;
+    return data;
+}
+
+function getSemanticVectorStore(lang) {
+    return semanticVectorStores[lang] || {};
+}
+
+function getSemanticVectorCount(lang = null) {
+    if (lang) return Object.keys(getSemanticVectorStore(lang)).length;
+    return Object.keys(getSemanticVectorStore('ko')).length + Object.keys(getSemanticVectorStore('en')).length;
+}
+
+function normalizeSemanticKey(word) {
+    return String(word || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[‘’]/g, "'")
+        .replace(/^[\s"'([{]+|[\s"'\])}.!,?:;]+$/g, '');
+}
+
+function hasHangul(text) {
+    return /[가-힣]/.test(String(text || ''));
+}
+
+function asVector(value) {
+    return Array.isArray(value) ? value : null;
+}
+
+function getSemanticVector(word, lang) {
+    const store = getSemanticVectorStore(lang);
+    const key = normalizeSemanticKey(word);
+    const vector = store[key] || store[word];
+    return asVector(vector);
+}
+
+function getTranslatedTopics(topicWord) {
+    const key = normalizeSemanticKey(topicWord);
+    const direct = topicTranslations[key] || topicTranslations[topicWord];
+    const values = Array.isArray(direct) ? direct : direct ? [direct] : [];
+    return values
+        .map(value => normalizeSemanticKey(value))
+        .filter(Boolean);
+}
+
+async function translateTopicToEnglish(topicWord) {
+    const key = normalizeSemanticKey(topicWord);
+    if (!key || !hasHangul(key) || getTranslatedTopics(key).length > 0) {
+        return getTranslatedTopics(key);
+    }
+
+    try {
+        const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=en&dt=t&q=${encodeURIComponent(topicWord)}`);
+        if (!response.ok) return [];
+
+        const data = await response.json();
+        const translated = data && data[0] && data[0][0] && data[0][0][0]
+            ? normalizeSemanticKey(data[0][0][0])
+            : '';
+        if (!translated) return [];
+
+        topicTranslations[key] = [translated];
+        saveTopicTranslationCache();
+        return topicTranslations[key];
+    } catch (error) {
+        console.warn('Topic translation failed:', error);
+        return [];
+    }
+}
+
+function cosineSimilarity(a, b) {
+    if (!a || !b || a.length !== b.length) return null;
+
+    let dot = 0;
+    let normA = 0;
+    let normB = 0;
+    for (let i = 0; i < a.length; i++) {
+        dot += a[i] * b[i];
+        normA += a[i] * a[i];
+        normB += b[i] * b[i];
+    }
+
+    if (normA === 0 || normB === 0) return null;
+    return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+function buildSemanticContext(topicWord, topicWeight) {
+    const cleanTopic = String(topicWord || '').trim();
+    if (!cleanTopic || topicWeight <= 0) {
+        return { active: false, topicWord: cleanTopic, topicWeight: 0, koTopicVector: null, enTopicVectors: [], translatedTopics: [] };
+    }
+
+    const translatedTopics = getTranslatedTopics(cleanTopic);
+    const englishTopicCandidates = hasHangul(cleanTopic)
+        ? translatedTopics
+        : [normalizeSemanticKey(cleanTopic), ...translatedTopics];
+    const enTopicVectors = englishTopicCandidates
+        .map(topic => getSemanticVector(topic, 'en'))
+        .filter(Boolean);
+    const koTopicVector = getSemanticVector(cleanTopic, 'ko');
+
+    return {
+        active: Boolean(koTopicVector || enTopicVectors.length > 0),
+        topicWord: cleanTopic,
+        topicWeight,
+        koTopicVector,
+        enTopicVectors,
+        translatedTopics
+    };
+}
+
+function getCandidateSemanticVectors(item) {
+    const vectors = [];
+    const lang = item.lang === 'ko' ? 'ko' : 'en';
+    const directVector = getSemanticVector(item.word, lang) || getSemanticVector(item.display, lang);
+    if (directVector) vectors.push({ lang, vector: directVector });
+
+    if (item.lang === 'en') {
+        getLoanwordForms(item.word).forEach(form => {
+            const koVector = getSemanticVector(form, 'ko');
+            if (koVector) vectors.push({ lang: 'ko', vector: koVector });
+        });
+    }
+
+    return vectors;
+}
+
+function getBestSemanticSimilarity(item, semanticContext) {
+    const candidates = getCandidateSemanticVectors(item);
+    let best = null;
+
+    candidates.forEach(candidate => {
+        const topicVectors = candidate.lang === 'ko'
+            ? semanticContext.koTopicVector ? [semanticContext.koTopicVector] : []
+            : semanticContext.enTopicVectors;
+
+        topicVectors.forEach(topicVector => {
+            const similarity = cosineSimilarity(topicVector, candidate.vector);
+            if (similarity !== null && (best === null || similarity > best)) {
+                best = similarity;
+            }
+        });
+    });
+
+    return best;
+}
+
+function applySemanticWeight(score, item, semanticContext) {
+    if (!semanticContext.active) return { score, similarity: null, matched: true };
+
+    const similarity = getBestSemanticSimilarity(item, semanticContext);
+    if (similarity === null) return { score, similarity: null, matched: false };
+
+    const normalizedSimilarity = Math.max(0, Math.min(1, (similarity + 1) / 2));
+    const maxPenalty = semanticContext.topicWeight / 10 * 0.7;
+    const penalty = (1 - normalizedSimilarity) * maxPenalty;
+
+    return {
+        score: score * (1 - penalty),
+        similarity,
+        matched: true
+    };
+}
+
 function displayResults(results) {
     currentFilteredResults = results;
     resultsShown = 0;
@@ -598,9 +861,13 @@ function renderMoreResults() {
             return p;
         }).join(', ');
         const matchLayerBadge = res.matchLayerLabel ? `<span class="layer-badge">${res.matchLayerLabel}</span>` : '';
+        const semanticHtml = res.semanticSimilarity !== null && res.semanticSimilarity !== undefined
+            ? `<div class="semantic-score">주제 유사도: ${(((res.semanticSimilarity + 1) / 2) * 100).toFixed(1)}%</div>`
+            : '';
 
         li.innerHTML = `
             <div class="result-score">환산 유사도 : ${res.score.toFixed(1)}%</div>
+            ${semanticHtml}
             <div class="result-word">
                 <span>${res.display}</span>
                 <img src="sound_icon.png" class="tts-icon" onclick="playTTS('${res.word.replace(/'/g, "\\'")}', '${res.lang}')" alt="Listen" title="발음 듣기"/>
@@ -631,7 +898,7 @@ function renderMoreResults() {
 
 loadMoreBtn.addEventListener('click', renderMoreResults);
 
-function handleSearch() {
+async function handleSearch() {
     if (!isReady) return;
     const query = searchInput.value.trim();
     if (!query) return;
@@ -641,6 +908,9 @@ function handleSearch() {
         if (radio.checked) selectedLang = radio.value;
     }
     const pronunciationMode = getSelectedPronunciationMode();
+    const topicWord = topicInput.value.trim();
+    const topicWeight = parseFloat(topicWeightInput.value);
+    let semanticContext = buildSemanticContext('', 0);
 
     if (query !== lastQueryWord) {
         currentQueryPhonemeData = getQueryPhonemes(query);
@@ -655,7 +925,22 @@ function handleSearch() {
         return;
     }
 
-    statusEl.textContent = `"${query}"의 발음 [${queryPhonemes.join(', ')}]와 비슷한 단어를 찾습니다... (${getPronunciationModeLabel(pronunciationMode)})`;
+    if (topicWord && topicWeight > 0) {
+        statusEl.textContent = '주제 의미 벡터를 불러오는 중입니다...';
+        await ensureSemanticResourcesLoaded();
+        await translateTopicToEnglish(topicWord);
+        semanticContext = buildSemanticContext(topicWord, topicWeight);
+    }
+
+    const translatedTopicText = semanticContext.translatedTopics && semanticContext.translatedTopics.length > 0
+        ? ` → ${semanticContext.translatedTopics.slice(0, 2).join(', ')}`
+        : '';
+    const topicText = topicWord
+        ? semanticContext.active
+            ? ` / 주제: ${topicWord}${translatedTopicText}`
+            : ` / 주제 벡터 없음: ${topicWord}`
+        : '';
+    statusEl.textContent = `"${query}"의 발음 [${queryPhonemes.join(', ')}]와 비슷한 단어를 찾습니다... (${getPronunciationModeLabel(pronunciationMode)}${topicText})`;
 
     let freqWeight = parseFloat(freqWeightInput.value);
 
@@ -705,6 +990,12 @@ function handleSearch() {
         if (result.score > 40) { 
             let zipf = item.zipf !== undefined ? item.zipf : 1.0; // Default 1.0 if not found
             let totalScore = applyFrequencyWeight(result.score, zipf, freqWeight);
+            let semanticResult = { score: totalScore, similarity: null, matched: true };
+            if (semanticContext.active) {
+                semanticResult = applySemanticWeight(totalScore, item, semanticContext);
+                if (!semanticResult.matched) continue;
+                totalScore = semanticResult.score;
+            }
 
             results.push({
                 ...item,
@@ -712,7 +1003,8 @@ function handleSearch() {
                 matchIndices: result.matchIndices,
                 matchPhonemes: result.matchPhonemes,
                 matchLayer: result.matchLayer,
-                matchLayerLabel: result.matchLayerLabel
+                matchLayerLabel: result.matchLayerLabel,
+                semanticSimilarity: semanticResult.similarity
             });
         }
     }
@@ -728,6 +1020,9 @@ searchInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleSearch();
 });
 excludeInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleSearch();
+});
+topicInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleSearch();
 });
 

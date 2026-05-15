@@ -193,7 +193,7 @@ header p {
 .search-box {
     display: flex;
     gap: 0.5rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.8rem;
 }
 
 #searchInput {
@@ -229,6 +229,51 @@ header p {
 #searchBtn:disabled {
     background-color: #cbd5e1;
     cursor: not-allowed;
+}
+
+.topic-box {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+#topicInput {
+    flex: 1;
+    min-width: 0;
+    padding: 0.85rem 1rem;
+    font-size: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    transition: border-color 0.2s;
+}
+
+#topicInput:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.topic-weight {
+    flex: 0 0 230px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.5rem;
+    color: #64748b;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.topic-weight input[type=range] {
+    min-width: 80px;
+    accent-color: var(--primary-color);
+}
+
+#topicVal {
+    min-width: 30px;
+    text-align: right;
+    font-weight: bold;
+    color: var(--primary-color);
 }
 
 .filters {
@@ -412,6 +457,13 @@ header p {
     text-align: right;
 }
 
+.semantic-score {
+    font-size: 0.75rem;
+    color: #047857;
+    margin-bottom: 0.25rem;
+    text-align: right;
+}
+
 @media (max-width: 1364px) {
     /* Sidebars stack on smaller screens */
     .right-sidebar {
@@ -436,6 +488,16 @@ header p {
     .filters {
         flex-direction: row;
         flex-wrap: wrap;
+    }
+
+    .topic-box {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .topic-weight {
+        flex: none;
+        width: 100%;
     }
     
     body {

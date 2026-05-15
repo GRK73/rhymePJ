@@ -7,6 +7,8 @@
     "start": "python -m http.server 4173 --bind 127.0.0.1 --directory public",
     "check": "node scripts/check_project.js",
     "extract:loanwords": "python scripts/extract_loanword_overrides.py",
+    "convert:word2vec": "python scripts/convert_word2vec_to_json.py",
+    "translate:topics": "python scripts/build_topic_translations.py",
     "build:dict": "node scripts/build_dict.js",
     "filter:dict": "python scripts/filter_corpus.py",
     "scrape:nikl": "node scripts/scrape_nikl.js",

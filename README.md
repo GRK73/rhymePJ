@@ -9,6 +9,7 @@ Rhyme Finder는 한국어와 영어 단어의 발음 기호(IPA)를 기반으로
 - **초정밀 음소 매칭**: 단순히 모음만 비교하는 것이 아니라, 초성/중성/종성 및 모든 영어 자/모음을 IPA(국제 음성 기호)로 치환하여 비교합니다.
 - **한국식 영어 발음 모드**: 실제 영어 발음뿐 아니라 한국어 화자가 외래어처럼 읽는 발음도 함께 비교합니다. `모바일`을 검색하면 `mobile`의 외래어 표기 발음이 우선 반영되는 식입니다.
 - **외래어 용례 코퍼스 연동**: 국립국어원 외래어 표기 용례 엑셀에서 F열 `영어` 행을 추출해 `public/loanword_overrides.json`으로 관리합니다. 코퍼스에 없는 단어는 규칙 기반 한국식 발음 변환으로 보완합니다.
+- **주제 기반 점수 보정**: 선택적으로 word2vec 벡터 JSON을 로드해, 입력한 주제 단어와 의미적으로 먼 결과의 점수를 낮출 수 있습니다.
 - **실전 압축 사전**: 방대한 Google N-grams와 한국어 위키백과 말뭉치(Korpora)를 교차 검증하여, 현대에 한 번도 쓰이지 않는 죽은 단어나 오타를 100% 솎아낸 25만 개의 고품질 단어 사전을 사용합니다.
 - **음성 듣기 및 뜻 확인**: 웹 브라우저 내장 TTS 기능을 통해 즉시 발음을 들어볼 수 있으며, Google Translate 및 Wikipedia API를 통해 단어의 뜻을 실시간(Lazy-loading)으로 가져와 표시해 줍니다.
 
@@ -33,6 +34,30 @@ npm run extract:loanwords
 ```
 
 프로젝트 루트의 `*외래어 표기법*.xlsx` 파일에서 영어 외래어 표기를 다시 추출해 `public/loanword_overrides.json`을 생성합니다. 원본 `.xlsx`는 큰 입력 자료라 git에서 무시하고, 생성된 JSON만 앱 산출물로 관리합니다.
+
+```bash
+npm run convert:word2vec -- path/to/english-model.txt --lang en
+npm run convert:word2vec -- path/to/korean-model.txt --lang ko
+```
+
+텍스트 형식 word2vec 모델을 각각 `public/semantic_vectors_en.json`, `public/semantic_vectors_ko.json`으로 변환합니다. 브라우저 성능을 위해 기본값은 앱 사전과 외래어 override에 있는 단어만 남깁니다. 두 파일이 없으면 주제 입력칸은 표시되지만 의미 점수 보정은 적용되지 않습니다.
+
+바이너리 word2vec(`.bin`)이나 gensim `KeyedVectors`(`.kv`, `.model`) 파일은 `gensim` 설치 후 변환할 수 있습니다.
+
+```bash
+pip install gensim
+npm run convert:word2vec -- path/to/model.bin --lang en --format binary
+npm run convert:word2vec -- path/to/model.kv --lang ko --format gensim
+```
+
+한국어 주제를 영어 후보와 비교하려면 `googletrans`로 주제 번역 매핑을 미리 만들어 둡니다.
+
+```bash
+pip install googletrans
+python scripts/build_topic_translations.py 기술 사랑 돈
+```
+
+생성되는 `public/topic_translations.json`은 git에서 제외됩니다. 앱이 기대하는 포맷은 [semantic_vectors_ko.example.json](public/semantic_vectors_ko.example.json), [semantic_vectors_en.example.json](public/semantic_vectors_en.example.json), [topic_translations.example.json](public/topic_translations.example.json)을 참고하면 됩니다.
 
 ---
 
