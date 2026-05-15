@@ -1,0 +1,148 @@
+function isVowelPhoneme(phoneme) {
+    return Boolean(ipaFeatures[phoneme]);
+}
+
+function getItemPhonemes(item) {
+    return item.phonemes || item.vowels || [];
+}
+
+function getBoundaryScore(targetPhonemes, queryPhonemes, side) {
+    if (!targetPhonemes || !queryPhonemes || queryPhonemes.length === 0) return { score: 0, matchIndices: [] };
+    if (targetPhonemes.length < queryPhonemes.length) return { score: 0, matchIndices: [] };
+
+    const start = side === 'end' ? targetPhonemes.length - queryPhonemes.length : 0;
+    const segment = targetPhonemes.slice(start, start + queryPhonemes.length);
+    const result = calculateScore(segment, queryPhonemes, []);
+    return {
+        score: result.score,
+        matchIndices: (result.matchIndices || []).map(index => index + start)
+    };
+}
+
+function normalizeZipf(zipf) {
+    const value = Number.isFinite(zipf) ? zipf : 1.0;
+    return Math.max(0, Math.min(100, ((value - 1) / 6) * 100));
+}
+
+function getPairFrequencyScore(first, second) {
+    return (normalizeZipf(first.zipf) + normalizeZipf(second.zipf)) / 2;
+}
+
+function normalizeBigramScore(value) {
+    const numeric = Number(value) || 0;
+    return Math.max(0, Math.min(100, Math.sqrt(Math.max(0, numeric)) * 100));
+}
+
+function averageVectors(a, b) {
+    if (!a || !b || a.length !== b.length) return null;
+    return a.map((value, index) => (value + b[index]) / 2);
+}
+
+function getPhraseTopicSimilarity(first, second, lang, semanticContext) {
+    if (!semanticContext.active) return { matched: true, similarity: null, topicScore: null };
+
+    const topicVectors = lang === 'ko'
+        ? semanticContext.koTopicVector ? [semanticContext.koTopicVector] : []
+        : semanticContext.enTopicVectors;
+    if (topicVectors.length === 0) return { matched: false, similarity: null, topicScore: null };
+
+    const firstVector = getSemanticVector(first.word, lang) || getSemanticVector(first.display, lang);
+    const secondVector = getSemanticVector(second.word, lang) || getSemanticVector(second.display, lang);
+    const phraseVector = averageVectors(firstVector, secondVector);
+    if (!phraseVector) return { matched: false, similarity: null, topicScore: null };
+
+    let best = null;
+    topicVectors.forEach(topicVector => {
+        const similarity = cosineSimilarity(topicVector, phraseVector);
+        if (similarity !== null && (best === null || similarity > best)) {
+            best = similarity;
+        }
+    });
+
+    if (best === null) return { matched: false, similarity: null, topicScore: null };
+    return {
+        matched: true,
+        similarity: best,
+        topicScore: Math.max(0, Math.min(100, ((best + 1) / 2) * 100))
+    };
+}
+
+function getLinkedSearchLang(query, selectedLang) {
+    const queryLang = hasHangul(query) ? 'ko' : 'en';
+    if (selectedLang !== 'all' && selectedLang !== queryLang) return null;
+    return queryLang;
+}
+
+function buildKoreanLinkedSplits(query) {
+    const chars = Array.from(query).filter(char => /[가-힣]/.test(char));
+    if (chars.length < 2 || chars.join('') !== query) return [];
+
+    const splits = [];
+    for (let index = 1; index < chars.length; index++) {
+        const leftText = chars.slice(0, index).join('');
+        const rightText = chars.slice(index).join('');
+        const leftPhonemes = getKoreanIpaPhonemes(leftText).phonemes;
+        const rightPhonemes = getKoreanIpaPhonemes(rightText).phonemes;
+        if (leftPhonemes.length === 0 || rightPhonemes.length === 0) continue;
+
+        splits.push({
+            lang: 'ko',
+            leftText,
+            rightText,
+            leftPhonemes,
+            rightPhonemes,
+            label: `${leftText} / ${rightText}`,
+            balance: Math.min(leftPhonemes.length, rightPhonemes.length) / Math.max(leftPhonemes.length, rightPhonemes.length)
+        });
+    }
+
+    return splits;
+}
+
+function buildEnglishLinkedSplits(query) {
+    const phonemeData = getQueryPhonemes(query);
+    const phonemes = phonemeData.phonemes || [];
+    if (phonemes.length < 2) return [];
+
+    const minSideLength = phonemes.length <= 4 ? 1 : 2;
+    const splits = [];
+    for (let index = 1; index < phonemes.length; index++) {
+        const leftPhonemes = phonemes.slice(0, index);
+        const rightPhonemes = phonemes.slice(index);
+        if (leftPhonemes.length < minSideLength || rightPhonemes.length < minSideLength) continue;
+        if (!isVowelPhoneme(phonemes[index - 1]) && !isVowelPhoneme(phonemes[index])) continue;
+
+        const leftHasVowel = leftPhonemes.some(isVowelPhoneme);
+        const rightHasVowel = rightPhonemes.some(isVowelPhoneme);
+        const vowelPenalty = leftHasVowel && rightHasVowel ? 1 : 0.86;
+        const balance = Math.min(leftPhonemes.length, rightPhonemes.length) / Math.max(leftPhonemes.length, rightPhonemes.length);
+
+        splits.push({
+            lang: 'en',
+            leftText: leftPhonemes.join(' '),
+            rightText: rightPhonemes.join(' '),
+            leftPhonemes,
+            rightPhonemes,
+            label: `${leftPhonemes.join(' ')} / ${rightPhonemes.join(' ')}`,
+            balance: balance * vowelPenalty
+        });
+    }
+
+    return splits;
+}
+
+function buildLinkedSplits(query, lang) {
+    return lang === 'ko' ? buildKoreanLinkedSplits(query) : buildEnglishLinkedSplits(query);
+}
+
+function dedupeLinkedResults(results) {
+    const bestByKey = new Map();
+    results.forEach(result => {
+        const key = `${result.lang}:${result.first.word}+${result.second.word}`;
+        const current = bestByKey.get(key);
+        if (!current || result.score > current.score) {
+            bestByKey.set(key, result);
+        }
+    });
+    return Array.from(bestByKey.values());
+}

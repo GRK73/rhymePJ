@@ -15,8 +15,21 @@ function assert(condition, message) {
 }
 
 function checkAppSyntax() {
-    const source = fs.readFileSync(path.join(ROOT_DIR, 'public', 'app.js'), 'utf8');
-    new vm.Script(source, { filename: 'public/app.js' });
+    [
+        'public/js/data.js',
+        'public/js/phonetics.js',
+        'public/js/semantic.js',
+        'public/js/linkedRhyme.js',
+        'public/js/render.js',
+        'public/js/tts.js',
+        'public/app.js',
+    ].forEach(relativePath => {
+        const fullPath = path.join(ROOT_DIR, relativePath);
+        if (!fs.existsSync(fullPath)) return;
+
+        const source = fs.readFileSync(fullPath, 'utf8');
+        new vm.Script(source, { filename: relativePath });
+    });
 }
 
 function checkDictionary() {
@@ -60,11 +73,37 @@ function checkSemanticVectors() {
     ].forEach(checkSemanticVectorFile);
 }
 
+function checkBigramIndexFile(relativePath) {
+    const indexPath = path.join(ROOT_DIR, relativePath);
+    if (!fs.existsSync(indexPath)) return;
+
+    const bigram = readJson(relativePath);
+    assert(bigram && typeof bigram === 'object' && !Array.isArray(bigram), `${relativePath} must be an object`);
+    assert(bigram.entries && typeof bigram.entries === 'object' && !Array.isArray(bigram.entries), `${relativePath} must contain entries`);
+    assert(Object.keys(bigram.entries).length > 0, `${relativePath} must contain at least one head word`);
+
+    const [head, followers] = Object.entries(bigram.entries)[0];
+    assert(typeof head === 'string' && head.length > 0, `${relativePath} head words must be non-empty strings`);
+    assert(Array.isArray(followers) && followers.length > 0, `${relativePath} followers must be non-empty arrays`);
+    assert(Array.isArray(followers[0]) && followers[0].length >= 3, `${relativePath} follower rows must be [word, count, score]`);
+    assert(typeof followers[0][0] === 'string' && followers[0][0].length > 0, `${relativePath} follower word must be a string`);
+    assert(Number.isFinite(followers[0][1]) && followers[0][1] > 0, `${relativePath} follower count must be positive`);
+    assert(Number.isFinite(followers[0][2]), `${relativePath} follower score must be finite`);
+}
+
+function checkBigramIndexes() {
+    [
+        'public/bigram_next_ko.json',
+        'public/bigram_next_en.json',
+    ].forEach(checkBigramIndexFile);
+}
+
 function main() {
     checkAppSyntax();
     checkDictionary();
     checkLoanwordOverrides();
     checkSemanticVectors();
+    checkBigramIndexes();
     console.log('Project check passed.');
 }
 

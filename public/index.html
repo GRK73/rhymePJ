@@ -68,7 +68,10 @@
         <div class="container">
             <header>
                 <h1>Rhyme Finder</h1>
-                <p>한국어/영어 단어 라임 검색기</p>
+                <div class="mode-toggle" role="tablist" aria-label="검색 모드">
+                    <button type="button" class="mode-toggle-btn active" data-search-mode="word" aria-selected="true">단어 검색기</button>
+                    <button type="button" class="mode-toggle-btn" data-search-mode="linked" aria-selected="false">연결 라임 검색기</button>
+                </div>
             </header>
 
             <main>
@@ -115,6 +118,12 @@
 
     <!-- hangul-js for client-side processing -->
     <script src="https://unpkg.com/hangul-js" type="text/javascript"></script>
+    <script src="js/data.js"></script>
+    <script src="js/phonetics.js"></script>
+    <script src="js/semantic.js"></script>
+    <script src="js/linkedRhyme.js"></script>
+    <script src="js/render.js"></script>
+    <script src="js/tts.js"></script>
     <script src="app.js"></script>
 </body>
 
