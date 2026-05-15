@@ -50,14 +50,9 @@ npm run convert:word2vec -- path/to/model.bin --lang en --format binary
 npm run convert:word2vec -- path/to/model.kv --lang ko --format gensim
 ```
 
-한국어 주제를 영어 후보와 비교하려면 `googletrans`로 주제 번역 매핑을 미리 만들어 둡니다.
+한국어 주제를 영어 후보와 비교할 때는 브라우저에서 입력된 주제어만 즉시 번역합니다. 번역 결과는 현재 페이지 세션의 메모리에만 잠깐 보관되고, 새로고침 후에는 다시 요청합니다.
 
-```bash
-pip install googletrans
-python scripts/build_topic_translations.py 기술 사랑 돈
-```
-
-생성되는 `public/topic_translations.json`은 git에서 제외됩니다. 앱이 기대하는 포맷은 [semantic_vectors_ko.example.json](public/semantic_vectors_ko.example.json), [semantic_vectors_en.example.json](public/semantic_vectors_en.example.json), [topic_translations.example.json](public/topic_translations.example.json)을 참고하면 됩니다.
+앱이 기대하는 벡터 포맷은 [semantic_vectors_ko.example.json](public/semantic_vectors_ko.example.json), [semantic_vectors_en.example.json](public/semantic_vectors_en.example.json)을 참고하면 됩니다.
 
 ---
 

@@ -60,26 +60,11 @@ function checkSemanticVectors() {
     ].forEach(checkSemanticVectorFile);
 }
 
-function checkTopicTranslations() {
-    const translationsPath = path.join(ROOT_DIR, 'public', 'topic_translations.json');
-    if (!fs.existsSync(translationsPath)) return;
-
-    const translations = readJson('public/topic_translations.json');
-    assert(translations && typeof translations === 'object' && !Array.isArray(translations), 'topic_translations.json must be an object');
-
-    Object.entries(translations).forEach(([topic, values]) => {
-        assert(typeof topic === 'string' && topic.length > 0, 'topic translation keys must be non-empty strings');
-        assert(Array.isArray(values), `topic translation for ${topic} must be an array`);
-        assert(values.every(value => typeof value === 'string' && value.length > 0), `topic translation values for ${topic} must be non-empty strings`);
-    });
-}
-
 function main() {
     checkAppSyntax();
     checkDictionary();
     checkLoanwordOverrides();
     checkSemanticVectors();
-    checkTopicTranslations();
     console.log('Project check passed.');
 }
 

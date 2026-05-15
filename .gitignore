@@ -6,7 +6,4 @@ public/semantic_vectors*.json
 !public/semantic_vectors*.example.json
 !public/semantic_vectors_en.json
 !public/semantic_vectors_ko.json
-public/topic_translations.json
-!public/topic_translations.example.json
-!public/topic_translations.json
 scripts/scrape_progress.json

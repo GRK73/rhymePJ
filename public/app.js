@@ -5,7 +5,6 @@ let topicTranslations = {};
 let semanticResourcesLoaded = false;
 let semanticResourcesLoadingPromise = null;
 let isReady = false;
-const TOPIC_TRANSLATION_CACHE_KEY = 'rhymeFinderTopicTranslations';
 const OPTIONAL_ASSET_VERSION = '20260515-semantic-vectors';
 
 const statusEl = document.getElementById('status');
@@ -160,54 +159,14 @@ function setSemanticStore(lang, data) {
     }
 }
 
-function loadTopicTranslationCache() {
-    try {
-        const raw = localStorage.getItem(TOPIC_TRANSLATION_CACHE_KEY);
-        if (!raw) return {};
-        const data = JSON.parse(raw);
-        return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
-    } catch (error) {
-        console.warn('Topic translation cache is not available:', error);
-        return {};
-    }
-}
-
-function saveTopicTranslationCache() {
-    try {
-        localStorage.setItem(TOPIC_TRANSLATION_CACHE_KEY, JSON.stringify(topicTranslations));
-    } catch (error) {
-        console.warn('Could not save topic translation cache:', error);
-    }
-}
-
-function mergeTopicTranslations(translations) {
-    if (!translations || typeof translations !== 'object' || Array.isArray(translations)) return;
-
-    Object.entries(translations).forEach(([topic, values]) => {
-        const key = normalizeSemanticKey(topic);
-        if (!key) return;
-
-        const nextValues = Array.isArray(values) ? values : [values];
-        const currentValues = Array.isArray(topicTranslations[key]) ? topicTranslations[key] : [];
-        const merged = [...currentValues, ...nextValues]
-            .map(value => normalizeSemanticKey(value))
-            .filter(Boolean);
-
-        if (merged.length > 0) {
-            topicTranslations[key] = [...new Set(merged)];
-        }
-    });
-}
-
 async function ensureSemanticResourcesLoaded() {
     if (semanticResourcesLoaded) return getSemanticVectorCount();
     if (semanticResourcesLoadingPromise) return semanticResourcesLoadingPromise;
 
     semanticResourcesLoadingPromise = (async () => {
-        const [koVectors, enVectors, translations] = await Promise.all([
+        const [koVectors, enVectors] = await Promise.all([
             loadOptionalJson('semantic_vectors_ko.json'),
-            loadOptionalJson('semantic_vectors_en.json'),
-            loadOptionalJson('topic_translations.json')
+            loadOptionalJson('semantic_vectors_en.json')
         ]);
 
         if (koVectors) setSemanticStore('ko', koVectors);
@@ -218,9 +177,6 @@ async function ensureSemanticResourcesLoaded() {
             setSemanticStore('ko', legacyVectors);
             setSemanticStore('en', legacyVectors);
         }
-
-        mergeTopicTranslations(translations);
-        mergeTopicTranslations(loadTopicTranslationCache());
 
         semanticResourcesLoaded = true;
         return getSemanticVectorCount();
@@ -742,7 +698,6 @@ async function translateTopicToEnglish(topicWord) {
         if (!translated) return [];
 
         topicTranslations[key] = [translated];
-        saveTopicTranslationCache();
         return topicTranslations[key];
     } catch (error) {
         console.warn('Topic translation failed:', error);
