@@ -184,11 +184,21 @@ function mergeTopicTranslations(translations) {
     });
 }
 
+function shouldLoadLocalSemanticFiles() {
+    return !(window.location.hostname || '').endsWith('github.io');
+}
+
 async function ensureSemanticResourcesLoaded() {
     if (semanticResourcesLoaded) return getSemanticVectorCount();
     if (semanticResourcesLoadingPromise) return semanticResourcesLoadingPromise;
 
     semanticResourcesLoadingPromise = (async () => {
+        if (!shouldLoadLocalSemanticFiles()) {
+            mergeTopicTranslations(loadTopicTranslationCache());
+            semanticResourcesLoaded = true;
+            return 0;
+        }
+
         const [koVectors, enVectors, legacyVectors, translations] = await Promise.all([
             loadOptionalJson('semantic_vectors_ko.json'),
             loadOptionalJson('semantic_vectors_en.json'),
@@ -985,6 +995,7 @@ async function handleSearch() {
         }
 
         const result = calculatePronunciationScore(item, currentQueryPhonemeData, detailMultipliers, pronunciationMode);
+        if (!result || typeof result.score !== 'number' || !Number.isFinite(result.score)) continue;
         
         // Base score threshold to filter out completely irrelevant words
         if (result.score > 40) { 
