@@ -56,6 +56,19 @@ KO_SUFFIXES = sorted(
     reverse=True,
 )
 
+SHORT_PARTICLE_STEMS = {
+    "\ub098",
+    "\ub108",
+    "\ub0b4",
+    "\ub124",
+    "\uc800",
+    "\uc81c",
+    "\ub204",
+    "\ubb50",
+    "\uadf8",
+    "\uc774",
+}
+
 
 def load_vocab():
     data = json.loads(DEFAULT_DICT.read_text(encoding="utf-8"))
@@ -66,7 +79,7 @@ def load_vocab():
     }
 
 
-def normalize_surface_token(token, vocab, min_token_len, max_token_len, min_stem_len):
+def normalize_surface_token(token, vocab, min_token_len, max_token_len, min_stem_len, min_particle_stem_len):
     surface = NON_HANGUL_RE.sub("", token)
     if len(surface) < min_token_len or len(surface) > max_token_len:
         return None
@@ -81,16 +94,25 @@ def normalize_surface_token(token, vocab, min_token_len, max_token_len, min_stem
         stem = surface[: -len(suffix)]
         if len(stem) >= min_stem_len and stem in vocab:
             return surface, stem
+        if len(stem) >= min_particle_stem_len and stem in SHORT_PARTICLE_STEMS:
+            return surface, stem
 
     return surface, ""
 
 
-def tokenize_line(line, vocab, token_cache, min_token_len, max_token_len, min_stem_len):
+def tokenize_line(line, vocab, token_cache, min_token_len, max_token_len, min_stem_len, min_particle_stem_len):
     tokens = []
     for raw in HANGUL_RE.findall(line):
         cached = token_cache.get(raw)
         if cached is None:
-            cached = normalize_surface_token(raw, vocab, min_token_len, max_token_len, min_stem_len)
+            cached = normalize_surface_token(
+                raw,
+                vocab,
+                min_token_len,
+                max_token_len,
+                min_stem_len,
+                min_particle_stem_len,
+            )
             token_cache[raw] = cached or ""
         if cached:
             tokens.append(cached)
@@ -136,6 +158,7 @@ def build_counts(corpus_paths, vocab, args):
                     args.min_token_len,
                     args.max_token_len,
                     args.min_stem_len,
+                    args.min_particle_stem_len,
                 )
                 if not tokens:
                     continue
@@ -214,6 +237,7 @@ def write_index(output_path, source_path, index, total_pairs, used_lines, args):
         "minTokenLength": args.min_token_len,
         "maxTokenLength": args.max_token_len,
         "minStemLength": args.min_stem_len,
+        "minParticleStemLength": args.min_particle_stem_len,
         "totalPairs": total_pairs,
         "usedLines": used_lines,
         "entries": index,
@@ -234,6 +258,12 @@ def main():
     parser.add_argument("--min-token-len", type=int, default=2)
     parser.add_argument("--max-token-len", type=int, default=12)
     parser.add_argument("--min-stem-len", type=int, default=2)
+    parser.add_argument(
+        "--min-particle-stem-len",
+        type=int,
+        default=1,
+        help="Minimum dictionary stem length when a surface token is normalized by stripping a Korean particle.",
+    )
     parser.add_argument(
         "--require-normalized",
         choices=["head", "next", "both", "any", "none"],

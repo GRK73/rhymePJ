@@ -38,6 +38,7 @@ const KOREAN_JONG_MAPPED = ['', 'k', 'k', 'k', 'n', 'n', 'n', 't', 'l', 'k', 'm'
 const KOREAN_CHO_JAMO = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', '', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
 const KOREAN_JUNG_JAMO = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'];
 const KOREAN_JONG_JAMO = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+const KOREAN_PHONETIC_INPUT_RE = /^[가-힣ㄱ-ㅎㅏ-ㅣ]+$/;
 
 const KOREANIZED_CHUNKS = [
     ['tion', ['s', 'ʌ', 'n']],
@@ -184,10 +185,54 @@ function getKoreanIpaPhonemes(word) {
     return { phonemes, charMap };
 }
 
+function hasKoreanPhoneticInput(text) {
+    return KOREAN_PHONETIC_INPUT_RE.test(String(text || ''));
+}
+
+function getKoreanJamoPhoneme(char) {
+    const vowelIndex = KOREAN_JUNG_JAMO.indexOf(char);
+    if (vowelIndex >= 0) return KOREAN_JUNG[vowelIndex];
+
+    const initialIndex = KOREAN_CHO_JAMO.indexOf(char);
+    if (initialIndex >= 0 && KOREAN_CHO[initialIndex]) return KOREAN_CHO[initialIndex];
+
+    const finalIndex = KOREAN_JONG_JAMO.indexOf(char);
+    if (finalIndex >= 0 && KOREAN_JONG_MAPPED[finalIndex]) return KOREAN_JONG_MAPPED[finalIndex];
+
+    return null;
+}
+
+function getKoreanPhoneticInputPhonemes(input) {
+    const phonemes = [];
+    const charMap = [];
+
+    Array.from(String(input || '')).forEach(char => {
+        if (/[가-힣]/.test(char)) {
+            const syllableData = getKoreanIpaPhonemes(char);
+            syllableData.charMap.forEach(entry => {
+                charMap.push({
+                    char: entry.char,
+                    startIndex: entry.startIndex + phonemes.length,
+                    endIndex: entry.endIndex + phonemes.length
+                });
+            });
+            phonemes.push(...syllableData.phonemes);
+            return;
+        }
+
+        const phoneme = getKoreanJamoPhoneme(char);
+        if (phoneme) {
+            charMap.push({ char, startIndex: phonemes.length, endIndex: phonemes.length + 1 });
+            phonemes.push(phoneme);
+        }
+    });
+
+    return { phonemes, charMap };
+}
+
 function getQueryPhonemes(query) {
-    const isKorean = /[가-힣]/.test(query);
-    if (isKorean) {
-        return getKoreanIpaPhonemes(query);
+    if (hasKoreanPhoneticInput(query)) {
+        return getKoreanPhoneticInputPhonemes(query);
     } else {
         const lowerQuery = query.toLowerCase();
         const found = dictionary.find(d => d.word === lowerQuery && d.lang === 'en');

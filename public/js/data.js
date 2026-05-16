@@ -1,4 +1,4 @@
-const OPTIONAL_ASSET_VERSION = '20260516-surface-bigram';
+const OPTIONAL_ASSET_VERSION = '20260516-jamo-particle';
 const DATA_DIR = 'data/';
 
 function dataPath(filename) {

@@ -82,10 +82,16 @@
                 </div>
 
                 <div class="topic-box">
-                    <label class="linked-surface-option" id="linkedSurfaceOption" hidden>
-                        <input type="checkbox" id="useSurfaceKoBigram">
-                        한국어 조사 포함
-                    </label>
+                    <div class="linked-surface-options" id="linkedSurfaceOptions" hidden>
+                        <label class="linked-surface-option">
+                            <input type="checkbox" id="useSurfaceKoBigram">
+                            한국어 조사 포함
+                        </label>
+                        <label class="linked-surface-option" id="firstParticleOption" hidden>
+                            <input type="checkbox" id="allowFirstParticleKo">
+                            첫 단어 조사 허용
+                        </label>
+                    </div>
                     <div class="topic-weight">
                         <label for="topicWeight">주제 가중치</label>
                         <input type="range" id="topicWeight" min="0" max="10" step="0.5" value="3.0">
@@ -122,13 +128,13 @@
 
     <!-- hangul-js for client-side processing -->
     <script src="https://unpkg.com/hangul-js" type="text/javascript"></script>
-    <script src="js/data.js"></script>
-    <script src="js/phonetics.js"></script>
-    <script src="js/semantic.js"></script>
-    <script src="js/linkedRhyme.js"></script>
-    <script src="js/render.js"></script>
-    <script src="js/tts.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/data.js?v=20260516-jamo-particle"></script>
+    <script src="js/phonetics.js?v=20260516-jamo-particle"></script>
+    <script src="js/semantic.js?v=20260516-jamo-particle"></script>
+    <script src="js/linkedRhyme.js?v=20260516-jamo-particle"></script>
+    <script src="js/render.js?v=20260516-jamo-particle"></script>
+    <script src="js/tts.js?v=20260516-jamo-particle"></script>
+    <script src="js/app.js?v=20260516-jamo-particle"></script>
 </body>
 
 </html>

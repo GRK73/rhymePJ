@@ -109,15 +109,15 @@ function getLinkedSearchLangs(selectedLang) {
 }
 
 function buildKoreanLinkedSplits(query, targetLang = 'ko') {
-    const chars = Array.from(query).filter(char => /[가-힣]/.test(char));
-    if (chars.length < 2 || chars.join('') !== query) return [];
+    const chars = Array.from(query);
+    if (chars.length < 2 || !hasKoreanPhoneticInput(query)) return [];
 
     const splits = [];
     for (let index = 1; index < chars.length; index++) {
         const leftText = chars.slice(0, index).join('');
         const rightText = chars.slice(index).join('');
-        const leftPhonemes = getKoreanIpaPhonemes(leftText).phonemes;
-        const rightPhonemes = getKoreanIpaPhonemes(rightText).phonemes;
+        const leftPhonemes = getKoreanPhoneticInputPhonemes(leftText).phonemes;
+        const rightPhonemes = getKoreanPhoneticInputPhonemes(rightText).phonemes;
         if (leftPhonemes.length === 0 || rightPhonemes.length === 0) continue;
 
         splits.push({
@@ -177,7 +177,7 @@ function buildEnglishLinkedSplits(query, targetLang = 'en') {
 }
 
 function buildLinkedSplits(query, targetLang) {
-    return hasHangul(query)
+    return hasKoreanPhoneticInput(query)
         ? buildKoreanLinkedSplits(query, targetLang)
         : buildEnglishLinkedSplits(query, targetLang);
 }

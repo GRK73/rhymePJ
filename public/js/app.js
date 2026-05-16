@@ -19,8 +19,10 @@ const langRadios = document.getElementsByName('lang');
 const pronunciationModeRadios = document.getElementsByName('pronunciationMode');
 const searchModeButtons = document.querySelectorAll('.mode-toggle-btn');
 const loadMoreBtn = document.getElementById('loadMoreBtn');
-const linkedSurfaceOption = document.getElementById('linkedSurfaceOption');
+const linkedSurfaceOptions = document.getElementById('linkedSurfaceOptions');
+const firstParticleOption = document.getElementById('firstParticleOption');
 const useSurfaceKoBigram = document.getElementById('useSurfaceKoBigram');
+const allowFirstParticleKo = document.getElementById('allowFirstParticleKo');
 
 const consoWeightInput = document.getElementById('consoWeight');
 const vowelWeightInput = document.getElementById('vowelWeight');
@@ -76,10 +78,20 @@ useDetailWeights.addEventListener('change', syncDetailWeightControls);
 syncDetailWeightControls();
 
 function syncSearchModeControls() {
-    if (linkedSurfaceOption) {
-        linkedSurfaceOption.hidden = currentSearchMode !== 'linked';
+    const isLinkedMode = currentSearchMode === 'linked';
+    if (linkedSurfaceOptions) {
+        linkedSurfaceOptions.hidden = !isLinkedMode;
+    }
+    if (firstParticleOption) {
+        const showFirstParticleOption = isLinkedMode && Boolean(useSurfaceKoBigram?.checked);
+        firstParticleOption.hidden = !showFirstParticleOption;
+        if (!showFirstParticleOption && allowFirstParticleKo) {
+            allowFirstParticleKo.checked = false;
+        }
     }
 }
+
+useSurfaceKoBigram?.addEventListener('change', syncSearchModeControls);
 
 searchModeButtons.forEach(button => {
     button.addEventListener('click', () => {
@@ -436,7 +448,8 @@ function appendSurfaceLinkedResults({
     semanticContext,
     freqRatio,
     excludeWords,
-    maxFirstCandidates
+    maxFirstCandidates,
+    allowFirstParticle
 }) {
     if (!surfaceEntries || Object.keys(surfaceEntries).length === 0) return;
 
@@ -459,6 +472,7 @@ function appendSurfaceLinkedResults({
             if (isExcludedWord(surfaceHead, excludeWords)) continue;
             const normalizedHead = Array.isArray(payload) ? String(payload[0] || '') : '';
             if (normalizedHead && isExcludedWord(normalizedHead, excludeWords)) continue;
+            if (!allowFirstParticle && normalizedHead && normalizedHead !== surfaceHead) continue;
 
             const leftResult = getBoundaryScore(getSurfacePhonemes(surfaceHead), split.leftPhonemes, 'end', leftDetailMultipliers);
             if (leftResult.score > 40) {
@@ -564,6 +578,7 @@ async function handleLinkedRhymeSearch() {
     }
 
     const useSurfaceKo = Boolean(useSurfaceKoBigram?.checked);
+    const allowFirstParticle = Boolean(useSurfaceKo && allowFirstParticleKo?.checked);
     const targetLangs = getLinkedSearchLangs(selectedLang);
     const splitsByLang = targetLangs.map(lang => ({ lang, splits: buildLinkedSplits(query, lang) }));
     const allSplits = splitsByLang.flatMap(entry => entry.splits);
@@ -573,7 +588,7 @@ async function handleLinkedRhymeSearch() {
         return;
     }
 
-    statusEl.textContent = '연결 라임 검색은 두 단어 조합을 계산하므로 검색이 느릴 수 있습니다. bigram 데이터를 불러오는 중입니다...';
+    statusEl.textContent = '연결 라임 검색은 두 단어 조합을 계산하므로 검색이 느릴 수 있습니다. 문맥 조정 중...';
     const bigramStoresByLang = {};
     let surfaceEntriesKo = null;
     await Promise.all(targetLangs.map(async lang => {
@@ -588,7 +603,7 @@ async function handleLinkedRhymeSearch() {
         return bigramStoresByLang[lang] && Object.keys(bigramStoresByLang[lang]).length > 0;
     });
     if (availableLangs.length === 0) {
-        statusEl.textContent = '연결 라임 bigram 데이터를 불러올 수 없습니다.';
+        statusEl.textContent = '연결 라임 문맥 데이터를 불러올 수 없습니다.';
         displayResults([]);
         return;
     }
@@ -597,13 +612,15 @@ async function handleLinkedRhymeSearch() {
     const topicWeight = parseFloat(topicWeightInput.value);
     let semanticContext = buildSemanticContext('', 0);
     if (topicWord && topicWeight > 0) {
-        statusEl.textContent = '연결 라임 검색은 두 단어 조합을 계산하므로 검색이 느릴 수 있습니다. 주제 의미 벡터를 불러오는 중입니다...';
+        statusEl.textContent = '연결 라임 검색은 두 단어 조합을 계산하므로 검색이 느릴 수 있습니다. 주제 점수 추가 중...';
         await ensureSemanticResourcesLoaded();
         await translateTopicToEnglish(topicWord);
         semanticContext = buildSemanticContext(topicWord, topicWeight);
     }
 
-    const surfaceModeText = useSurfaceKo && targetLangs.includes('ko') ? ' / 한국어 조사 포함' : '';
+    const surfaceModeText = useSurfaceKo && targetLangs.includes('ko')
+        ? ` / 한국어 조사 포함${allowFirstParticle ? ' / 첫 단어 조사 허용' : ''}`
+        : '';
     statusEl.textContent = `"${query}"의 연결 라임을 찾습니다... (${allSplits.map(split => `${split.lang}:${split.label}`).join(', ')}${surfaceModeText})`;
 
     const freqWeight = parseFloat(freqWeightInput.value);
@@ -626,7 +643,8 @@ async function handleLinkedRhymeSearch() {
                 semanticContext,
                 freqRatio,
                 excludeWords,
-                maxFirstCandidates
+                maxFirstCandidates,
+                allowFirstParticle
             });
             continue;
         }
