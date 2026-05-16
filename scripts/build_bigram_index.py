@@ -9,10 +9,11 @@ import re
 
 
 ROOT_DIR = pathlib.Path(__file__).resolve().parents[1]
-DEFAULT_DICT = ROOT_DIR / "public" / "rhyme_dict_practical.json"
+DEFAULT_DATA_DIR = ROOT_DIR / "public" / "data"
+DEFAULT_DICT = DEFAULT_DATA_DIR / "rhyme_dict_practical.json"
 DEFAULT_OUTPUTS = {
-    "ko": ROOT_DIR / "public" / "bigram_next_ko.json",
-    "en": ROOT_DIR / "public" / "bigram_next_en.json",
+    "ko": DEFAULT_DATA_DIR / "bigram_next_ko.json",
+    "en": DEFAULT_DATA_DIR / "bigram_next_en.json",
 }
 DEFAULT_KO_CORPUS = pathlib.Path.home() / "Korpora" / "kowikitext" / "kowikitext_20200920.train"
 
@@ -85,32 +86,36 @@ def tokenize_line(line, lang, vocab, cache):
     return [token for token in (normalize_token(raw, lang, vocab, cache) for raw in raw_tokens) if token]
 
 
-def build_counts(corpus_path, lang, vocab, max_lines=0):
+def build_counts(corpus_paths, lang, vocab, max_lines=0):
     next_counts = collections.defaultdict(collections.Counter)
     unigram_counts = collections.Counter()
     token_cache = {}
     total_pairs = 0
     used_lines = 0
+    seen_lines = 0
 
-    with corpus_path.open("r", encoding="utf-8", errors="ignore") as file:
-        for line_number, line in enumerate(file, 1):
-            if max_lines and line_number > max_lines:
-                break
+    for corpus_path in corpus_paths:
+        print(f"Reading corpus: {corpus_path}", flush=True)
+        with corpus_path.open("r", encoding="utf-8", errors="ignore") as file:
+            for line in file:
+                seen_lines += 1
+                if max_lines and seen_lines > max_lines:
+                    return next_counts, unigram_counts, total_pairs, used_lines
 
-            tokens = tokenize_line(line, lang, vocab, token_cache)
-            if not tokens:
-                continue
-
-            used_lines += 1
-            unigram_counts.update(tokens)
-            for prev, nxt in zip(tokens, tokens[1:]):
-                if prev == nxt:
+                tokens = tokenize_line(line, lang, vocab, token_cache)
+                if not tokens:
                     continue
-                next_counts[prev][nxt] += 1
-                total_pairs += 1
 
-            if line_number % 500000 == 0:
-                print(f"Processed {line_number:,} lines, {total_pairs:,} accepted bigrams...", flush=True)
+                used_lines += 1
+                unigram_counts.update(tokens)
+                for prev, nxt in zip(tokens, tokens[1:]):
+                    if prev == nxt:
+                        continue
+                    next_counts[prev][nxt] += 1
+                    total_pairs += 1
+
+                if seen_lines % 500000 == 0:
+                    print(f"Processed {seen_lines:,} lines, {total_pairs:,} accepted bigrams...", flush=True)
 
     return next_counts, unigram_counts, total_pairs, used_lines
 
@@ -216,10 +221,16 @@ def score_followers(next_counts, unigram_counts, total_pairs, top_n, min_count):
     return index
 
 
+def format_source(source):
+    if isinstance(source, (list, tuple)):
+        return [str(item) for item in source]
+    return str(source)
+
+
 def write_index(output_path, lang, source, index, total_pairs, used_lines, top_n, min_count):
     payload = {
         "lang": lang,
-        "source": str(source),
+        "source": format_source(source),
         "format": "next_word -> [[word, count, score]]",
         "topN": top_n,
         "minCount": min_count,
@@ -237,7 +248,7 @@ def write_index(output_path, lang, source, index, total_pairs, used_lines, top_n
 def main():
     parser = argparse.ArgumentParser(description="Build a compact next-word bigram index for the rhyme app.")
     parser.add_argument("--lang", choices=["ko", "en"], default="ko")
-    parser.add_argument("--corpus", default=None, help="Plain-text corpus path. Defaults to local Korpora kowikitext for ko.")
+    parser.add_argument("--corpus", nargs="*", default=None, help="One or more plain-text corpus paths. Defaults to local Korpora kowikitext for ko.")
     parser.add_argument("--ngram-csv", default=None, help="Pre-counted CSV with ngram/bigram and freq/frequency/count columns.")
     parser.add_argument("--parquet", nargs="*", default=None, help="One or more parquet files with a text column.")
     parser.add_argument("--text-column", default="text")
@@ -271,10 +282,12 @@ def main():
             max_rows=args.max_lines,
         )
     else:
-        source_path = pathlib.Path(args.corpus).expanduser() if args.corpus else DEFAULT_KO_CORPUS
-        if not source_path.exists():
-            raise SystemExit(f"Corpus file not found: {source_path}")
-        next_counts, unigram_counts, total_pairs, used_lines = build_counts(source_path, args.lang, vocab, args.max_lines)
+        corpus_paths = [pathlib.Path(path).expanduser() for path in args.corpus] if args.corpus else [DEFAULT_KO_CORPUS]
+        missing_paths = [path for path in corpus_paths if not path.exists()]
+        if missing_paths:
+            raise SystemExit(f"Corpus file not found: {missing_paths[0]}")
+        source_path = corpus_paths if len(corpus_paths) > 1 else corpus_paths[0]
+        next_counts, unigram_counts, total_pairs, used_lines = build_counts(corpus_paths, args.lang, vocab, args.max_lines)
 
     index = score_followers(next_counts, unigram_counts, total_pairs, args.top_n, args.min_count)
     source_label = args.source_label or source_path

@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 
 const apiKey = '0A311A879A22F337AC8873A3D165FAFD';
-const OUTPUT_FILE = path.join(__dirname, '..', 'public', 'nikl_words.json');
+const DATA_DIR = path.join(__dirname, '..', 'public', 'data');
+const OUTPUT_FILE = path.join(DATA_DIR, 'nikl_words.json');
 const PROGRESS_FILE = path.join(__dirname, 'scrape_progress.json');
 
 // To avoid parsing XML if API errors, we force JSON
@@ -41,6 +42,7 @@ async function runWithLimit(tasks, limit) {
 
 async function scrape() {
     console.log("Starting NIKL Dictionary Scraper...");
+    fs.mkdirSync(DATA_DIR, { recursive: true });
     let progress = 0;
     let allWords = new Set();
     

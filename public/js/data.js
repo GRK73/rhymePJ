@@ -1,4 +1,9 @@
-const OPTIONAL_ASSET_VERSION = '20260515-semantic-ko-filtered';
+const OPTIONAL_ASSET_VERSION = '20260516-surface-bigram';
+const DATA_DIR = 'data/';
+
+function dataPath(filename) {
+    return `${DATA_DIR}${filename}`;
+}
 
 async function loadOptionalJson(path) {
     try {

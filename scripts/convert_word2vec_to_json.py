@@ -8,13 +8,14 @@ import re
 
 
 ROOT_DIR = pathlib.Path(__file__).resolve().parents[1]
+DEFAULT_DATA_DIR = ROOT_DIR / "public" / "data"
 DEFAULT_OUTPUTS = {
-    "ko": ROOT_DIR / "public" / "semantic_vectors_ko.json",
-    "en": ROOT_DIR / "public" / "semantic_vectors_en.json",
-    "all": ROOT_DIR / "public" / "semantic_vectors.json",
+    "ko": DEFAULT_DATA_DIR / "semantic_vectors_ko.json",
+    "en": DEFAULT_DATA_DIR / "semantic_vectors_en.json",
+    "all": DEFAULT_DATA_DIR / "semantic_vectors.json",
 }
-DEFAULT_DICT = ROOT_DIR / "public" / "rhyme_dict_practical.json"
-DEFAULT_LOANWORDS = ROOT_DIR / "public" / "loanword_overrides.json"
+DEFAULT_DICT = DEFAULT_DATA_DIR / "rhyme_dict_practical.json"
+DEFAULT_LOANWORDS = DEFAULT_DATA_DIR / "loanword_overrides.json"
 
 
 def normalize_key(value):
@@ -183,7 +184,7 @@ def main():
     parser = argparse.ArgumentParser(description="Convert a word2vec/gensim model into browser-ready semantic vector JSON.")
     parser.add_argument("input", help="Path to a text, binary word2vec, or gensim KeyedVectors model.")
     parser.add_argument("--lang", choices=["ko", "en", "all"], default="en", help="Which project vocabulary to keep.")
-    parser.add_argument("--output", default=None, help="Output JSON path. Defaults to public/semantic_vectors_<lang>.json.")
+    parser.add_argument("--output", default=None, help="Output JSON path. Defaults to public/data/semantic_vectors_<lang>.json.")
     parser.add_argument("--format", choices=["auto", "text", "binary", "gensim"], default="auto", help="Input model format.")
     parser.add_argument("--include-all", action="store_true", help="Keep every vector instead of filtering to project vocabulary.")
     parser.add_argument("--include-top", type=int, default=0, help="Also keep the first N vectors from the source model, useful for common topic words.")

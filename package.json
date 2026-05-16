@@ -9,6 +9,7 @@
     "extract:loanwords": "python scripts/extract_loanword_overrides.py",
     "convert:word2vec": "python scripts/convert_word2vec_to_json.py",
     "build:bigram": "python scripts/build_bigram_index.py",
+    "build:surface-bigram": "python scripts/build_surface_bigram_index.py",
     "build:dict": "node scripts/build_dict.js",
     "filter:dict": "python scripts/filter_corpus.py",
     "scrape:nikl": "node scripts/scrape_nikl.js",

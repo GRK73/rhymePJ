@@ -15,8 +15,9 @@ except ImportError:
 # Path setup
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_DIR = os.path.join(SCRIPT_DIR, '..', 'public')
-INPUT_FILE = os.path.join(PUBLIC_DIR, 'rhyme_dict.json')
-OUTPUT_FILE = os.path.join(PUBLIC_DIR, 'rhyme_dict_practical.json')
+DATA_DIR = os.path.join(PUBLIC_DIR, 'data')
+INPUT_FILE = os.path.join(DATA_DIR, 'rhyme_dict.json')
+OUTPUT_FILE = os.path.join(DATA_DIR, 'rhyme_dict_practical.json')
 
 def load_dict():
     if not os.path.exists(INPUT_FILE):
@@ -89,6 +90,7 @@ def main():
     print(f"\nTotal words after filtering: {len(practical_data):,}")
     print(f"Removed {len(data) - len(practical_data):,} impractical words (slang, typos, ancient words).")
     
+    os.makedirs(DATA_DIR, exist_ok=True)
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
         json.dump(practical_data, f, ensure_ascii=False)
     

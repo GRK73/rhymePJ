@@ -34,13 +34,14 @@ function renderMoreResults() {
                 <div class="result-score">환산 유사도 : ${res.score.toFixed(1)}%</div>
                 ${res.topicSimilarity !== null && res.topicSimilarity !== undefined ? `<div class="semantic-score">주제 유사도: ${(((res.topicSimilarity + 1) / 2) * 100).toFixed(1)}%</div>` : ''}
                 <div class="result-word linked-result-word">
-                    <span>${escapeHtml(res.first.display)} + ${escapeHtml(res.second.display)}</span>
+                    <span>${escapeHtml(res.surfaceDisplay || `${res.first.display} + ${res.second.display}`)}</span>
                 </div>
                 <div class="result-meta linked-result-meta">
                     <span>분할: ${escapeHtml(res.splitLabel)}</span>
                     <div class="badge-container">
                         <span class="lang-badge ${res.lang}">${res.lang === 'ko' ? '한국어' : '영어'}</span>
                         <span class="layer-badge">연결</span>
+                        ${res.surfaceMode ? '<span class="layer-badge">조사 포함</span>' : ''}
                     </div>
                 </div>
                 <div class="linked-score-breakdown">
@@ -75,7 +76,7 @@ function renderMoreResults() {
             ${semanticHtml}
             <div class="result-word">
                 <span>${res.display}</span>
-                <img src="sound_icon.png" class="tts-icon" onclick="playTTS('${res.word.replace(/'/g, "\\'")}', '${res.lang}')" alt="Listen" title="발음 듣기"/>
+                <img src="assets/sound_icon.png" class="tts-icon" onclick="playTTS('${res.word.replace(/'/g, "\\'")}', '${res.lang}')" alt="Listen" title="발음 듣기"/>
             </div>
             <div class="result-meta">
                 <span>[${phonemesHtml}]</span>

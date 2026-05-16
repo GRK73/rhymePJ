@@ -28,6 +28,30 @@ function getPairFrequencyScore(first, second) {
     return (normalizeZipf(first.zipf) + normalizeZipf(second.zipf)) / 2;
 }
 
+function parseSurfaceFollowerRow(row) {
+    if (!Array.isArray(row)) return null;
+    return {
+        surface: String(row[0] || ''),
+        count: Number(row[1]) || 0,
+        score: Number(row[2]) || 0,
+        normalized: String(row[3] || '')
+    };
+}
+
+function formatSurfaceLinkedDisplay(firstSurface, secondSurface) {
+    const firstChars = Array.from(firstSurface || '');
+    const secondChars = Array.from(secondSurface || '');
+    if (firstChars.length === 0 || secondChars.length === 0) {
+        return `${firstSurface || ''} ${secondSurface || ''}`.trim();
+    }
+
+    const firstPrefix = firstChars.slice(0, -1).join('');
+    const firstBoundary = firstChars[firstChars.length - 1];
+    const secondBoundary = secondChars[0];
+    const secondSuffix = secondChars.slice(1).join('');
+    return `${firstPrefix}[${firstBoundary} ${secondBoundary}]${secondSuffix}`;
+}
+
 function getSplitDetailMultipliers(detailMultipliers, startIndex, endIndex, targetLength) {
     if (!Array.isArray(detailMultipliers) || targetLength <= 0) return [];
 
@@ -57,8 +81,8 @@ function getPhraseTopicSimilarity(first, second, lang, semanticContext) {
         : semanticContext.enTopicVectors;
     if (topicVectors.length === 0) return { matched: false, similarity: null, topicScore: null };
 
-    const firstVector = getSemanticVector(first.word, lang) || getSemanticVector(first.display, lang);
-    const secondVector = getSemanticVector(second.word, lang) || getSemanticVector(second.display, lang);
+    const firstVector = getSemanticVector(first.semanticWord || first.word, lang) || getSemanticVector(first.display, lang);
+    const secondVector = getSemanticVector(second.semanticWord || second.word, lang) || getSemanticVector(second.display, lang);
     const phraseVector = averageVectors(firstVector, secondVector);
     if (!phraseVector) return { matched: false, similarity: null, topicScore: null };
 

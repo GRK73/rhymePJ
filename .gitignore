@@ -2,8 +2,8 @@ node_modules/
 *.xlsx
 __pycache__/
 *.pyc
-public/semantic_vectors*.json
-!public/semantic_vectors*.example.json
-!public/semantic_vectors_en.json
-!public/semantic_vectors_ko.json
+public/data/semantic_vectors*.json
+!public/data/semantic_vectors*.example.json
+!public/data/semantic_vectors_en.json
+!public/data/semantic_vectors_ko.json
 scripts/scrape_progress.json

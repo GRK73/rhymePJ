@@ -295,9 +295,32 @@ header h1 {
 
 .topic-box {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
+    gap: 1rem;
     margin: -0.15rem 0 1.5rem;
+}
+
+.linked-surface-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: #475569;
+    font-size: 0.9rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.linked-surface-option[hidden] {
+    display: none;
+}
+
+.linked-surface-option input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--primary-color);
+    cursor: pointer;
 }
 
 .topic-weight {
@@ -578,6 +601,7 @@ header h1 {
     .topic-box {
         align-items: stretch;
         justify-content: stretch;
+        flex-direction: column;
     }
 
     .topic-weight {

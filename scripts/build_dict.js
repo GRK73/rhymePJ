@@ -4,7 +4,8 @@ const axios = require('axios');
 const Hangul = require('hangul-js');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-const OUTPUT_FILE = path.join(PUBLIC_DIR, 'rhyme_dict.json');
+const DATA_DIR = path.join(PUBLIC_DIR, 'data');
+const OUTPUT_FILE = path.join(DATA_DIR, 'rhyme_dict.json');
 
 // Vowel mapping from ARPAbet to IPA vowels
 const arpaToIpaVowels = {
@@ -77,8 +78,8 @@ function getKoreanPhonemes(word) {
 
 async function buildDict() {
     console.log('Starting dictionary build...');
-    if (!fs.existsSync(PUBLIC_DIR)) {
-        fs.mkdirSync(PUBLIC_DIR, { recursive: true });
+    if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
     }
 
     const dict = [];
@@ -185,7 +186,7 @@ async function buildDict() {
     try {
         let items = [];
         let countKo = 0;
-        const niklFile = path.join(__dirname, '..', 'public', 'nikl_words.json');
+        const niklFile = path.join(DATA_DIR, 'nikl_words.json');
         
         if (fs.existsSync(niklFile)) {
             console.log('Found nikl_words.json! Using NIKL Standard Dictionary words.');
