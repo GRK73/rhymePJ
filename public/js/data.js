@@ -1,4 +1,4 @@
-const OPTIONAL_ASSET_VERSION = '20260516-jamo-particle';
+const OPTIONAL_ASSET_VERSION = '20260516-compound-pronunciation';
 const DATA_DIR = 'data/';
 
 function dataPath(filename) {

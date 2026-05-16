@@ -10,8 +10,11 @@
     "convert:word2vec": "python scripts/convert_word2vec_to_json.py",
     "build:bigram": "python scripts/build_bigram_index.py",
     "build:surface-bigram": "python scripts/build_surface_bigram_index.py",
-    "build:dict": "node scripts/build_dict.js",
-    "filter:dict": "python scripts/filter_corpus.py",
+    "enrich:korean-pronunciation": "node scripts/enrich_korean_pronunciations.js",
+    "build:morph-cache": "python scripts/extract_korean_morph_cache.py public/data/rhyme_dict_practical.json scripts/cache/morph_analysis_ko.json",
+    "build:compound-pronunciation": "node scripts/build_compound_pronunciations.js",
+    "build:dict": "node scripts/build_dict.js && node scripts/enrich_korean_pronunciations.js public/data/rhyme_dict.json",
+    "filter:dict": "python scripts/filter_corpus.py && node scripts/enrich_korean_pronunciations.js public/data/rhyme_dict_practical.json && node scripts/build_compound_pronunciations.js",
     "scrape:nikl": "node scripts/scrape_nikl.js",
     "test": "npm run check"
   },

@@ -7,3 +7,4 @@ public/data/semantic_vectors*.json
 !public/data/semantic_vectors_en.json
 !public/data/semantic_vectors_ko.json
 scripts/scrape_progress.json
+scripts/cache/

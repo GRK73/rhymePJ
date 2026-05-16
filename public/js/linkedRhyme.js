@@ -6,6 +6,20 @@ function getItemPhonemes(item) {
     return item.phonemes || item.vowels || [];
 }
 
+function getItemPhonemeCandidates(item) {
+    if (!item) return [];
+
+    if (item.lang === 'ko' && typeof getStoredKoreanPronunciationCandidates === 'function') {
+        const storedCandidates = getStoredKoreanPronunciationCandidates(item);
+        if (storedCandidates.length > 0) {
+            return storedCandidates.map(candidate => candidate.phonemes);
+        }
+    }
+
+    const phonemes = getItemPhonemes(item);
+    return phonemes.length > 0 ? [phonemes] : [];
+}
+
 function getBoundaryScore(targetPhonemes, queryPhonemes, side, detailMultipliers = []) {
     if (!targetPhonemes || !queryPhonemes || queryPhonemes.length === 0) return { score: 0, matchIndices: [] };
     if (targetPhonemes.length < queryPhonemes.length) return { score: 0, matchIndices: [] };
@@ -17,6 +31,19 @@ function getBoundaryScore(targetPhonemes, queryPhonemes, side, detailMultipliers
         score: result.score,
         matchIndices: (result.matchIndices || []).map(index => index + start)
     };
+}
+
+function getBestBoundaryScore(targetPhonemeCandidates, queryPhonemes, side, detailMultipliers = []) {
+    const candidates = Array.isArray(targetPhonemeCandidates)
+        ? targetPhonemeCandidates
+        : [];
+    if (candidates.length === 0) return { score: 0, matchIndices: [] };
+
+    return candidates.reduce((best, candidate) => {
+        const phonemes = Array.isArray(candidate) ? candidate : candidate.phonemes;
+        const result = getBoundaryScore(phonemes, queryPhonemes, side, detailMultipliers);
+        return result.score > best.score ? result : best;
+    }, { score: 0, matchIndices: [] });
 }
 
 function normalizeZipf(zipf) {

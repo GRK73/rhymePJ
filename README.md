@@ -29,6 +29,9 @@ npm test
 
 앱 스크립트 문법, 핵심 사전 JSON, 외래어 override 파일을 빠르게 검증합니다.
 
+한국어 사전 엔트리는 `phonemes`에 표준 발음법 기반 IPA를 저장합니다. 표기 발음이나 복수 표준 발음 후보가 필요한 경우에는 `pronunciations`에 함께 보관합니다.
+합성어/파생어의 ㄴ 첨가, 사이시옷 계열 보정은 `public/data/compound_pronunciations_ko.json`에 별도로 저장합니다. 생성 시 `kiwipiepy`가 설치되어 있으면 `scripts/cache/morph_analysis_ko.json` 형태소 캐시를 만든 뒤 품사/형태소 경계를 활용하고, 캐시는 배포 파일에 포함하지 않습니다.
+
 ```bash
 npm run extract:loanwords
 ```

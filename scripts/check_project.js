@@ -18,6 +18,7 @@ function checkAppSyntax() {
     [
         'public/js/data.js',
         'public/js/phonetics.js',
+        'public/js/koreanPronunciation.js',
         'public/js/semantic.js',
         'public/js/linkedRhyme.js',
         'public/js/render.js',
@@ -32,12 +33,53 @@ function checkAppSyntax() {
     });
 }
 
+function checkKoreanPronunciationRules() {
+    const context = { console, dictionary: [] };
+    context.window = context;
+    vm.createContext(context);
+
+    ['public/js/phonetics.js', 'public/js/koreanPronunciation.js'].forEach(relativePath => {
+        const source = fs.readFileSync(path.join(ROOT_DIR, relativePath), 'utf8');
+        vm.runInContext(source, context, { filename: relativePath });
+    });
+
+    const samples = {
+        같이: '가치',
+        굳이: '구지',
+        국물: '궁물',
+        먹는: '멍는',
+        신라: '실라',
+        좋아: '조아',
+        놓고: '노코',
+        못해: '모태',
+        꽃이: '꼬치',
+        값이: '갑씨',
+    };
+
+    Object.entries(samples).forEach(([word, expected]) => {
+        const actual = vm.runInContext(`getStandardKoreanReading(${JSON.stringify(word)})`, context);
+        assert(actual === expected, `${word} standard pronunciation must be ${expected}, got ${actual}`);
+    });
+
+    const readGoCandidates = JSON.parse(vm.runInContext(
+        `JSON.stringify(getKoreanStandardPronunciationCandidates(${JSON.stringify('읽고')}).map(candidate => candidate.reading))`,
+        context
+    ));
+    assert(readGoCandidates.includes('익꼬') && readGoCandidates.includes('일꼬'), '읽고 must keep both ㄺ pronunciation candidates');
+}
+
 function checkDictionary() {
     const dictionary = readJson('public/data/rhyme_dict_practical.json');
     assert(Array.isArray(dictionary), 'rhyme_dict_practical.json must be an array');
     assert(dictionary.length > 200000, 'practical dictionary looks unexpectedly small');
     assert(dictionary.some(item => item.word === 'rhyme' && item.lang === 'en'), 'missing English sample word: rhyme');
     assert(dictionary.some(item => item.lang === 'ko'), 'missing Korean dictionary entries');
+
+    const 같이 = dictionary.find(item => item.word === '같이' && item.lang === 'ko');
+    if (같이) {
+        assert(Array.isArray(같이.phonemes) && 같이.phonemes.join('|') === 'k|a|tɕʰ|i', '같이 must store standard pronunciation phonemes');
+        assert(같이.reading === '가치', '같이 must store standard reading 가치');
+    }
 }
 
 function checkLoanwordOverrides() {
@@ -124,13 +166,36 @@ function checkSurfaceBigramIndex() {
     }
 }
 
+function checkCompoundPronunciations() {
+    const relativePath = 'public/data/compound_pronunciations_ko.json';
+    const indexPath = path.join(ROOT_DIR, relativePath);
+    if (!fs.existsSync(indexPath)) return;
+
+    const compounds = readJson(relativePath);
+    assert(compounds && typeof compounds === 'object' && !Array.isArray(compounds), `${relativePath} must be an object`);
+    const entries = Object.entries(compounds);
+    assert(entries.length > 0, `${relativePath} must contain at least one entry`);
+
+    const [word, rows] = entries[0];
+    assert(typeof word === 'string' && word.length > 0, `${relativePath} keys must be non-empty strings`);
+    assert(Array.isArray(rows) && rows.length > 0, `${relativePath} values must be non-empty candidate arrays`);
+    const row = rows[0];
+    assert(Array.isArray(row) && row.length >= 3, `${relativePath} candidate rows must be [label, reading, phonemes]`);
+    assert(typeof row[0] === 'string' && row[0].length > 0, `${relativePath} candidate label must be a string`);
+    assert(typeof row[1] === 'string' && row[1].length > 0, `${relativePath} candidate reading must be a string`);
+    assert(Array.isArray(row[2]) && row[2].length > 0, `${relativePath} candidate phonemes must be a non-empty array`);
+    assert(entries.some(([, candidateRows]) => candidateRows.some(candidate => String(candidate[0]).includes('형태소'))), `${relativePath} must include morphology-based candidates`);
+}
+
 function main() {
     checkAppSyntax();
+    checkKoreanPronunciationRules();
     checkDictionary();
     checkLoanwordOverrides();
     checkSemanticVectors();
     checkBigramIndexes();
     checkSurfaceBigramIndex();
+    checkCompoundPronunciations();
     console.log('Project check passed.');
 }
 

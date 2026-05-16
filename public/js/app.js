@@ -1,5 +1,6 @@
 let dictionary = [];
 let loanwordOverrides = {};
+let compoundPronunciationsKo = {};
 let semanticVectorStores = { ko: {}, en: {} };
 let bigramStores = { ko: null, en: null };
 let surfaceBigramStoreKo = null;
@@ -9,6 +10,10 @@ let semanticResourcesLoadingPromise = null;
 let bigramResourcesLoadingPromises = {};
 let surfaceBigramResourceLoadingPromise = null;
 let isReady = false;
+
+if (typeof window !== 'undefined') {
+    window.compoundPronunciationsKo = compoundPronunciationsKo;
+}
 
 const statusEl = document.getElementById('status');
 const searchInput = document.getElementById('searchInput');
@@ -44,7 +49,7 @@ const detailSlidersContainer = document.getElementById('detailSlidersContainer')
 let currentQueryPhonemeData = { phonemes: [], charMap: [] };
 let lastQueryWord = '';
 let currentSearchMode = 'word';
-const surfacePhonemeCache = new Map();
+const surfacePronunciationCache = new Map();
 
 const reSearchBtn = document.getElementById('reSearchBtn');
 reSearchBtn.addEventListener('click', handleSearch);
@@ -246,13 +251,28 @@ async function ensureSurfaceBigramKoLoaded() {
     return surfaceBigramResourceLoadingPromise;
 }
 
-function getSurfacePhonemes(surface) {
+function getSurfacePronunciationCandidates(surface) {
     const key = String(surface || '');
-    if (surfacePhonemeCache.has(key)) return surfacePhonemeCache.get(key);
+    if (surfacePronunciationCache.has(key)) return surfacePronunciationCache.get(key);
 
-    const phonemes = getKoreanIpaPhonemes(key).phonemes || [];
-    surfacePhonemeCache.set(key, phonemes);
-    return phonemes;
+    const compoundCandidates = typeof getKoreanCompoundPronunciationCandidates === 'function'
+        ? getKoreanCompoundPronunciationCandidates(key)
+        : [];
+    const standardCandidates = typeof getKoreanStandardPronunciationCandidates === 'function'
+        ? getKoreanStandardPronunciationCandidates(key)
+        : [];
+    let candidates = [...compoundCandidates, ...standardCandidates];
+    if (typeof dedupeKoreanPronunciationCandidates === 'function') {
+        candidates = dedupeKoreanPronunciationCandidates(candidates);
+    }
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+        candidates = [{ phonemes: getKoreanIpaPhonemes(key).phonemes || [], label: '표기' }];
+    }
+    const phonemeCandidates = candidates
+        .map(candidate => candidate.phonemes || [])
+        .filter(phonemes => phonemes.length > 0);
+    surfacePronunciationCache.set(key, phonemeCandidates);
+    return phonemeCandidates;
 }
 
 // Load dictionary
@@ -269,6 +289,14 @@ async function loadDictionary() {
             }
         } catch (error) {
             console.warn('Loanword overrides are not available:', error);
+        }
+
+        const compoundData = await loadOptionalJson(dataPath('compound_pronunciations_ko.json'));
+        compoundPronunciationsKo = compoundData && typeof compoundData === 'object' && !Array.isArray(compoundData)
+            ? compoundData
+            : {};
+        if (typeof window !== 'undefined') {
+            window.compoundPronunciationsKo = compoundPronunciationsKo;
         }
 
         isReady = true;
@@ -474,7 +502,7 @@ function appendSurfaceLinkedResults({
             if (normalizedHead && isExcludedWord(normalizedHead, excludeWords)) continue;
             if (!allowFirstParticle && normalizedHead && normalizedHead !== surfaceHead) continue;
 
-            const leftResult = getBoundaryScore(getSurfacePhonemes(surfaceHead), split.leftPhonemes, 'end', leftDetailMultipliers);
+            const leftResult = getBestBoundaryScore(getSurfacePronunciationCandidates(surfaceHead), split.leftPhonemes, 'end', leftDetailMultipliers);
             if (leftResult.score > 40) {
                 firstCandidates.push({ surfaceHead, normalizedHead, payload, leftResult });
             }
@@ -493,7 +521,7 @@ function appendSurfaceLinkedResults({
                     if (isExcludedWord(follower.surface, excludeWords)) return;
                     if (follower.normalized && isExcludedWord(follower.normalized, excludeWords)) return;
 
-                    const rightResult = getBoundaryScore(getSurfacePhonemes(follower.surface), split.rightPhonemes, 'start', rightDetailMultipliers);
+                    const rightResult = getBestBoundaryScore(getSurfacePronunciationCandidates(follower.surface), split.rightPhonemes, 'start', rightDetailMultipliers);
                     if (rightResult.score <= 40) return;
 
                     const headDict = dictByWord.get(firstCandidate.normalizedHead) || dictByWord.get(firstCandidate.surfaceHead);
@@ -668,8 +696,7 @@ async function handleLinkedRhymeSearch() {
             const firstCandidates = [];
             for (const item of dictByLang) {
                 if (isExcludedWord(item.word, excludeWords)) continue;
-                const phonemes = getItemPhonemes(item);
-                const leftResult = getBoundaryScore(phonemes, split.leftPhonemes, 'end', leftDetailMultipliers);
+                const leftResult = getBestBoundaryScore(getItemPhonemeCandidates(item), split.leftPhonemes, 'end', leftDetailMultipliers);
                 if (leftResult.score > 40) {
                     firstCandidates.push({ item, leftResult });
                 }
@@ -688,8 +715,7 @@ async function handleLinkedRhymeSearch() {
                         const second = dictByWord.get(secondWord);
                         if (!second) return;
 
-                        const secondPhonemes = getItemPhonemes(second);
-                        const rightResult = getBoundaryScore(secondPhonemes, split.rightPhonemes, 'start', rightDetailMultipliers);
+                        const rightResult = getBestBoundaryScore(getItemPhonemeCandidates(second), split.rightPhonemes, 'start', rightDetailMultipliers);
                         if (rightResult.score <= 40) return;
 
                         const topicResult = getPhraseTopicSimilarity(firstCandidate.item, second, lang, semanticContext);

@@ -232,7 +232,17 @@ function getKoreanPhoneticInputPhonemes(input) {
 
 function getQueryPhonemes(query) {
     if (hasKoreanPhoneticInput(query)) {
-        return getKoreanPhoneticInputPhonemes(query);
+        const phoneticInput = getKoreanPhoneticInputPhonemes(query);
+        if (/[가-힣]/.test(query) && typeof getKoreanStandardPronunciationCandidates === 'function') {
+            const candidates = getKoreanStandardPronunciationCandidates(query);
+            const primary = candidates[0] || phoneticInput;
+            return {
+                phonemes: primary.phonemes || phoneticInput.phonemes,
+                charMap: primary.charMap || phoneticInput.charMap,
+                koreanPronunciationCandidates: candidates.length > 0 ? candidates : [phoneticInput]
+            };
+        }
+        return phoneticInput;
     } else {
         const lowerQuery = query.toLowerCase();
         const found = dictionary.find(d => d.word === lowerQuery && d.lang === 'en');
@@ -410,12 +420,117 @@ function remapDetailMultipliers(detailMultipliers, sourceLength, targetLength) {
     });
 }
 
+function getKoreanCompoundPronunciationCandidates(word) {
+    const store = typeof window !== 'undefined' ? window.compoundPronunciationsKo : null;
+    if (!store || typeof store !== 'object') return [];
+
+    const key = String(word || '');
+    const rows = store[key] || store[key.toLowerCase()];
+    if (!Array.isArray(rows) || rows.length === 0) return [];
+
+    return rows
+        .map(row => {
+            if (!Array.isArray(row)) return null;
+            return {
+                label: row[0] || '합성어',
+                reading: row[1] || '',
+                phonemes: Array.isArray(row[2]) ? row[2] : [],
+                layer: row[3] || 'compound'
+            };
+        })
+        .filter(candidate => candidate.phonemes.length > 0);
+}
+
+function dedupeKoreanPronunciationCandidates(candidates) {
+    const seen = new Set();
+    return candidates.filter(candidate => {
+        const key = Array.isArray(candidate.phonemes) ? candidate.phonemes.join('|') : '';
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+function getStoredKoreanPronunciationCandidates(item) {
+    const compoundCandidates = getKoreanCompoundPronunciationCandidates(item.word);
+    if (compoundCandidates.length > 0) {
+        const storedCandidates = Array.isArray(item.pronunciations)
+            ? item.pronunciations
+                .map(row => {
+                    if (!Array.isArray(row)) return null;
+                    return {
+                        label: row[0] || 'standard',
+                        reading: row[1] || '',
+                        phonemes: Array.isArray(row[2]) ? row[2] : [],
+                        layer: row[3] || 'standard'
+                    };
+                })
+                .filter(candidate => candidate && candidate.phonemes.length > 0)
+            : [];
+        const baseCandidate = Array.isArray(item.phonemes) && item.phonemes.length > 0
+            ? [{ label: item.reading ? 'standard' : 'written', reading: item.reading || item.word, phonemes: item.phonemes, layer: item.reading ? 'standard' : 'written' }]
+            : [];
+        return dedupeKoreanPronunciationCandidates([...compoundCandidates, ...storedCandidates, ...baseCandidate]);
+    }
+
+    if (Array.isArray(item.pronunciations) && item.pronunciations.length > 0) {
+        return item.pronunciations
+            .map(row => {
+                if (!Array.isArray(row)) return null;
+                return {
+                    label: row[0] || '표준발음',
+                    reading: row[1] || '',
+                    phonemes: Array.isArray(row[2]) ? row[2] : [],
+                    layer: row[0] === '표기' ? 'written' : 'standard'
+                };
+            })
+            .filter(candidate => candidate.phonemes.length > 0);
+    }
+
+    if (Array.isArray(item.phonemes) && item.phonemes.length > 0) {
+        return [{
+            label: item.reading ? '표준발음' : '표기',
+            reading: item.reading || item.word,
+            phonemes: item.phonemes,
+            layer: item.reading ? 'standard' : 'written'
+        }];
+    }
+
+    return [];
+}
+
 function calculatePronunciationScore(item, queryPhonemeData, detailMultipliers, mode) {
     const nativePhonemes = item.phonemes || item.vowels || [];
     const queryNative = queryPhonemeData.phonemes || [];
     const queryKoreanizedCandidates = queryPhonemeData.koreanizedCandidates || [
         { phonemes: queryPhonemeData.koreanizedPhonemes || queryNative, label: '한국식' }
     ];
+
+    if (item.lang === 'ko') {
+        const queryCandidates = queryPhonemeData.koreanPronunciationCandidates || [
+            { phonemes: queryNative, label: '표준발음' }
+        ];
+        const storedCandidates = getStoredKoreanPronunciationCandidates(item);
+        const targetCandidates = storedCandidates.length > 0
+            ? storedCandidates
+            : typeof getKoreanStandardPronunciationCandidates === 'function'
+                ? getKoreanStandardPronunciationCandidates(item.word)
+                : [];
+        const koCandidates = [];
+        (targetCandidates.length > 0 ? targetCandidates : [{ phonemes: nativePhonemes, label: '표기', layer: 'written' }]).forEach(targetCandidate => {
+            queryCandidates.forEach(queryCandidate => {
+                const candidateDetailMultipliers = remapDetailMultipliers(detailMultipliers, queryNative.length, queryCandidate.phonemes.length);
+                koCandidates.push(scoreCandidate(
+                    targetCandidate.phonemes,
+                    queryCandidate.phonemes,
+                    candidateDetailMultipliers,
+                    targetCandidate.layer || 'standard',
+                    targetCandidate.label || ''
+                ));
+            });
+        });
+        return koCandidates.reduce((best, current) => current.score > best.score ? current : best, koCandidates[0]);
+    }
 
     if (item.lang !== 'en') {
         return scoreCandidate(nativePhonemes, queryNative, detailMultipliers, 'native', '');
