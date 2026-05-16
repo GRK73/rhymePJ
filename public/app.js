@@ -398,24 +398,47 @@ async function handleLinkedRhymeSearch() {
     if (!query) return;
 
     const selectedLang = getSelectedLang();
-    const lang = getLinkedSearchLang(query, selectedLang);
-    if (!lang) {
-        statusEl.textContent = '연결 라임 검색은 검색어와 같은 언어 필터에서만 동작합니다.';
+    if (query !== lastQueryWord) {
+        currentQueryPhonemeData = getQueryPhonemes(query);
+        lastQueryWord = query;
+        renderDetailSliders();
+    }
+
+    const queryPhonemes = currentQueryPhonemeData.phonemes || [];
+    if (queryPhonemes.length === 0) {
+        statusEl.textContent = '검색어의 발음을 분석할 수 없습니다.';
         displayResults([]);
         return;
     }
 
-    const splits = buildLinkedSplits(query, lang);
-    if (splits.length === 0) {
+    let detailMultipliers = new Array(queryPhonemes.length).fill(1.0);
+    if (useDetailWeights.checked && currentQueryPhonemeData.charMap.length > 0) {
+        currentQueryPhonemeData.charMap.forEach((item, index) => {
+            const slider = document.getElementById(`detailWeight_${index}`);
+            const mult = slider ? parseFloat(slider.value) : 1.0;
+            for (let i = item.startIndex; i < item.endIndex; i++) {
+                detailMultipliers[i] = mult;
+            }
+        });
+    }
+
+    const targetLangs = getLinkedSearchLangs(selectedLang);
+    const splitsByLang = targetLangs.map(lang => ({ lang, splits: buildLinkedSplits(query, lang) }));
+    const allSplits = splitsByLang.flatMap(entry => entry.splits);
+    if (allSplits.length === 0) {
         statusEl.textContent = '연결 라임 검색을 위한 분할 후보를 만들 수 없습니다.';
         displayResults([]);
         return;
     }
 
     statusEl.textContent = '연결 라임 검색은 두 단어 조합을 계산하므로 검색이 느릴 수 있습니다. bigram 데이터를 불러오는 중입니다...';
-    const bigramEntries = await ensureBigramResourceLoaded(lang);
-    if (!bigramEntries || Object.keys(bigramEntries).length === 0) {
-        statusEl.textContent = `${lang === 'ko' ? '한국어' : '영어'} bigram 데이터를 불러올 수 없습니다.`;
+    const bigramStoresByLang = {};
+    await Promise.all(targetLangs.map(async lang => {
+        bigramStoresByLang[lang] = await ensureBigramResourceLoaded(lang);
+    }));
+    const availableLangs = targetLangs.filter(lang => bigramStoresByLang[lang] && Object.keys(bigramStoresByLang[lang]).length > 0);
+    if (availableLangs.length === 0) {
+        statusEl.textContent = '연결 라임 bigram 데이터를 불러올 수 없습니다.';
         displayResults([]);
         return;
     }
@@ -430,74 +453,91 @@ async function handleLinkedRhymeSearch() {
         semanticContext = buildSemanticContext(topicWord, topicWeight);
     }
 
-    statusEl.textContent = `"${query}"의 연결 라임을 찾습니다... (${splits.map(split => split.label).join(', ')})`;
+    statusEl.textContent = `"${query}"의 연결 라임을 찾습니다... (${allSplits.map(split => `${split.lang}:${split.label}`).join(', ')})`;
 
     const freqWeight = parseFloat(freqWeightInput.value);
     const freqRatio = Math.max(0, Math.min(1, freqWeight / 10));
     const excludeWords = getExcludeWords();
-    const dictByLang = dictionary.filter(item => item.lang === lang);
-    const dictByWord = new Map(dictByLang.map(item => [item.word.toLowerCase(), item]));
     const results = [];
     const maxFirstCandidates = 200;
 
-    for (const split of splits) {
-        const firstCandidates = [];
-        for (const item of dictByLang) {
-            if (isExcludedWord(item.word, excludeWords)) continue;
-            const phonemes = getItemPhonemes(item);
-            const leftResult = getBoundaryScore(phonemes, split.leftPhonemes, 'end');
-            if (leftResult.score > 40) {
-                firstCandidates.push({ item, leftResult });
+    for (const { lang, splits } of splitsByLang) {
+        const bigramEntries = bigramStoresByLang[lang];
+        if (!bigramEntries || Object.keys(bigramEntries).length === 0) continue;
+        const dictByLang = dictionary.filter(item => item.lang === lang);
+        const dictByWord = new Map(dictByLang.map(item => [item.word.toLowerCase(), item]));
+
+        for (const split of splits) {
+            const leftDetailMultipliers = getSplitDetailMultipliers(
+                detailMultipliers,
+                split.leftSourceStart,
+                split.leftSourceEnd,
+                split.leftPhonemes.length
+            );
+            const rightDetailMultipliers = getSplitDetailMultipliers(
+                detailMultipliers,
+                split.rightSourceStart,
+                split.rightSourceEnd,
+                split.rightPhonemes.length
+            );
+            const firstCandidates = [];
+            for (const item of dictByLang) {
+                if (isExcludedWord(item.word, excludeWords)) continue;
+                const phonemes = getItemPhonemes(item);
+                const leftResult = getBoundaryScore(phonemes, split.leftPhonemes, 'end', leftDetailMultipliers);
+                if (leftResult.score > 40) {
+                    firstCandidates.push({ item, leftResult });
+                }
             }
-        }
 
-        firstCandidates
-            .sort((a, b) => b.leftResult.score - a.leftResult.score)
-            .slice(0, maxFirstCandidates)
-            .forEach(firstCandidate => {
-                const followers = bigramEntries[firstCandidate.item.word.toLowerCase()];
-                if (!Array.isArray(followers)) return;
+            firstCandidates
+                .sort((a, b) => b.leftResult.score - a.leftResult.score)
+                .slice(0, maxFirstCandidates)
+                .forEach(firstCandidate => {
+                    const followers = bigramEntries[firstCandidate.item.word.toLowerCase()];
+                    if (!Array.isArray(followers)) return;
 
-                followers.forEach(row => {
-                    const secondWord = String(row[0] || '').toLowerCase();
-                    if (isExcludedWord(secondWord, excludeWords)) return;
-                    const second = dictByWord.get(secondWord);
-                    if (!second) return;
+                    followers.forEach(row => {
+                        const secondWord = String(row[0] || '').toLowerCase();
+                        if (isExcludedWord(secondWord, excludeWords)) return;
+                        const second = dictByWord.get(secondWord);
+                        if (!second) return;
 
-                    const secondPhonemes = getItemPhonemes(second);
-                    const rightResult = getBoundaryScore(secondPhonemes, split.rightPhonemes, 'start');
-                    if (rightResult.score <= 40) return;
+                        const secondPhonemes = getItemPhonemes(second);
+                        const rightResult = getBoundaryScore(secondPhonemes, split.rightPhonemes, 'start', rightDetailMultipliers);
+                        if (rightResult.score <= 40) return;
 
-                    const topicResult = getPhraseTopicSimilarity(firstCandidate.item, second, lang, semanticContext);
-                    if (!topicResult.matched) return;
+                        const topicResult = getPhraseTopicSimilarity(firstCandidate.item, second, lang, semanticContext);
+                        if (!topicResult.matched) return;
 
-                    const boundaryScore = (firstCandidate.leftResult.score + rightResult.score) / 2;
-                    const bigramScore = normalizeBigramScore(row[2]);
-                    const frequencyScore = getPairFrequencyScore(firstCandidate.item, second);
-                    const topicScore = topicResult.topicScore ?? 0;
-                    const rawScore = semanticContext.active
-                        ? boundaryScore * (0.62 - freqRatio * 0.12) + bigramScore * 0.20 + frequencyScore * (freqRatio * 0.15) + topicScore * 0.15
-                        : boundaryScore * (0.70 - freqRatio * 0.15) + bigramScore * 0.25 + frequencyScore * (freqRatio * 0.20);
-                    const balanceMultiplier = 0.85 + split.balance * 0.15;
-                    const finalScore = Math.max(0, Math.min(100, rawScore * balanceMultiplier));
+                        const boundaryScore = (firstCandidate.leftResult.score + rightResult.score) / 2;
+                        const bigramScore = normalizeBigramScore(row[2]);
+                        const frequencyScore = getPairFrequencyScore(firstCandidate.item, second);
+                        const topicScore = topicResult.topicScore ?? 0;
+                        const rawScore = semanticContext.active
+                            ? boundaryScore * (0.62 - freqRatio * 0.12) + bigramScore * 0.20 + frequencyScore * (freqRatio * 0.15) + topicScore * 0.15
+                            : boundaryScore * (0.70 - freqRatio * 0.15) + bigramScore * 0.25 + frequencyScore * (freqRatio * 0.20);
+                        const balanceMultiplier = 0.85 + split.balance * 0.15;
+                        const finalScore = Math.max(0, Math.min(100, rawScore * balanceMultiplier));
 
-                    results.push({
-                        resultType: 'linked',
-                        lang,
-                        first: firstCandidate.item,
-                        second,
-                        word: `${firstCandidate.item.word} ${second.word}`,
-                        display: `${firstCandidate.item.display} + ${second.display}`,
-                        score: finalScore,
-                        splitLabel: split.label,
-                        leftScore: firstCandidate.leftResult.score,
-                        rightScore: rightResult.score,
-                        bigramScore,
-                        frequencyScore,
-                        topicSimilarity: topicResult.similarity
+                        results.push({
+                            resultType: 'linked',
+                            lang,
+                            first: firstCandidate.item,
+                            second,
+                            word: `${firstCandidate.item.word} ${second.word}`,
+                            display: `${firstCandidate.item.display} + ${second.display}`,
+                            score: finalScore,
+                            splitLabel: split.label,
+                            leftScore: firstCandidate.leftResult.score,
+                            rightScore: rightResult.score,
+                            bigramScore,
+                            frequencyScore,
+                            topicSimilarity: topicResult.similarity
+                        });
                     });
                 });
-            });
+        }
     }
 
     const deduped = dedupeLinkedResults(results).sort((a, b) => b.score - a.score);

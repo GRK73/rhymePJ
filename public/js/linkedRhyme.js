@@ -6,13 +6,13 @@ function getItemPhonemes(item) {
     return item.phonemes || item.vowels || [];
 }
 
-function getBoundaryScore(targetPhonemes, queryPhonemes, side) {
+function getBoundaryScore(targetPhonemes, queryPhonemes, side, detailMultipliers = []) {
     if (!targetPhonemes || !queryPhonemes || queryPhonemes.length === 0) return { score: 0, matchIndices: [] };
     if (targetPhonemes.length < queryPhonemes.length) return { score: 0, matchIndices: [] };
 
     const start = side === 'end' ? targetPhonemes.length - queryPhonemes.length : 0;
     const segment = targetPhonemes.slice(start, start + queryPhonemes.length);
-    const result = calculateScore(segment, queryPhonemes, []);
+    const result = calculateScore(segment, queryPhonemes, detailMultipliers);
     return {
         score: result.score,
         matchIndices: (result.matchIndices || []).map(index => index + start)
@@ -28,9 +28,20 @@ function getPairFrequencyScore(first, second) {
     return (normalizeZipf(first.zipf) + normalizeZipf(second.zipf)) / 2;
 }
 
+function getSplitDetailMultipliers(detailMultipliers, startIndex, endIndex, targetLength) {
+    if (!Array.isArray(detailMultipliers) || targetLength <= 0) return [];
+
+    const sourceSlice = detailMultipliers.slice(startIndex, endIndex);
+    if (sourceSlice.length > 0) {
+        return remapDetailMultipliers(sourceSlice, sourceSlice.length, targetLength);
+    }
+
+    return remapDetailMultipliers(detailMultipliers, detailMultipliers.length, targetLength);
+}
+
 function normalizeBigramScore(value) {
     const numeric = Number(value) || 0;
-    return Math.max(0, Math.min(100, Math.sqrt(Math.max(0, numeric)) * 100));
+    return Math.max(0, Math.min(100, Math.log1p(Math.max(0, numeric)) / Math.log1p(24) * 100));
 }
 
 function averageVectors(a, b) {
@@ -67,13 +78,13 @@ function getPhraseTopicSimilarity(first, second, lang, semanticContext) {
     };
 }
 
-function getLinkedSearchLang(query, selectedLang) {
-    const queryLang = hasHangul(query) ? 'ko' : 'en';
-    if (selectedLang !== 'all' && selectedLang !== queryLang) return null;
-    return queryLang;
+function getLinkedSearchLangs(selectedLang) {
+    if (selectedLang === 'ko') return ['ko'];
+    if (selectedLang === 'en') return ['en'];
+    return ['ko', 'en'];
 }
 
-function buildKoreanLinkedSplits(query) {
+function buildKoreanLinkedSplits(query, targetLang = 'ko') {
     const chars = Array.from(query).filter(char => /[가-힣]/.test(char));
     if (chars.length < 2 || chars.join('') !== query) return [];
 
@@ -86,11 +97,16 @@ function buildKoreanLinkedSplits(query) {
         if (leftPhonemes.length === 0 || rightPhonemes.length === 0) continue;
 
         splits.push({
-            lang: 'ko',
+            lang: targetLang,
+            sourceLang: 'ko',
             leftText,
             rightText,
             leftPhonemes,
             rightPhonemes,
+            leftSourceStart: 0,
+            leftSourceEnd: leftPhonemes.length,
+            rightSourceStart: leftPhonemes.length,
+            rightSourceEnd: leftPhonemes.length + rightPhonemes.length,
             label: `${leftText} / ${rightText}`,
             balance: Math.min(leftPhonemes.length, rightPhonemes.length) / Math.max(leftPhonemes.length, rightPhonemes.length)
         });
@@ -99,7 +115,7 @@ function buildKoreanLinkedSplits(query) {
     return splits;
 }
 
-function buildEnglishLinkedSplits(query) {
+function buildEnglishLinkedSplits(query, targetLang = 'en') {
     const phonemeData = getQueryPhonemes(query);
     const phonemes = phonemeData.phonemes || [];
     if (phonemes.length < 2) return [];
@@ -118,11 +134,16 @@ function buildEnglishLinkedSplits(query) {
         const balance = Math.min(leftPhonemes.length, rightPhonemes.length) / Math.max(leftPhonemes.length, rightPhonemes.length);
 
         splits.push({
-            lang: 'en',
+            lang: targetLang,
+            sourceLang: 'en',
             leftText: leftPhonemes.join(' '),
             rightText: rightPhonemes.join(' '),
             leftPhonemes,
             rightPhonemes,
+            leftSourceStart: 0,
+            leftSourceEnd: leftPhonemes.length,
+            rightSourceStart: leftPhonemes.length,
+            rightSourceEnd: leftPhonemes.length + rightPhonemes.length,
             label: `${leftPhonemes.join(' ')} / ${rightPhonemes.join(' ')}`,
             balance: balance * vowelPenalty
         });
@@ -131,8 +152,10 @@ function buildEnglishLinkedSplits(query) {
     return splits;
 }
 
-function buildLinkedSplits(query, lang) {
-    return lang === 'ko' ? buildKoreanLinkedSplits(query) : buildEnglishLinkedSplits(query);
+function buildLinkedSplits(query, targetLang) {
+    return hasHangul(query)
+        ? buildKoreanLinkedSplits(query, targetLang)
+        : buildEnglishLinkedSplits(query, targetLang);
 }
 
 function dedupeLinkedResults(results) {
