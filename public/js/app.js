@@ -445,6 +445,18 @@ lyricsSections?.addEventListener('click', event => {
     if (button) removeLyricsSection(button.closest('.lyrics-section'));
 });
 
+function renderLyricsAnalysisLoading() {
+    if (!lyricsAnalysisResults) return;
+    lyricsAnalysisResults.innerHTML = `
+        <section class="lyrics-report-section lyrics-loading-panel">
+            <div class="lyrics-loading-spinner" aria-hidden="true"></div>
+            <h3>가사를 분석하는 중</h3>
+            <p id="lyricsResultLoadingLabel">입력한 라인을 정리하는 중</p>
+            <strong id="lyricsResultLoadingValue">0%</strong>
+        </section>
+    `;
+}
+
 async function handleLyricsAnalysis() {
     const sections = collectLyricsSections();
     if (sections.length === 0) {
@@ -459,7 +471,7 @@ async function handleLyricsAnalysis() {
     appLayout?.classList.add('lyrics-results');
     lyricsAnalysisPanel?.classList.add('has-results');
     statusEl.textContent = '가사 세부 분석을 실행 중입니다.';
-    if (lyricsAnalysisResults) lyricsAnalysisResults.innerHTML = '';
+    renderLyricsAnalysisLoading();
     try {
         const report = await analyzeLyricsSections(sections, updateLyricsProgress);
         renderLyricsAnalysisReport(report, lyricsAnalysisResults);
