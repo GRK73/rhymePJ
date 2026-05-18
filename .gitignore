@@ -8,3 +8,10 @@ public/data/semantic_vectors*.json
 !public/data/semantic_vectors_ko.json
 scripts/scrape_progress.json
 scripts/cache/
+raw_lyrics/
+public/data/hiphop_corpus.jsonl
+public/data/english_hiphop_ipa_ngram.json
+public/data/hiphop_surface_bigram_ko.json
+public/data/spoken_korean_surface_bigram_ko.json
+자료/
+*.pdf

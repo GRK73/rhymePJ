@@ -28,6 +28,14 @@ const linkedSurfaceOptions = document.getElementById('linkedSurfaceOptions');
 const firstParticleOption = document.getElementById('firstParticleOption');
 const useSurfaceKoBigram = document.getElementById('useSurfaceKoBigram');
 const allowFirstParticleKo = document.getElementById('allowFirstParticleKo');
+const searchBox = document.querySelector('.search-box');
+const topicBox = document.querySelector('.topic-box');
+const resultsContainer = document.querySelector('.results-container');
+const lyricsAnalysisPanel = document.getElementById('lyricsAnalysisPanel');
+const lyricsSections = document.getElementById('lyricsSections');
+const addLyricsSectionBtn = document.getElementById('addLyricsSectionBtn');
+const lyricsAnalyzeBtn = document.getElementById('lyricsAnalyzeBtn');
+const lyricsAnalysisResults = document.getElementById('lyricsAnalysisResults');
 
 const consoWeightInput = document.getElementById('consoWeight');
 const vowelWeightInput = document.getElementById('vowelWeight');
@@ -84,8 +92,14 @@ syncDetailWeightControls();
 
 function syncSearchModeControls() {
     const isLinkedMode = currentSearchMode === 'linked';
+    const isLyricsMode = currentSearchMode === 'lyrics';
+    if (searchBox) searchBox.hidden = isLyricsMode;
+    if (topicBox) topicBox.hidden = isLyricsMode;
+    if (resultsContainer) resultsContainer.hidden = isLyricsMode;
+    if (lyricsAnalysisPanel) lyricsAnalysisPanel.hidden = !isLyricsMode;
+    if (detailGroup) detailGroup.hidden = isLyricsMode;
     if (linkedSurfaceOptions) {
-        linkedSurfaceOptions.hidden = !isLinkedMode;
+        linkedSurfaceOptions.hidden = !isLinkedMode || isLyricsMode;
     }
     if (firstParticleOption) {
         const showFirstParticleOption = isLinkedMode && Boolean(useSurfaceKoBigram?.checked);
@@ -109,6 +123,8 @@ searchModeButtons.forEach(button => {
         syncSearchModeControls();
         if (currentSearchMode === 'linked') {
             statusEl.textContent = '연결 라임 검색은 두 단어 조합을 계산하므로 검색이 느릴 수 있습니다.';
+        } else if (currentSearchMode === 'lyrics') {
+            statusEl.textContent = '섹션별 가사를 입력한 뒤 세부 분석을 실행하세요.';
         } else if (isReady) {
             statusEl.textContent = `사전 로드 완료! (총 ${dictionary.length.toLocaleString()} 단어, 외래어 ${Object.keys(loanwordOverrides).length.toLocaleString()}개, 의미 벡터는 주제 입력 시 로드)`;
         }
@@ -301,7 +317,11 @@ async function loadDictionary() {
 
         isReady = true;
         const loanwordCount = Object.keys(loanwordOverrides).length;
-        statusEl.textContent = `사전 로드 완료! (총 ${dictionary.length.toLocaleString()} 단어, 외래어 ${loanwordCount.toLocaleString()}개, 의미 벡터는 주제 입력 시 로드)`;
+        if (currentSearchMode === 'lyrics') {
+            statusEl.textContent = '섹션별 가사를 입력한 뒤 세부 분석을 실행하세요.';
+        } else {
+            statusEl.textContent = `사전 로드 완료! (총 ${dictionary.length.toLocaleString()} 단어, 외래어 ${loanwordCount.toLocaleString()}개, 의미 벡터는 주제 입력 시 로드)`;
+        }
     } catch (error) {
         console.error('Failed to load dictionary:', error);
         statusEl.textContent = '사전 데이터를 불러오는데 실패했습니다.';
@@ -362,11 +382,88 @@ function dedupeResultsByWordLang(results) {
 loadMoreBtn.addEventListener('click', renderMoreResults);
 
 async function handleSearch() {
+    if (currentSearchMode === 'lyrics') {
+        await handleLyricsAnalysis();
+        return;
+    }
     if (currentSearchMode === 'linked') {
         await handleLinkedRhymeSearch();
         return;
     }
     await handleWordSearch();
+}
+
+function getNextLyricsSectionLabel() {
+    const count = document.querySelectorAll('.lyrics-section').length + 1;
+    if (count === 1) return 'Verse 1';
+    if (count === 2) return 'Hook';
+    return `Verse ${count}`;
+}
+
+function addLyricsSection(type = getNextLyricsSectionLabel(), text = '') {
+    if (!lyricsSections) return;
+    const id = String(Date.now() + Math.floor(Math.random() * 1000));
+    const section = document.createElement('div');
+    section.className = 'lyrics-section';
+    section.dataset.sectionId = id;
+    const options = ['Intro', 'Verse 1', 'Hook', 'Verse 2', 'Bridge', 'Outro', 'Free'];
+    const selectedType = options.includes(type) ? type : 'Free';
+    section.innerHTML = `
+        <div class="lyrics-section-header">
+            <select class="lyrics-section-type" aria-label="섹션 종류">
+                ${options.map(option => `<option value="${option}" ${option === selectedType ? 'selected' : ''}>${option}</option>`).join('')}
+            </select>
+            <button type="button" class="lyrics-section-remove" aria-label="섹션 삭제">×</button>
+        </div>
+        <textarea class="lyrics-section-text" rows="8" placeholder="가사를 입력하세요"></textarea>
+    `;
+    section.querySelector('.lyrics-section-text').value = text;
+    lyricsSections.appendChild(section);
+}
+
+function removeLyricsSection(section) {
+    if (!section || !lyricsSections) return;
+    if (lyricsSections.querySelectorAll('.lyrics-section').length <= 1) {
+        const textarea = section.querySelector('.lyrics-section-text');
+        if (textarea) textarea.value = '';
+        return;
+    }
+    section.remove();
+}
+
+addLyricsSectionBtn?.addEventListener('click', () => addLyricsSection());
+lyricsAnalyzeBtn?.addEventListener('click', handleLyricsAnalysis);
+lyricsSections?.addEventListener('click', event => {
+    const button = event.target.closest('.lyrics-section-remove');
+    if (button) removeLyricsSection(button.closest('.lyrics-section'));
+});
+
+async function handleLyricsAnalysis() {
+    const sections = collectLyricsSections();
+    if (sections.length === 0) {
+        statusEl.textContent = '분석할 가사를 한 줄 이상 입력하세요.';
+        if (lyricsAnalysisResults) {
+            lyricsAnalysisResults.innerHTML = '<section class="lyrics-report-section"><div class="lyrics-note">분석할 가사를 한 줄 이상 입력하세요.</div></section>';
+        }
+        return;
+    }
+
+    lyricsAnalyzeBtn.disabled = true;
+    statusEl.textContent = '가사 세부 분석을 실행 중입니다.';
+    if (lyricsAnalysisResults) lyricsAnalysisResults.innerHTML = '';
+    try {
+        const report = await analyzeLyricsSections(sections, updateLyricsProgress);
+        renderLyricsAnalysisReport(report, lyricsAnalysisResults);
+        statusEl.textContent = `가사 세부 분석 완료: ${report.overview.lineCount.toLocaleString()}라인`;
+    } catch (error) {
+        console.error('Lyrics analysis failed:', error);
+        statusEl.textContent = '가사 분석 중 오류가 발생했습니다.';
+        if (lyricsAnalysisResults) {
+            lyricsAnalysisResults.innerHTML = '<section class="lyrics-report-section"><div class="lyrics-note">가사 분석 중 오류가 발생했습니다. 콘솔 로그를 확인하세요.</div></section>';
+        }
+    } finally {
+        lyricsAnalyzeBtn.disabled = false;
+    }
 }
 
 async function handleWordSearch() {
@@ -398,6 +495,11 @@ async function handleWordSearch() {
         await ensureSemanticResourcesLoaded();
         await translateTopicToEnglish(topicWord);
         semanticContext = buildSemanticContext(topicWord, topicWeight);
+    }
+
+    const useKoCorpusBoost = selectedLang !== 'en';
+    if (useKoCorpusBoost) {
+        await ensureCorpusAffinityResourcesLoaded();
     }
 
     const topicLabels = [topicWord, ...(semanticContext.translatedTopics || []).slice(0, 2)].filter(Boolean);
@@ -448,6 +550,12 @@ async function handleWordSearch() {
                 if (!semanticResult.matched) continue;
                 totalScore = semanticResult.score;
             }
+            let corpusAffinity = { score: 0 };
+            if (useKoCorpusBoost && item.lang === 'ko') {
+                const corpusResult = applyCorpusAffinityWeight(totalScore, item);
+                totalScore = corpusResult.score;
+                corpusAffinity = corpusResult.affinity;
+            }
 
             results.push({
                 ...item,
@@ -456,7 +564,8 @@ async function handleWordSearch() {
                 matchPhonemes: result.matchPhonemes,
                 matchLayer: result.matchLayer,
                 matchLayerLabel: result.matchLayerLabel,
-                semanticSimilarity: semanticResult.similarity
+                semanticSimilarity: semanticResult.similarity,
+                corpusAffinity: corpusAffinity.score
             });
         }
     }
@@ -546,11 +655,12 @@ function appendSurfaceLinkedResults({
                     const bigramScore = normalizeBigramScore(follower.score);
                     const frequencyScore = getPairFrequencyScore(first, second);
                     const topicScore = topicResult.topicScore ?? 0;
+                    const corpusScore = getLinkedCorpusScore(first, second, 'ko');
                     const rawScore = semanticContext.active
                         ? boundaryScore * (0.62 - freqRatio * 0.12) + bigramScore * 0.20 + frequencyScore * (freqRatio * 0.15) + topicScore * 0.15
                         : boundaryScore * (0.70 - freqRatio * 0.15) + bigramScore * 0.25 + frequencyScore * (freqRatio * 0.20);
                     const balanceMultiplier = 0.85 + split.balance * 0.15;
-                    const finalScore = Math.max(0, Math.min(100, rawScore * balanceMultiplier));
+                    const finalScore = Math.max(0, Math.min(100, blendLinkedCorpusScore(rawScore, corpusScore) * balanceMultiplier));
                     const surfaceDisplay = formatSurfaceLinkedDisplay(firstCandidate.surfaceHead, follower.surface);
 
                     results.push({
@@ -567,6 +677,7 @@ function appendSurfaceLinkedResults({
                         leftScore: firstCandidate.leftResult.score,
                         rightScore: rightResult.score,
                         bigramScore,
+                        corpusScore,
                         frequencyScore,
                         topicSimilarity: topicResult.similarity
                     });
@@ -626,6 +737,9 @@ async function handleLinkedRhymeSearch() {
             bigramStoresByLang[lang] = await ensureBigramResourceLoaded(lang);
         }
     }));
+    if (targetLangs.includes('ko')) {
+        await ensureLinkedCorpusResourcesLoaded();
+    }
     const availableLangs = targetLangs.filter(lang => {
         if (lang === 'ko' && useSurfaceKo) return surfaceEntriesKo && Object.keys(surfaceEntriesKo).length > 0;
         return bigramStoresByLang[lang] && Object.keys(bigramStoresByLang[lang]).length > 0;
@@ -725,11 +839,12 @@ async function handleLinkedRhymeSearch() {
                         const bigramScore = normalizeBigramScore(row[2]);
                         const frequencyScore = getPairFrequencyScore(firstCandidate.item, second);
                         const topicScore = topicResult.topicScore ?? 0;
+                        const corpusScore = getLinkedCorpusScore(firstCandidate.item, second, lang);
                         const rawScore = semanticContext.active
                             ? boundaryScore * (0.62 - freqRatio * 0.12) + bigramScore * 0.20 + frequencyScore * (freqRatio * 0.15) + topicScore * 0.15
                             : boundaryScore * (0.70 - freqRatio * 0.15) + bigramScore * 0.25 + frequencyScore * (freqRatio * 0.20);
                         const balanceMultiplier = 0.85 + split.balance * 0.15;
-                        const finalScore = Math.max(0, Math.min(100, rawScore * balanceMultiplier));
+                        const finalScore = Math.max(0, Math.min(100, blendLinkedCorpusScore(rawScore, corpusScore) * balanceMultiplier));
 
                         results.push({
                             resultType: 'linked',
@@ -743,6 +858,7 @@ async function handleLinkedRhymeSearch() {
                             leftScore: firstCandidate.leftResult.score,
                             rightScore: rightResult.score,
                             bigramScore,
+                            corpusScore,
                             frequencyScore,
                             topicSimilarity: topicResult.similarity
                         });

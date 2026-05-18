@@ -48,6 +48,7 @@ function renderMoreResults() {
                     <span>앞끝 ${res.leftScore.toFixed(1)}</span>
                     <span>뒤앞 ${res.rightScore.toFixed(1)}</span>
                     <span>bigram ${res.bigramScore.toFixed(1)}</span>
+                    ${res.corpusScore ? `<span>corpus ${res.corpusScore.toFixed(1)}</span>` : ''}
                     <span>빈도 ${res.frequencyScore.toFixed(1)}</span>
                 </div>
             `;
@@ -71,9 +72,14 @@ function renderMoreResults() {
             ? `<div class="semantic-score">주제 유사도: ${(((res.semanticSimilarity + 1) / 2) * 100).toFixed(1)}%</div>`
             : '';
 
+        const corpusHtml = res.corpusAffinity
+            ? `<div class="semantic-score">corpus affinity: ${(res.corpusAffinity * 100).toFixed(1)}%</div>`
+            : '';
+
         li.innerHTML = `
             <div class="result-score">환산 유사도 : ${res.score.toFixed(1)}%</div>
             ${semanticHtml}
+            ${corpusHtml}
             <div class="result-word">
                 <span>${res.display}</span>
                 <img src="assets/sound_icon.png" class="tts-icon" onclick="playTTS('${res.word.replace(/'/g, "\\'")}', '${res.lang}')" alt="Listen" title="발음 듣기"/>

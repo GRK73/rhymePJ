@@ -1,4 +1,4 @@
-const OPTIONAL_ASSET_VERSION = '20260516-compound-pronunciation';
+const OPTIONAL_ASSET_VERSION = '20260518-corpus-boost';
 const DATA_DIR = 'data/';
 
 function dataPath(filename) {
