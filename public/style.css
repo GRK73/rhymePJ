@@ -193,6 +193,41 @@ body {
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
+.app-layout.lyrics-mode {
+    max-width: 1500px;
+}
+
+.app-layout.lyrics-mode .sidebar {
+    display: none;
+}
+
+.app-layout.lyrics-mode .container {
+    flex-basis: min(100%, 980px);
+}
+
+.app-layout.lyrics-mode .lyrics-analysis-panel.has-results {
+    display: grid;
+    grid-template-columns: minmax(360px, 0.82fr) minmax(460px, 1.18fr);
+    align-items: start;
+    gap: 1rem;
+}
+
+.lyrics-analysis-panel.has-results .lyrics-toolbar,
+.lyrics-analysis-panel.has-results .lyrics-sections,
+.lyrics-analysis-panel.has-results .lyrics-progress {
+    grid-column: 1;
+}
+
+.lyrics-analysis-panel.has-results .lyrics-analysis-results {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: stretch;
+}
+
+.app-layout.lyrics-mode.lyrics-results .container {
+    flex-basis: min(100%, 1320px);
+}
+
 header {
     text-align: center;
     margin-bottom: 2rem;
@@ -810,6 +845,19 @@ header h1 {
 @media (max-width: 900px) {
     .app-layout {
         flex-direction: column;
+    }
+
+    .app-layout.lyrics-mode .container,
+    .app-layout.lyrics-mode.lyrics-results .container {
+        flex-basis: auto;
+    }
+
+    .app-layout.lyrics-mode .lyrics-analysis-panel.has-results {
+        display: block;
+    }
+
+    .lyrics-analysis-panel.has-results .lyrics-analysis-results {
+        margin-top: 1rem;
     }
     
     .sidebar {

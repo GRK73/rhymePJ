@@ -16,6 +16,7 @@ if (typeof window !== 'undefined') {
 }
 
 const statusEl = document.getElementById('status');
+const appLayout = document.querySelector('.app-layout');
 const searchInput = document.getElementById('searchInput');
 const topicInput = document.getElementById('topicInput');
 const searchBtn = document.getElementById('searchBtn');
@@ -93,6 +94,11 @@ syncDetailWeightControls();
 function syncSearchModeControls() {
     const isLinkedMode = currentSearchMode === 'linked';
     const isLyricsMode = currentSearchMode === 'lyrics';
+    appLayout?.classList.toggle('lyrics-mode', isLyricsMode);
+    if (!isLyricsMode) {
+        appLayout?.classList.remove('lyrics-results');
+        lyricsAnalysisPanel?.classList.remove('has-results');
+    }
     if (searchBox) searchBox.hidden = isLyricsMode;
     if (topicBox) topicBox.hidden = isLyricsMode;
     if (resultsContainer) resultsContainer.hidden = isLyricsMode;
@@ -126,6 +132,7 @@ searchModeButtons.forEach(button => {
         } else if (currentSearchMode === 'lyrics') {
             statusEl.textContent = '섹션별 가사를 입력한 뒤 세부 분석을 실행하세요.';
         } else if (isReady) {
+            lyricsAnalysisPanel?.classList.remove('has-results');
             statusEl.textContent = `사전 로드 완료! (총 ${dictionary.length.toLocaleString()} 단어, 외래어 ${Object.keys(loanwordOverrides).length.toLocaleString()}개, 의미 벡터는 주제 입력 시 로드)`;
         }
     });
@@ -449,6 +456,8 @@ async function handleLyricsAnalysis() {
     }
 
     lyricsAnalyzeBtn.disabled = true;
+    appLayout?.classList.add('lyrics-results');
+    lyricsAnalysisPanel?.classList.add('has-results');
     statusEl.textContent = '가사 세부 분석을 실행 중입니다.';
     if (lyricsAnalysisResults) lyricsAnalysisResults.innerHTML = '';
     try {
