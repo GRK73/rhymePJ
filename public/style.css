@@ -214,6 +214,10 @@ body {
     transition: grid-template-columns 0.34s ease, gap 0.34s ease;
 }
 
+.app-layout.lyrics-mode .lyrics-analysis-panel > * {
+    grid-column: 1;
+}
+
 .app-layout.lyrics-mode .lyrics-analysis-panel.has-results {
     grid-template-columns: minmax(360px, 0.82fr) minmax(460px, 1.18fr);
 }
