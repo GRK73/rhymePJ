@@ -57,13 +57,12 @@ function updateLyricsProgress(progress, label) {
     const valueEl = document.getElementById('lyricsProgressValue');
     const resultLabelEl = document.getElementById('lyricsResultLoadingLabel');
     const resultValueEl = document.getElementById('lyricsResultLoadingValue');
-    if (!progressEl || !barEl || !labelEl || !valueEl) return;
 
     const clamped = Math.max(0, Math.min(100, Math.round(progress)));
-    progressEl.hidden = false;
-    barEl.style.width = `${clamped}%`;
-    labelEl.textContent = label || '분석 중';
-    valueEl.textContent = `${clamped}%`;
+    if (progressEl) progressEl.hidden = false;
+    if (barEl) barEl.style.width = `${clamped}%`;
+    if (labelEl) labelEl.textContent = label || '분석 중';
+    if (valueEl) valueEl.textContent = `${clamped}%`;
     if (resultLabelEl) resultLabelEl.textContent = label || '분석 중';
     if (resultValueEl) resultValueEl.textContent = `${clamped}%`;
 }
@@ -429,6 +428,13 @@ function getStructuralRuleScore(models, phonemes, lang = '') {
     return score;
 }
 
+function isWeakKoreanStructuralCandidate(candidate) {
+    if (!candidate || candidate.lang !== 'ko' || candidate.isEnding) return false;
+    const text = candidate.normalizedText || '';
+    if (text.length < 2) return false;
+    return /[은는이가을를에의도만]$/.test(text);
+}
+
 function getHangulWindowsWithPhonemes(line, lineIndex, section, minWidth = 2, maxWidth = 4) {
     const text = normalizeLyricsInputForAnalysis(line);
     const hangul = [];
@@ -679,7 +685,10 @@ function getStructuralPairResult(left, right, models = null) {
         score,
         mode: hasShortSpan ? { id: 'short-vowel', label: '짧은 모음축' } : result.mode,
         positionDiff,
-        modelScore
+        modelScore,
+        consonantScore: result.consonantScore,
+        vowelScore: result.vowelScore,
+        balancedScore: result.balancedScore
     };
 }
 
@@ -755,6 +764,7 @@ function shouldKeepStructuralGroup(group, strongLinePairs) {
 
 function buildStructuralRhymeGroups(lineAnalyses, models = null) {
     if (lineAnalyses.length < 2) return { groups: [], patterns: [], spansByLineId: new Map() };
+    const longAnalysis = lineAnalyses.length >= 8;
 
     const endingCandidates = lineAnalyses
         .map(row => getLineRhymeSpanCandidates(row, 2, 2).find(candidate => candidate.isEnding))
@@ -786,10 +796,12 @@ function buildStructuralRhymeGroups(lineAnalyses, models = null) {
     const expandedEndingGroups = endingGroups.map(group => {
         const rows = [...group.rows];
         const rowIds = new Set(rows.map(row => row.id));
+        const anchorLineIds = new Set(group.rows.map(row => row.lineId));
         lineAnalyses.forEach(line => {
             const candidates = getLineRhymeSpanCandidates(line, 2, 2);
             candidates.forEach(candidate => {
                 if (rowIds.has(candidate.id)) return;
+                if (!candidate.isEnding && !anchorLineIds.has(candidate.lineId)) return;
                 const anchorLangs = new Set(group.rows.map(row => row.lang).filter(Boolean));
                 if (anchorLangs.size === 1 && !anchorLangs.has(candidate.lang)) return;
                 const matched = group.rows.some(anchor => {
@@ -814,14 +826,23 @@ function buildStructuralRhymeGroups(lineAnalyses, models = null) {
         const leftLine = lineAnalyses[index];
         const rightLine = lineAnalyses[index + 1];
         if (leftLine.section !== rightLine.section) continue;
-        const leftCandidates = getLineRhymeSpanCandidates(leftLine, 1, 3).filter(candidate => !candidate.isEnding);
-        const rightCandidates = getLineRhymeSpanCandidates(rightLine, 1, 3).filter(candidate => !candidate.isEnding);
+        const leftCandidates = getLineRhymeSpanCandidates(leftLine, longAnalysis ? 2 : 1, 3)
+            .filter(candidate => !candidate.isEnding)
+            .filter(candidate => !longAnalysis || !isWeakKoreanStructuralCandidate(candidate));
+        const rightCandidates = getLineRhymeSpanCandidates(rightLine, longAnalysis ? 2 : 1, 3)
+            .filter(candidate => !candidate.isEnding)
+            .filter(candidate => !longAnalysis || !isWeakKoreanStructuralCandidate(candidate));
         const pairs = [];
         leftCandidates.forEach(left => {
             rightCandidates.forEach(right => {
                 const resultWithRules = getStructuralPairResult(left, right, models);
                 if (!resultWithRules) return;
                 const shortPair = left.width <= 1 || right.width <= 1;
+                if (longAnalysis && shortPair) return;
+                const strongPhoneticPair = resultWithRules.balancedScore >= 86
+                    || resultWithRules.consonantScore >= 58
+                    || resultWithRules.modelScore >= 0.68;
+                if (longAnalysis && !strongPhoneticPair) return;
                 const positionDiff = Math.abs(left.centerRatio - right.centerRatio);
                 if (shortPair && positionDiff > 0.22) return;
                 if (!shortPair && positionDiff > 0.18) return;
@@ -897,8 +918,12 @@ function buildStructuralRhymeGroups(lineAnalyses, models = null) {
         });
     });
 
-    const groups = [...parallelGroups, ...expandedEndingGroups]
+    const groups = [...expandedEndingGroups, ...parallelGroups]
         .filter(group => group.quality.distinctLines >= 2)
+        .filter(group => {
+            if (!longAnalysis || group.source !== 'parallel') return true;
+            return group.quality.avgWidth >= 2.5 && group.score >= 96 && group.modelScore >= 0.55;
+        })
         .filter(group => {
             if (group.source !== 'parallel' || group.quality.avgWidth > 1.35) return true;
             return !group.rows.every(row => {
@@ -907,6 +932,7 @@ function buildStructuralRhymeGroups(lineAnalyses, models = null) {
             });
         })
         .sort((a, b) => {
+            if (a.source !== b.source) return a.source === 'ending' ? -1 : 1;
             const leftLine = Math.min(...a.rows.map(row => row.lineIndex));
             const rightLine = Math.min(...b.rows.map(row => row.lineIndex));
             if (leftLine !== rightLine) return leftLine - rightLine;

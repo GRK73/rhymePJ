@@ -35,6 +35,7 @@ const resultsContainer = document.querySelector('.results-container');
 const lyricsAnalysisPanel = document.getElementById('lyricsAnalysisPanel');
 const lyricsSections = document.getElementById('lyricsSections');
 const addLyricsSectionBtn = document.getElementById('addLyricsSectionBtn');
+const lyricsSectionTypeMenu = document.getElementById('lyricsSectionTypeMenu');
 const lyricsAnalyzeBtn = document.getElementById('lyricsAnalyzeBtn');
 const lyricsAnalysisResults = document.getElementById('lyricsAnalysisResults');
 
@@ -438,7 +439,34 @@ function removeLyricsSection(section) {
     section.remove();
 }
 
-addLyricsSectionBtn?.addEventListener('click', () => addLyricsSection());
+function setLyricsSectionTypeMenuOpen(open) {
+    if (!lyricsSectionTypeMenu || !addLyricsSectionBtn) return;
+    lyricsSectionTypeMenu.hidden = !open;
+    addLyricsSectionBtn.setAttribute('aria-expanded', String(open));
+}
+
+addLyricsSectionBtn?.addEventListener('click', event => {
+    event.stopPropagation();
+    setLyricsSectionTypeMenuOpen(lyricsSectionTypeMenu?.hidden !== false);
+});
+
+lyricsSectionTypeMenu?.addEventListener('click', event => {
+    const button = event.target.closest('[data-section-type]');
+    if (!button) return;
+    addLyricsSection(button.dataset.sectionType || getNextLyricsSectionLabel());
+    setLyricsSectionTypeMenuOpen(false);
+});
+
+document.addEventListener('click', event => {
+    if (lyricsSectionTypeMenu?.hidden !== false) return;
+    if (event.target.closest('.lyrics-section-add')) return;
+    setLyricsSectionTypeMenuOpen(false);
+});
+
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') setLyricsSectionTypeMenuOpen(false);
+});
+
 lyricsAnalyzeBtn?.addEventListener('click', handleLyricsAnalysis);
 lyricsSections?.addEventListener('click', event => {
     const button = event.target.closest('.lyrics-section-remove');

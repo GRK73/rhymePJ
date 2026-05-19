@@ -102,7 +102,6 @@
 
                 <section class="lyrics-analysis-panel" id="lyricsAnalysisPanel" hidden>
                     <div class="lyrics-toolbar">
-                        <button type="button" id="addLyricsSectionBtn" class="secondary-btn">섹션 추가</button>
                         <button type="button" id="lyricsAnalyzeBtn" class="primary-btn">세부 분석</button>
                     </div>
 
@@ -124,13 +123,16 @@
                         </div>
                     </div>
 
-                    <div class="lyrics-progress" id="lyricsProgress" hidden>
-                        <div class="lyrics-progress-meta">
-                            <span id="lyricsProgressLabel">분석 준비 중</span>
-                            <span id="lyricsProgressValue">0%</span>
-                        </div>
-                        <div class="lyrics-progress-track">
-                            <div class="lyrics-progress-bar" id="lyricsProgressBar"></div>
+                    <div class="lyrics-section-add">
+                        <button type="button" id="addLyricsSectionBtn" class="secondary-btn" aria-haspopup="menu" aria-expanded="false">섹션 추가</button>
+                        <div id="lyricsSectionTypeMenu" class="lyrics-section-type-menu" role="menu" hidden>
+                            <button type="button" data-section-type="Intro" role="menuitem">Intro</button>
+                            <button type="button" data-section-type="Verse 1" role="menuitem">Verse 1</button>
+                            <button type="button" data-section-type="Hook" role="menuitem">Hook</button>
+                            <button type="button" data-section-type="Verse 2" role="menuitem">Verse 2</button>
+                            <button type="button" data-section-type="Bridge" role="menuitem">Bridge</button>
+                            <button type="button" data-section-type="Outro" role="menuitem">Outro</button>
+                            <button type="button" data-section-type="Free" role="menuitem">Free</button>
                         </div>
                     </div>
 
