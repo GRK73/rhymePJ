@@ -500,9 +500,11 @@ async function handleLyricsAnalysis() {
     lyricsAnalysisPanel?.classList.add('has-results');
     statusEl.textContent = '가사 세부 분석을 실행 중입니다.';
     renderLyricsAnalysisLoading();
+    if (lyricsAnalysisResults) lyricsAnalysisResults.scrollTop = 0;
     try {
         const report = await analyzeLyricsSections(sections, updateLyricsProgress);
         renderLyricsAnalysisReport(report, lyricsAnalysisResults);
+        if (lyricsAnalysisResults) lyricsAnalysisResults.scrollTop = 0;
         statusEl.textContent = `가사 세부 분석 완료: ${report.overview.lineCount.toLocaleString()}라인`;
     } catch (error) {
         console.error('Lyrics analysis failed:', error);

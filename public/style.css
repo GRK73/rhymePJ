@@ -207,38 +207,15 @@ body {
 }
 
 .app-layout.lyrics-mode .lyrics-analysis-panel {
-    display: grid;
-    grid-template-columns: minmax(360px, 1fr) minmax(0, 0fr);
-    align-items: start;
-    gap: 1rem;
-    transition: grid-template-columns 0.34s ease, gap 0.34s ease;
-}
-
-.app-layout.lyrics-mode .lyrics-analysis-panel > * {
-    grid-column: 1;
-}
-
-.app-layout.lyrics-mode .lyrics-analysis-panel.has-results {
-    grid-template-columns: minmax(360px, 0.82fr) minmax(460px, 1.18fr);
-}
-
-.lyrics-analysis-panel.has-results .lyrics-toolbar,
-.lyrics-analysis-panel.has-results .lyrics-sections,
-.lyrics-analysis-panel.has-results .lyrics-section-add {
-    grid-column: 1;
-}
-
-.lyrics-analysis-panel.has-results .lyrics-analysis-results {
-    grid-column: 2;
-    grid-row: 1 / span 3;
-    align-self: stretch;
-    opacity: 1;
-    transform: translateX(0);
-    pointer-events: auto;
+    display: block;
 }
 
 .app-layout.lyrics-mode.lyrics-results .container {
-    flex-basis: min(100%, 1320px);
+    flex: 0 1 760px;
+}
+
+.app-layout.lyrics-mode.lyrics-results {
+    align-items: flex-start;
 }
 
 header {
@@ -411,13 +388,30 @@ header h1 {
 }
 
 .lyrics-analysis-results {
-    display: grid;
+    display: none;
+    flex: 1 1 560px;
+    max-width: 680px;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+    position: sticky;
+    top: 2rem;
     gap: 1rem;
     min-width: 0;
+    padding: 1rem;
+    border-radius: 12px;
+    background: var(--card-bg);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     opacity: 0;
-    transform: translateX(1rem);
+    transform: translateX(1.25rem);
     pointer-events: none;
     transition: opacity 0.24s ease 0.08s, transform 0.28s ease 0.06s;
+}
+
+.app-layout.lyrics-mode.lyrics-results .lyrics-analysis-results {
+    display: grid;
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
 }
 
 .lyrics-report-section {
@@ -1223,11 +1217,12 @@ header h1 {
         flex-basis: auto;
     }
 
-    .app-layout.lyrics-mode .lyrics-analysis-panel.has-results {
-        display: block;
-    }
-
-    .lyrics-analysis-panel.has-results .lyrics-analysis-results {
+    .app-layout.lyrics-mode.lyrics-results .lyrics-analysis-results {
+        flex: none;
+        width: 100%;
+        max-width: none;
+        max-height: none;
+        position: static;
         margin-top: 1rem;
     }
     
