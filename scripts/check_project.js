@@ -109,12 +109,30 @@ function checkLyricsEnglishRimes() {
     const skillSignature = vm.runInContext('getRhymeSignature("skill")', context);
     const killSignature = vm.runInContext('getRhymeSignature("kill")', context);
     const mixedEnding = vm.runInContext('getLineEndingRhymeData("\\uC655\\uAD00 crown")', context);
+    const endingWindows = JSON.parse(vm.runInContext(
+        `JSON.stringify(getLineRhymeSpanCandidates({
+            section: { id: "test" },
+            index: 0,
+            line: "\\uC798\\uD574\\uC57C \\uD55C\\uB2E8 \\uAC15\\uBC15, \\uBAA9\\uC744 \\uC870\\uB974\\uB358 crown"
+        }, 2, 2).filter(row => row.isEnding).map(row => ({ text: row.text, lang: row.lang })))`,
+        context
+    ));
+    const mixedWindows = JSON.parse(vm.runInContext(
+        `JSON.stringify(getLineRhymeSpanCandidates({
+            section: { id: "test" },
+            index: 1,
+            line: "\\uBB34\\uAE30\\uB825 stuck, \\uC2A4\\uC2A4\\uB85C lock"
+        }, 1, 3).map(row => ({ text: row.text, lang: row.lang })))`,
+        context
+    ));
 
     assert(crownSignature === clownSignature, 'crown and clown must share an English rime signature');
     assert(skillSignature === killSignature, 'skill and kill must share an English rime signature');
     assert(String(crownSignature).startsWith('en:'), 'English rhyme signatures must use English rime cores');
     assert(mixedEnding.text === 'crown', 'mixed Korean/English line endings must prefer the final English token');
     assert(mixedEnding.signature === crownSignature, 'mixed Korean/English line ending must keep the English rime signature');
+    assert(endingWindows.some(row => row.text === 'crown' && row.lang === 'en'), 'structural ending candidates must prefer final English words');
+    assert(!mixedWindows.some(row => row.lang === 'mixed'), 'mixed Korean/English token windows must not become structural rhyme spans');
 }
 
 function checkLoanwordOverrides() {

@@ -472,6 +472,10 @@ function isWeakKoreanStructuralCandidate(candidate) {
 
 function getHangulWindowsWithPhonemes(line, lineIndex, section, minWidth = 2, maxWidth = 4) {
     const text = normalizeLyricsInputForAnalysis(line);
+    const hasEnglishToken = Array.from(text.matchAll(LYRIC_TOKEN_RE))
+        .some(match => LYRIC_EN_RE.test(normalizeLyricToken(match[0])));
+    if (hasEnglishToken) return [];
+
     const hangul = [];
     Array.from(text).forEach((char, arrayIndex) => {
         if (!LYRIC_HANGUL_RE.test(char)) return;
@@ -577,6 +581,8 @@ function buildSlidingRhymeGroups(lineAnalyses) {
 
 function getLineRhymeSpanCandidates(row, minWidth = 1, maxWidth = 5) {
     const text = normalizeLyricsInputForAnalysis(row.line);
+    const endingWord = normalizeLyricToken(getLastLyricWord(text));
+    const lineEndsWithEnglish = LYRIC_EN_RE.test(endingWord);
     const hangul = [];
     const seen = new Set();
     const windows = [];
@@ -621,7 +627,7 @@ function getLineRhymeSpanCandidates(row, minWidth = 1, maxWidth = 5) {
                 start,
                 end,
                 centerRatio: text.length ? (start + end) / 2 / text.length : 0,
-                isEnding: index + width >= hangul.length,
+                isEnding: !lineEndsWithEnglish && index + width >= hangul.length,
                 boundaryScore: Number(startBoundary) + Number(endBoundary) + Number(firstSyllableEndBoundary) * 0.75,
                 lang: 'ko',
                 source: 'structural'
@@ -654,6 +660,7 @@ function getLineRhymeSpanCandidates(row, minWidth = 1, maxWidth = 5) {
             const normalizedText = slice.map(item => item.token).join('');
             const phonemes = slice.flatMap(item => item.phonemes);
             const langs = new Set(slice.map(item => item.lang).filter(Boolean));
+            if (langs.size > 1) continue;
             if (langs.size === 1 && langs.has('ko')) continue;
             const hangulCount = Array.from(normalizedText).filter(char => LYRIC_HANGUL_RE.test(char)).length;
             const unitWidth = Math.min(5, Math.max(1, hangulCount || width));
@@ -702,14 +709,16 @@ function getStructuralPairResult(left, right, models = null) {
         )
         : 0;
     const englishCorePassed = englishCoreMatch >= 88;
+    const bothEnglish = left.lang === 'en' && right.lang === 'en';
     const modelScore = Math.max(
         getStructuralRuleScore(models, left.phonemes, left.lang),
         getStructuralRuleScore(models, right.phonemes, right.lang)
     );
-    const passed = hasShortSpan
+    const passed = bothEnglish
+        ? englishCorePassed && (bothEnding || positionDiff <= 0.22)
+        : hasShortSpan
         ? (result.vowelScore >= 94 || broadVowelMatches >= 1 || englishCorePassed) && positionDiff <= 0.26
         : result.passed.length > 0
-            || englishCorePassed
             || (
                 broadVowelMatches >= Math.min(2, left.width, right.width)
                 && result.vowelScore >= 50
