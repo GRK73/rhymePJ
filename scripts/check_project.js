@@ -21,6 +21,7 @@ function checkAppSyntax() {
         'public/js/koreanPronunciation.js',
         'public/js/semantic.js',
         'public/js/linkedRhyme.js',
+        'public/js/lyricsAnalysis.js',
         'public/js/render.js',
         'public/js/tts.js',
         'public/js/app.js',
@@ -80,6 +81,40 @@ function checkDictionary() {
         assert(Array.isArray(같이.phonemes) && 같이.phonemes.join('|') === 'k|a|tɕʰ|i', '같이 must store standard pronunciation phonemes');
         assert(같이.reading === '가치', '같이 must store standard reading 가치');
     }
+}
+
+function checkLyricsEnglishRimes() {
+    const context = {
+        console,
+        dictionary: readJson('public/data/model/rhyme_dict_practical.json'),
+        loanwordOverrides: {},
+        document: { getElementById: () => null, querySelectorAll: () => [] },
+        window: {}
+    };
+    context.globalThis = context;
+    vm.createContext(context);
+
+    [
+        'public/js/data.js',
+        'public/js/phonetics.js',
+        'public/js/koreanPronunciation.js',
+        'public/js/lyricsAnalysis.js',
+    ].forEach(relativePath => {
+        const source = fs.readFileSync(path.join(ROOT_DIR, relativePath), 'utf8');
+        vm.runInContext(source, context, { filename: relativePath });
+    });
+
+    const crownSignature = vm.runInContext('getRhymeSignature("crown")', context);
+    const clownSignature = vm.runInContext('getRhymeSignature("clown")', context);
+    const skillSignature = vm.runInContext('getRhymeSignature("skill")', context);
+    const killSignature = vm.runInContext('getRhymeSignature("kill")', context);
+    const mixedEnding = vm.runInContext('getLineEndingRhymeData("\\uC655\\uAD00 crown")', context);
+
+    assert(crownSignature === clownSignature, 'crown and clown must share an English rime signature');
+    assert(skillSignature === killSignature, 'skill and kill must share an English rime signature');
+    assert(String(crownSignature).startsWith('en:'), 'English rhyme signatures must use English rime cores');
+    assert(mixedEnding.text === 'crown', 'mixed Korean/English line endings must prefer the final English token');
+    assert(mixedEnding.signature === crownSignature, 'mixed Korean/English line ending must keep the English rime signature');
 }
 
 function checkLoanwordOverrides() {
@@ -191,6 +226,7 @@ function main() {
     checkAppSyntax();
     checkKoreanPronunciationRules();
     checkDictionary();
+    checkLyricsEnglishRimes();
     checkLoanwordOverrides();
     checkSemanticVectors();
     checkBigramIndexes();

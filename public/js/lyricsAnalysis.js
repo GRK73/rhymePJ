@@ -13,6 +13,10 @@ const LYRIC_SLIDING_RHYME_WEIGHTS = [
     { id: 'vowel', label: '모음 중심', vowel: 1, consonant: 0, threshold: 92 },
     { id: 'balanced', label: '모음 강조', vowel: 3, consonant: 1, threshold: 78 }
 ];
+const LYRIC_ENGLISH_VOWEL_PHONEMES = new Set([
+    'i', 'ɪ', 'u', 'ʊ', 'e', 'ɛ', 'æ', 'a', 'ɑ', 'ʌ', 'ə', 'ɚ', 'ɔ', 'o',
+    'aɪ', 'eɪ', 'ɔɪ', 'aʊ', 'oʊ'
+]);
 const LYRIC_STRUCTURAL_RHYME_LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const KOREAN_RHYME_VOWEL_CLASS = {
     0: 'a',
@@ -272,7 +276,35 @@ function getKoreanRhymeWindowTexts(value, targetSignature, width = 2) {
     return [...new Set(matches.filter(Boolean))];
 }
 
+function isLyricVowelPhoneme(phoneme) {
+    return LYRIC_ENGLISH_VOWEL_PHONEMES.has(phoneme)
+        || (typeof ipaFeatures !== 'undefined' && Boolean(ipaFeatures[phoneme]));
+}
+
+function getEnglishRhymeCore(phonemes) {
+    if (!Array.isArray(phonemes) || phonemes.length === 0) return [];
+    for (let index = phonemes.length - 1; index >= 0; index -= 1) {
+        if (isLyricVowelPhoneme(phonemes[index])) {
+            return phonemes.slice(index);
+        }
+    }
+    return phonemes.slice(-Math.min(2, phonemes.length));
+}
+
+function getEnglishRhymeSignatureFromPhonemes(phonemes) {
+    const core = getEnglishRhymeCore(phonemes);
+    return core.length ? `en:${core.join('|')}` : '';
+}
+
 function getLineEndingRhymeData(line) {
+    const endingWord = getLastLyricWord(line);
+    if (LYRIC_EN_RE.test(normalizeLyricToken(endingWord))) {
+        return {
+            signature: getRhymeSignature(endingWord),
+            text: endingWord
+        };
+    }
+
     const koreanTailText = getKoreanTailText(line, 2);
     const koreanSignature = getKoreanTailSignature(koreanTailText, 2);
     if (koreanSignature) {
@@ -281,7 +313,6 @@ function getLineEndingRhymeData(line) {
             text: koreanTailText
         };
     }
-    const endingWord = getLastLyricWord(line);
     return {
         signature: getRhymeSignature(endingWord),
         text: endingWord
@@ -320,8 +351,12 @@ function getRhymeSignature(word) {
     const koreanSignature = getKoreanSyllableRhymeSignature(word);
     if (koreanSignature) return koreanSignature;
 
+    const clean = normalizeLyricToken(word);
     const phonemes = getLyricWordPhonemes(word);
     if (phonemes.length > 0) {
+        if (LYRIC_EN_RE.test(clean)) {
+            return getEnglishRhymeSignatureFromPhonemes(phonemes) || phonemes.slice(-2).join(' ');
+        }
         return phonemes.slice(-2).join(' ');
     }
     return Array.from(word || '').slice(-2).join('');
@@ -659,13 +694,22 @@ function getStructuralPairResult(left, right, models = null) {
     const result = getBestSlidingRhymeSimilarity(left.phonemes, right.phonemes);
     const hasShortSpan = left.width <= 1 || right.width <= 1;
     const broadVowelMatches = getKoreanBroadVowelSimilarity(left.normalizedText, right.normalizedText);
+    const englishCoreMatch = left.lang === 'en' && right.lang === 'en'
+        ? getWeightedPhonemeSimilarity(
+            getEnglishRhymeCore(left.phonemes),
+            getEnglishRhymeCore(right.phonemes),
+            { vowel: 3, consonant: 1 }
+        )
+        : 0;
+    const englishCorePassed = englishCoreMatch >= 88;
     const modelScore = Math.max(
         getStructuralRuleScore(models, left.phonemes, left.lang),
         getStructuralRuleScore(models, right.phonemes, right.lang)
     );
     const passed = hasShortSpan
-        ? (result.vowelScore >= 94 || broadVowelMatches >= 1) && positionDiff <= 0.26
+        ? (result.vowelScore >= 94 || broadVowelMatches >= 1 || englishCorePassed) && positionDiff <= 0.26
         : result.passed.length > 0
+            || englishCorePassed
             || (
                 broadVowelMatches >= Math.min(2, left.width, right.width)
                 && result.vowelScore >= 50
@@ -679,8 +723,8 @@ function getStructuralPairResult(left, right, models = null) {
     if (!passed) return null;
 
     const score = hasShortSpan
-        ? Math.max(result.vowelScore, 70 + broadVowelMatches * 8, result.score * 0.75)
-        : Math.max(result.score, 68 + broadVowelMatches * 8, modelScore * 100);
+        ? Math.max(result.vowelScore, englishCoreMatch, 70 + broadVowelMatches * 8, result.score * 0.75)
+        : Math.max(result.score, englishCoreMatch, 68 + broadVowelMatches * 8, modelScore * 100);
     return {
         score,
         mode: hasShortSpan ? { id: 'short-vowel', label: '짧은 모음축' } : result.mode,
