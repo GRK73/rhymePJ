@@ -4,8 +4,8 @@ const vm = require('vm');
 
 const ROOT_DIR = path.join(__dirname, '..');
 const DEFAULT_FILES = [
-    path.join(ROOT_DIR, 'public', 'data', 'rhyme_dict.json'),
-    path.join(ROOT_DIR, 'public', 'data', 'rhyme_dict_practical.json'),
+    path.join(ROOT_DIR, 'public', 'data', 'model', 'rhyme_dict.json'),
+    path.join(ROOT_DIR, 'public', 'data', 'model', 'rhyme_dict_practical.json'),
 ];
 
 function loadPronunciationRuntime() {

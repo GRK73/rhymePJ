@@ -1,8 +1,13 @@
 const OPTIONAL_ASSET_VERSION = '20260518-corpus-boost';
-const DATA_DIR = 'data/';
+const DATA_DIR = 'data/model/';
+const CORPUS_DIR = 'data/corpus/';
 
 function dataPath(filename) {
     return `${DATA_DIR}${filename}`;
+}
+
+function corpusPath(filename) {
+    return `${CORPUS_DIR}${filename}`;
 }
 
 async function loadOptionalJson(path) {

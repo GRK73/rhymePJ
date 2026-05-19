@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_INPUT_DIR = ROOT_DIR / "자료"
-DEFAULT_OUTPUT_DIR = ROOT_DIR / "public" / "data"
+DEFAULT_OUTPUT_DIR = ROOT_DIR / "public" / "data" / "model"
 
 TOKEN_RE = re.compile(r"[\uAC00-\uD7A3]+|[A-Za-z][A-Za-z']*")
 KO_RE = re.compile(r"^[\uAC00-\uD7A3]+$")

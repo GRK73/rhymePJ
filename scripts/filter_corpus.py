@@ -15,7 +15,7 @@ except ImportError:
 # Path setup
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_DIR = os.path.join(SCRIPT_DIR, '..', 'public')
-DATA_DIR = os.path.join(PUBLIC_DIR, 'data')
+DATA_DIR = os.path.join(PUBLIC_DIR, 'data', 'model')
 INPUT_FILE = os.path.join(DATA_DIR, 'rhyme_dict.json')
 OUTPUT_FILE = os.path.join(DATA_DIR, 'rhyme_dict_practical.json')
 

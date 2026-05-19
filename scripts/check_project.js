@@ -69,7 +69,7 @@ function checkKoreanPronunciationRules() {
 }
 
 function checkDictionary() {
-    const dictionary = readJson('public/data/rhyme_dict_practical.json');
+    const dictionary = readJson('public/data/model/rhyme_dict_practical.json');
     assert(Array.isArray(dictionary), 'rhyme_dict_practical.json must be an array');
     assert(dictionary.length > 200000, 'practical dictionary looks unexpectedly small');
     assert(dictionary.some(item => item.word === 'rhyme' && item.lang === 'en'), 'missing English sample word: rhyme');
@@ -83,7 +83,7 @@ function checkDictionary() {
 }
 
 function checkLoanwordOverrides() {
-    const overrides = readJson('public/data/loanword_overrides.json');
+    const overrides = readJson('public/data/model/loanword_overrides.json');
     assert(overrides && typeof overrides === 'object' && !Array.isArray(overrides), 'loanword overrides must be an object');
     assert(Object.keys(overrides).length > 1000, 'loanword overrides look unexpectedly small');
     assert(Array.isArray(overrides.mobile) && overrides.mobile.includes('모바일'), 'missing mobile -> 모바일 override');
@@ -109,9 +109,9 @@ function checkSemanticVectorFile(relativePath) {
 
 function checkSemanticVectors() {
     [
-        'public/data/semantic_vectors_ko.json',
-        'public/data/semantic_vectors_en.json',
-        'public/data/semantic_vectors.json',
+        'public/data/model/semantic_vectors_ko.json',
+        'public/data/model/semantic_vectors_en.json',
+        'public/data/model/semantic_vectors.json',
     ].forEach(checkSemanticVectorFile);
 }
 
@@ -135,13 +135,13 @@ function checkBigramIndexFile(relativePath) {
 
 function checkBigramIndexes() {
     [
-        'public/data/bigram_next_ko.json',
-        'public/data/bigram_next_en.json',
+        'public/data/model/bigram_next_ko.json',
+        'public/data/model/bigram_next_en.json',
     ].forEach(checkBigramIndexFile);
 }
 
 function checkSurfaceBigramIndex() {
-    const relativePath = 'public/data/bigram_surface_ko.json';
+    const relativePath = 'public/data/model/bigram_surface_ko.json';
     const indexPath = path.join(ROOT_DIR, relativePath);
     if (!fs.existsSync(indexPath)) return;
 
@@ -167,7 +167,7 @@ function checkSurfaceBigramIndex() {
 }
 
 function checkCompoundPronunciations() {
-    const relativePath = 'public/data/compound_pronunciations_ko.json';
+    const relativePath = 'public/data/model/compound_pronunciations_ko.json';
     const indexPath = path.join(ROOT_DIR, relativePath);
     if (!fs.existsSync(indexPath)) return;
 

@@ -4,7 +4,7 @@ const axios = require('axios');
 const Hangul = require('hangul-js');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-const DATA_DIR = path.join(PUBLIC_DIR, 'data');
+const DATA_DIR = path.join(PUBLIC_DIR, 'data', 'model');
 const OUTPUT_FILE = path.join(DATA_DIR, 'rhyme_dict.json');
 
 // Vowel mapping from ARPAbet to IPA vowels

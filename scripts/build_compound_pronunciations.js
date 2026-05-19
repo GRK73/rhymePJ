@@ -4,8 +4,8 @@ const vm = require('vm');
 const { spawnSync } = require('child_process');
 
 const ROOT_DIR = path.join(__dirname, '..');
-const DEFAULT_DICT = path.join(ROOT_DIR, 'public', 'data', 'rhyme_dict_practical.json');
-const DEFAULT_OUTPUT = path.join(ROOT_DIR, 'public', 'data', 'compound_pronunciations_ko.json');
+const DEFAULT_DICT = path.join(ROOT_DIR, 'public', 'data', 'model', 'rhyme_dict_practical.json');
+const DEFAULT_OUTPUT = path.join(ROOT_DIR, 'public', 'data', 'model', 'compound_pronunciations_ko.json');
 const DEFAULT_MORPH_CACHE = path.join(ROOT_DIR, 'scripts', 'cache', 'morph_analysis_ko.json');
 
 const INITIALS = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];

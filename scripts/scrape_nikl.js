@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const apiKey = '0A311A879A22F337AC8873A3D165FAFD';
-const DATA_DIR = path.join(__dirname, '..', 'public', 'data');
+const DATA_DIR = path.join(__dirname, '..', 'public', 'data', 'model');
 const OUTPUT_FILE = path.join(DATA_DIR, 'nikl_words.json');
 const PROGRESS_FILE = path.join(__dirname, 'scrape_progress.json');
 

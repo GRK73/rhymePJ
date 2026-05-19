@@ -8,7 +8,7 @@ from collections import defaultdict
 
 
 ROOT_DIR = pathlib.Path(__file__).resolve().parents[1]
-OUTPUT_FILE = ROOT_DIR / "public" / "data" / "loanword_overrides.json"
+OUTPUT_FILE = ROOT_DIR / "public" / "data" / "model" / "loanword_overrides.json"
 XLSX_PATTERN = "*외래어 표기법*.xlsx"
 
 NS = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}

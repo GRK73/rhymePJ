@@ -7,7 +7,7 @@ import re
 
 
 ROOT_DIR = pathlib.Path(__file__).resolve().parents[1]
-DEFAULT_DATA_DIR = ROOT_DIR / "public" / "data"
+DEFAULT_DATA_DIR = ROOT_DIR / "public" / "data" / "model"
 DEFAULT_DICT = DEFAULT_DATA_DIR / "rhyme_dict_practical.json"
 DEFAULT_CORPUS = pathlib.Path.home() / "Korpora" / "kowikitext" / "kowikitext_20200920.train"
 DEFAULT_OUTPUT = DEFAULT_DATA_DIR / "bigram_surface_ko.json"

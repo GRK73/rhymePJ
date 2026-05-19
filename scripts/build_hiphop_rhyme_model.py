@@ -8,9 +8,9 @@ from build_hiphop_stats import trim_counter, write_json
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-DEFAULT_INPUT = ROOT_DIR / "public" / "data" / "hiphop_corpus.jsonl"
-DEFAULT_OUTPUT_DIR = ROOT_DIR / "public" / "data"
-DEFAULT_DICT = ROOT_DIR / "public" / "data" / "rhyme_dict_practical.json"
+DEFAULT_INPUT = ROOT_DIR / "public" / "data" / "corpus" / "hiphop_corpus.jsonl"
+DEFAULT_OUTPUT_DIR = ROOT_DIR / "public" / "data" / "model"
+DEFAULT_DICT = ROOT_DIR / "public" / "data" / "model" / "rhyme_dict_practical.json"
 
 TOKEN_RE = re.compile(r"[\uAC00-\uD7A3]+|[A-Za-z][A-Za-z']*")
 KO_RE = re.compile(r"^[\uAC00-\uD7A3]+$")

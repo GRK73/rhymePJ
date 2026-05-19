@@ -8,7 +8,7 @@ Rhyme Finder는 한국어와 영어 단어의 발음 기호(IPA)를 기반으로
 - **한/영 통합 검색**: "나비"를 검색하면 "nobby" 같은 영어 단어가 검색될 정도로 언어의 장벽을 넘나드는 발음 유사도 교차 검색을 제공합니다.
 - **초정밀 음소 매칭**: 단순히 모음만 비교하는 것이 아니라, 초성/중성/종성 및 모든 영어 자/모음을 IPA(국제 음성 기호)로 치환하여 비교합니다.
 - **한국식 영어 발음 모드**: 실제 영어 발음뿐 아니라 한국어 화자가 외래어처럼 읽는 발음도 함께 비교합니다. `모바일`을 검색하면 `mobile`의 외래어 표기 발음이 우선 반영되는 식입니다.
-- **외래어 용례 코퍼스 연동**: 국립국어원 외래어 표기 용례 엑셀에서 F열 `영어` 행을 추출해 `public/data/loanword_overrides.json`으로 관리합니다. 코퍼스에 없는 단어는 규칙 기반 한국식 발음 변환으로 보완합니다.
+- **외래어 용례 코퍼스 연동**: 국립국어원 외래어 표기 용례 엑셀에서 F열 `영어` 행을 추출해 `public/data/model/loanword_overrides.json`으로 관리합니다. 코퍼스에 없는 단어는 규칙 기반 한국식 발음 변환으로 보완합니다.
 - **주제 기반 점수 보정**: 선택적으로 word2vec 벡터 JSON을 로드해, 입력한 주제 단어와 의미적으로 먼 결과의 점수를 낮출 수 있습니다.
 - **실전 압축 사전**: 방대한 Google N-grams와 한국어 위키백과 말뭉치(Korpora)를 교차 검증하여, 현대에 한 번도 쓰이지 않는 죽은 단어나 오타를 100% 솎아낸 25만 개의 고품질 단어 사전을 사용합니다.
 - **음성 듣기 및 뜻 확인**: 웹 브라우저 내장 TTS 기능을 통해 즉시 발음을 들어볼 수 있으며, Google Translate 및 Wikipedia API를 통해 단어의 뜻을 실시간(Lazy-loading)으로 가져와 표시해 줍니다.
@@ -30,20 +30,20 @@ npm test
 앱 스크립트 문법, 핵심 사전 JSON, 외래어 override 파일을 빠르게 검증합니다.
 
 한국어 사전 엔트리는 `phonemes`에 표준 발음법 기반 IPA를 저장합니다. 표기 발음이나 복수 표준 발음 후보가 필요한 경우에는 `pronunciations`에 함께 보관합니다.
-합성어/파생어의 ㄴ 첨가, 사이시옷 계열 보정은 `public/data/compound_pronunciations_ko.json`에 별도로 저장합니다. 생성 시 `kiwipiepy`가 설치되어 있으면 `scripts/cache/morph_analysis_ko.json` 형태소 캐시를 만든 뒤 품사/형태소 경계를 활용하고, 캐시는 배포 파일에 포함하지 않습니다.
+합성어/파생어의 ㄴ 첨가, 사이시옷 계열 보정은 `public/data/model/compound_pronunciations_ko.json`에 별도로 저장합니다. 생성 시 `kiwipiepy`가 설치되어 있으면 `scripts/cache/morph_analysis_ko.json` 형태소 캐시를 만든 뒤 품사/형태소 경계를 활용하고, 캐시는 배포 파일에 포함하지 않습니다.
 
 ```bash
 npm run extract:loanwords
 ```
 
-프로젝트 루트의 `*외래어 표기법*.xlsx` 파일에서 영어 외래어 표기를 다시 추출해 `public/data/loanword_overrides.json`을 생성합니다. 원본 `.xlsx`는 큰 입력 자료라 git에서 무시하고, 생성된 JSON만 앱 산출물로 관리합니다.
+프로젝트 루트의 `*외래어 표기법*.xlsx` 파일에서 영어 외래어 표기를 다시 추출해 `public/data/model/loanword_overrides.json`을 생성합니다. 원본 `.xlsx`는 큰 입력 자료라 git에서 무시하고, 생성된 JSON만 앱 산출물로 관리합니다.
 
 ```bash
 npm run convert:word2vec -- path/to/english-model.txt --lang en
 npm run convert:word2vec -- path/to/korean-model.txt --lang ko
 ```
 
-텍스트 형식 word2vec 모델을 각각 `public/data/semantic_vectors_en.json`, `public/data/semantic_vectors_ko.json`으로 변환합니다. 브라우저 성능을 위해 기본값은 앱 사전과 외래어 override에 있는 단어만 남깁니다. 두 파일이 없으면 주제 입력칸은 표시되지만 의미 점수 보정은 적용되지 않습니다.
+텍스트 형식 word2vec 모델을 각각 `public/data/model/semantic_vectors_en.json`, `public/data/model/semantic_vectors_ko.json`으로 변환합니다. 브라우저 성능을 위해 기본값은 앱 사전과 외래어 override에 있는 단어만 남깁니다. 두 파일이 없으면 주제 입력칸은 표시되지만 의미 점수 보정은 적용되지 않습니다.
 
 바이너리 word2vec(`.bin`)이나 gensim `KeyedVectors`(`.kv`, `.model`) 파일은 `gensim` 설치 후 변환할 수 있습니다.
 
@@ -55,11 +55,11 @@ npm run convert:word2vec -- path/to/model.kv --lang ko --format gensim
 
 한국어 주제를 영어 후보와 비교할 때는 브라우저에서 입력된 주제어만 즉시 번역합니다. 번역 결과는 현재 페이지 세션의 메모리에만 잠깐 보관되고, 새로고침 후에는 다시 요청합니다.
 
-앱이 기대하는 벡터 포맷은 [semantic_vectors_ko.example.json](public/data/semantic_vectors_ko.example.json), [semantic_vectors_en.example.json](public/data/semantic_vectors_en.example.json)을 참고하면 됩니다.
+앱이 기대하는 벡터 포맷은 [semantic_vectors_ko.example.json](public/data/model/semantic_vectors_ko.example.json), [semantic_vectors_en.example.json](public/data/model/semantic_vectors_en.example.json)을 참고하면 됩니다.
 
 ### 프로젝트 구조
 
-정적 앱 진입점은 `public/index.html`, 런타임 스크립트는 `public/js/`, 이미지 같은 정적 자산은 `public/assets/`에 둡니다. 브라우저에서 로드하는 사전, semantic vector, bigram index 같은 JSON 자산은 모두 `public/data/` 아래에 모아 관리합니다. 데이터 생성/검증 도구는 `scripts/`에 있으며, 기본 출력 경로도 `public/data/`를 기준으로 동작합니다.
+정적 앱 진입점은 `public/index.html`, 런타임 스크립트는 `public/js/`, 이미지 같은 정적 자산은 `public/assets/`에 둡니다. 브라우저에서 로드하는 사전, semantic vector, bigram index 같은 JSON 모델 자산은 `public/data/model/`, 원본 코퍼스 자산은 `public/data/corpus/` 아래에 나눠 관리합니다. 데이터 생성/검증 도구는 `scripts/`에 있으며, 기본 출력 경로도 `public/data/model/`를 기준으로 동작합니다.
 
 ---
 

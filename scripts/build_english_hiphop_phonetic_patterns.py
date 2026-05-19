@@ -10,7 +10,7 @@ from build_translated_hiphop_semantics import DEFAULT_DATASET, clean_english_lin
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-DEFAULT_DICT = ROOT_DIR / "public" / "data" / "rhyme_dict_practical.json"
+DEFAULT_DICT = ROOT_DIR / "public" / "data" / "model" / "rhyme_dict_practical.json"
 
 WORD_RE = re.compile(r"[A-Za-z][A-Za-z']*")
 VOWEL_PHONEMES = {
