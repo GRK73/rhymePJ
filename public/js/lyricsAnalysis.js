@@ -53,6 +53,51 @@ const LYRIC_STOPWORDS = new Set([
     'im', "i'm", 'dont', "don't", 'ya', 'yeah', 'hey', 'oh', 'uh', 'ah', 'baby',
     'bout', 'something', 'one', 'more', 'just', 'little', 'go', 'way', 'up', 'now', 'no'
 ]);
+const LYRIC_EN_WEAK_ENDING_WORDS = new Set([
+    'i', 'im', "i'm", 'me', 'my', 'mine', 'you', 'u', 'ya', 'ye', 'yo', 'your',
+    'we', 'us', 'our', 'it', 'its', 'that', 'this', 'there', 'here',
+    'uh', 'um', 'umm', 'ah', 'oh', 'ooh', 'woo', 'woah', 'whoa', 'huh', 'ha',
+    'yeah', 'yea', 'yep', 'nah', 'no', 'ok', 'okay', 'ayy', 'ay', 'ey',
+    'skrrt', 'brr', 'rrr', 'la', 'na', 'da',
+    'verse', 'chorus', 'bridge', 'hook', 'intro', 'outro', 'prechorus', 'refrain'
+]);
+const LYRIC_KO_FUNCTION_SUFFIXES = [
+    '입니다', '습니다', '습니까', '합니다', '했다', '한다', '된다', '였다', '겠어', '겠지',
+    '잖아', '잖니', '니까', '는데', '더라', '구나', '구만', '구먼', '어요', '아요', '해요',
+    '으로', '에서', '에게', '부터', '까지', '처럼', '보다', '마저', '조차', '밖에',
+    '은', '는', '이', '가', '을', '를', '에', '의', '와', '과', '도', '만', '로', '랑',
+    '야', '아', '어', '여', '해', '지', '네', '니', '고', '게', '데', '요'
+].sort((a, b) => b.length - a.length);
+const LYRIC_KO_WEAK_ENDING_WORDS = new Set([
+    '은', '는', '이', '가', '을', '를', '에', '의', '와', '과', '도', '만', '로', '랑',
+    '야', '아', '어', '여', '해', '지', '네', '니', '고', '게', '데', '요', '다', '듯'
+]);
+const LYRIC_KO_EXTRA_FUNCTION_SUFFIXES = [
+    '입니다', '습니다', '습니까', '합니다', '한다', '했다', '였다', '된다', '된다면',
+    '어요', '아요', '해요', '네요', '게요', '세요', '돼요', '되요',
+    '나요', '가요', '하죠', '가죠', '지요', '죠',
+    '잖아', '찮아', '니까', '으니까', '구나', '구만', '더라',
+    '는데', '은데', '는게', '은게', '에게', '에서', '으로', '부터', '까지',
+    '라고', '다고', '라도', '가도', '해도', '하고', '되고', '지고', '이고',
+    '은', '는', '이', '가', '을', '를', '에', '의', '와', '과', '도', '만', '로', '서', '랑'
+].sort((a, b) => b.length - a.length);
+const LYRIC_KO_PRODUCTIVE_ENDING_RE = /(입니다|습니다|습니까|합니다|한다|했다|였다|어요|아요|해요|네요|게요|세요|돼요|되요|나요|가요|하죠|가죠|지요|죠|잖아|찮아|니까|으니까|구나|구만|더라|는데|은데|는게|은게|라고|다고|라도|가도|해도|하고|되고|지고|이고|에게|에서|으로|부터|까지)$/;
+const LYRIC_KO_PARTICLE_ENDING_RE = /(은|는|이|가|을|를|에|의|와|과|도|만|로|서|랑)$/;
+const LYRIC_DEVICE_LABELS = {
+    endRhyme: '각운',
+    internalRhyme: '내부 라임',
+    structuralRhyme: '구조 라임',
+    alliteration: '두운',
+    medialRhyme: '요운',
+    consonance: '자음운',
+    assonance: '모음운',
+    anaphora: '아나포라',
+    repetition: '반복어',
+    multisyllable: '다음절 라임',
+    homophone: '동음/펀치라인 후보',
+    slang: '신조어/은어 후보',
+    dialect: '방언 후보'
+};
 
 function updateLyricsProgress(progress, label) {
     const progressEl = document.getElementById('lyricsProgress');
@@ -103,6 +148,89 @@ function normalizeLyricsInputForAnalysis(text) {
 
 function isUsefulLyricToken(token) {
     return token && token.length >= 2 && !LYRIC_STOPWORDS.has(token);
+}
+
+function isWeakEnglishEndingToken(token) {
+    const clean = normalizeLyricToken(token).replace(/'/g, '');
+    if (!LYRIC_EN_RE.test(clean)) return false;
+    if (clean.length <= 1) return true;
+    if (LYRIC_EN_WEAK_ENDING_WORDS.has(clean)) return true;
+    if (/^(a+h+|u+h+|o+h+|y+e+a+h*|y+o+|h+a+|n+a+|l+a+|d+a+|r+a+)$/i.test(clean)) return true;
+    return false;
+}
+
+function getEnglishOrthographicRhymeKey(token) {
+    const clean = normalizeLyricToken(token).replace(/'/g, '');
+    if (!LYRIC_EN_RE.test(clean)) return '';
+    if (/(tion|sion|cion)$/i.test(clean)) return 'shun';
+    if (/(ough)$/i.test(clean)) return 'ough';
+    if (/(ile|yle)$/i.test(clean)) return 'ile';
+    if (/(ame|ane|ake|ate)$/i.test(clean)) return clean.slice(-3);
+    if (/(ight|ite|y|ie|uy)$/i.test(clean)) return 'ai';
+    if (/(ake|ai|ay|ei|ey)$/i.test(clean)) return 'ei';
+    if (/(ow|ou)$/i.test(clean)) return 'au';
+    if (/(oo|ue|ew)$/i.test(clean)) return 'u';
+    if (/(er|or|ar)$/i.test(clean)) return clean.slice(-2);
+    const base = clean.length > 3 && /[^aeiou]e$/i.test(clean) ? clean.slice(0, -1) : clean;
+    const tail = base.match(/[aeiouy][^aeiouy]*$/i)?.[0] || base.slice(-2);
+    return tail.length > 4 ? tail.slice(-4) : tail;
+}
+
+function getEnglishOrthographicTailAgreement(words) {
+    const keys = words
+        .map(getEnglishOrthographicRhymeKey)
+        .filter(Boolean);
+    if (keys.length < 2) return 0;
+    const counts = new Map();
+    keys.forEach(key => counts.set(key, (counts.get(key) || 0) + 1));
+    return Math.max(...counts.values()) / keys.length;
+}
+
+function areEnglishRhymeTextsCompatible(left, right) {
+    const leftClean = normalizeLyricToken(left).replace(/'/g, '');
+    const rightClean = normalizeLyricToken(right).replace(/'/g, '');
+    if (!LYRIC_EN_RE.test(leftClean) || !LYRIC_EN_RE.test(rightClean)) return true;
+    if (isWeakEnglishEndingToken(leftClean) || isWeakEnglishEndingToken(rightClean)) return false;
+    if (leftClean === rightClean) return false;
+    const leftKey = getEnglishOrthographicRhymeKey(leftClean);
+    const rightKey = getEnglishOrthographicRhymeKey(rightClean);
+    if (!leftKey || !rightKey) return false;
+    if (leftKey === rightKey) return true;
+    return leftClean.endsWith(rightKey) || rightClean.endsWith(leftKey);
+}
+
+function getEnglishPairwiseRhymeCompatibility(words) {
+    const unique = [...new Set(words.map(word => normalizeLyricToken(word)).filter(word => LYRIC_EN_RE.test(word)))];
+    if (unique.length < 2) return 0;
+    let pairs = 0;
+    let compatible = 0;
+    for (let leftIndex = 0; leftIndex < unique.length; leftIndex += 1) {
+        for (let rightIndex = leftIndex + 1; rightIndex < unique.length; rightIndex += 1) {
+            pairs += 1;
+            if (areEnglishRhymeTextsCompatible(unique[leftIndex], unique[rightIndex])) compatible += 1;
+        }
+    }
+    return pairs ? compatible / pairs : 0;
+}
+
+function isMeaningfulInternalRhymeWords(words) {
+    const unique = [...new Set(words.map(normalizeLyricToken).filter(Boolean))];
+    if (unique.length < 2) return false;
+    const langs = new Set(unique.map(word => LYRIC_KO_RE.test(word) ? 'ko' : LYRIC_EN_RE.test(word) ? 'en' : '').filter(Boolean));
+    if (langs.size !== 1) return false;
+    if (langs.has('en')) {
+        if (unique.some(isWeakEnglishEndingToken)) return false;
+        return getEnglishPairwiseRhymeCompatibility(unique) >= 0.34;
+    }
+    if (langs.has('ko')) {
+        const roots = unique.map(stripKoreanFunctionTail).filter(Boolean);
+        if (new Set(roots).size < 2) return false;
+        const weakRatio = unique.filter(isWeakKoreanEndingText).length / Math.max(1, unique.length);
+        if (weakRatio >= 0.5) return false;
+        const avgLength = average(unique.map(word => Array.from(word).length));
+        return avgLength >= 2;
+    }
+    return false;
 }
 
 function tokenizeLyrics(text, keepStopwords = false) {
@@ -184,6 +312,69 @@ function getKoreanRhymePart(char) {
     const vowelIndex = Math.floor((code % 588) / 28);
     const finalIndex = code % 28;
     return `${KOREAN_RHYME_VOWEL_CLASS[vowelIndex] || vowelIndex}:${finalIndex}`;
+}
+
+function getKoreanSyllableParts(char) {
+    const code = char.charCodeAt(0) - 0xAC00;
+    if (code < 0 || code > 11171) return null;
+    return {
+        initial: Math.floor(code / 588),
+        vowel: Math.floor((code % 588) / 28),
+        final: code % 28
+    };
+}
+
+function getKoreanSoundProfile(value) {
+    const chars = Array.from(String(value || '')).filter(char => LYRIC_HANGUL_RE.test(char));
+    const parts = chars.map(getKoreanSyllableParts).filter(Boolean);
+    return {
+        chars,
+        syllableCount: parts.length,
+        initials: parts.map(part => part.initial),
+        vowels: parts.map(part => part.vowel),
+        broadVowels: chars.map(getKoreanBroadVowelClass).filter(Boolean),
+        finals: parts.map(part => part.final)
+    };
+}
+
+function getKoreanPatternKey(values, width = 3) {
+    if (!Array.isArray(values) || values.length === 0) return '';
+    return values.slice(0, width).join('|');
+}
+
+function getKoreanTailPatternKey(values, width = 3) {
+    if (!Array.isArray(values) || values.length === 0) return '';
+    return values.slice(-Math.min(width, values.length)).join('|');
+}
+
+function stripKoreanFunctionTail(value) {
+    let clean = normalizeLyricToken(value);
+    if (!LYRIC_KO_RE.test(clean)) return clean;
+    const suffixes = [...LYRIC_KO_EXTRA_FUNCTION_SUFFIXES, ...LYRIC_KO_FUNCTION_SUFFIXES];
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (const suffix of suffixes) {
+            const minRemaining = LYRIC_KO_EXTRA_FUNCTION_SUFFIXES.includes(suffix) ? 0 : 1;
+            if (clean.length > suffix.length + minRemaining && clean.endsWith(suffix)) {
+                clean = clean.slice(0, -suffix.length);
+                changed = true;
+                break;
+            }
+        }
+    }
+    return clean;
+}
+
+function isWeakKoreanEndingText(value) {
+    const clean = normalizeLyricToken(value);
+    if (!LYRIC_KO_RE.test(clean)) return false;
+    if (LYRIC_KO_WEAK_ENDING_WORDS.has(clean)) return true;
+    if (clean.length <= 1) return true;
+    if (LYRIC_KO_PRODUCTIVE_ENDING_RE.test(clean)) return true;
+    if (clean.length <= 3 && LYRIC_KO_PARTICLE_ENDING_RE.test(clean)) return true;
+    const stripped = stripKoreanFunctionTail(clean);
+    return stripped.length <= 1 && clean.length <= 3;
 }
 
 function getKoreanBroadVowelClass(char) {
@@ -322,8 +513,9 @@ function getLineEndingRhymeData(line) {
 function isWeakKoreanSentenceEnding(word) {
     const clean = normalizeLyricToken(word);
     if (!LYRIC_KO_RE.test(clean)) return false;
-    if (clean.length <= 1) return false;
-    return /(다|요|니다|습니다|였다|었다|했다|한다)$/.test(clean);
+    if (clean.length <= 1) return true;
+    return isWeakKoreanEndingText(clean)
+        || /(입니다|습니다|합니다|했다|한다|된다|였다|이에요|예요|어요|아요|해요|잖아|니까|는데|더라|구나|구만)$/.test(clean);
 }
 
 function isWeakRepeatedWordRhymeGroup(group) {
@@ -360,6 +552,125 @@ function getRhymeSignature(word) {
         return phonemes.slice(-2).join(' ');
     }
     return Array.from(word || '').slice(-2).join('');
+}
+
+function getEndRhymeGroupQuality(group) {
+    const rows = Array.isArray(group?.rows) ? group.rows : [];
+    const texts = rows.map(row => normalizeLyricToken(row.endingRhymeText || row.endingWord)).filter(Boolean);
+    const words = rows.map(row => normalizeLyricToken(row.endingWord || row.endingRhymeText)).filter(Boolean);
+    const uniqueTexts = new Set(texts);
+    const uniqueWords = new Set(words);
+    const compactTexts = texts.map(text => text.replace(/\s+/g, ''));
+    const uniqueCompactTexts = new Set(compactTexts);
+    const langs = new Set(words.map(word => LYRIC_KO_RE.test(word) ? 'ko' : LYRIC_EN_RE.test(word) ? 'en' : '').filter(Boolean));
+    const isKorean = langs.has('ko') && !langs.has('en');
+    const isEnglish = langs.has('en') && !langs.has('ko');
+    const exactRepeat = words.length >= 2 && (uniqueWords.size === 1 || uniqueTexts.size === 1 || uniqueCompactTexts.size === 1);
+    let forceDeviceOnly = exactRepeat;
+    const modelScore = average(rows.map(row => Number(row.endingModelScore || 0))) * 100;
+    const baseScore = Number.isFinite(Number(group?.score))
+        ? Number(group.score)
+        : Math.max(45, modelScore);
+    let score = Math.max(baseScore, modelScore);
+    const devices = new Set(['endRhyme']);
+    let reason = '';
+
+    if (exactRepeat) {
+        devices.add('repetition');
+        score -= rows.length >= 4 ? 34 : 22;
+        reason = '같은 어휘 반복';
+    }
+
+    if (isKorean) {
+        const profiles = texts.map(text => getKoreanSoundProfile(text));
+        const avgSyllables = average(profiles.map(profile => profile.syllableCount));
+        const roots = words.map(stripKoreanFunctionTail).filter(Boolean);
+        const rootDiversity = new Set(roots).size;
+        const avgRootLength = average(roots.map(root => Array.from(root).length));
+        const textRoots = texts.map(stripKoreanFunctionTail).filter(Boolean);
+        const textRootDiversity = new Set(textRoots).size;
+        const avgTextRootLength = average(textRoots.map(root => Array.from(root).length));
+        const weakEndingRatio = texts.filter(isWeakKoreanEndingText).length / Math.max(1, texts.length);
+        const vowelKeys = profiles.map(profile => getKoreanTailPatternKey(profile.broadVowels, 3)).filter(Boolean);
+        const consonantKeys = profiles.map(profile => getKoreanTailPatternKey(profile.initials, 3)).filter(Boolean);
+        const hasSharedVowelTail = new Set(vowelKeys).size === 1 && vowelKeys.length >= 2;
+        const hasSharedConsonantTail = new Set(consonantKeys).size === 1 && consonantKeys.length >= 2;
+
+        if (avgSyllables >= 3) {
+            devices.add('multisyllable');
+            score += 12;
+        } else if (avgSyllables >= 2) {
+            score += 6;
+        } else {
+            score -= 24;
+        }
+        if (hasSharedVowelTail) devices.add('assonance');
+        if (hasSharedConsonantTail) devices.add('consonance');
+        if (weakEndingRatio >= 0.75) score -= 42;
+        else if (weakEndingRatio >= 0.5) score -= 30;
+        if (rootDiversity <= 1 && rows.length >= 3) score -= 28;
+        if (weakEndingRatio >= 0.5 && (
+            (rootDiversity <= 2 && avgRootLength <= 1.25)
+            || (textRootDiversity <= 2 && avgTextRootLength <= 1.25)
+        )) {
+            score -= 18;
+            forceDeviceOnly = true;
+        }
+        if (uniqueTexts.size === 1 || uniqueCompactTexts.size === 1) forceDeviceOnly = true;
+        if (rootDiversity >= 2 && !exactRepeat) score += 8;
+        if (!reason && weakEndingRatio >= 0.5) reason = '조사/어미 유사 비중 높음';
+    } else if (isEnglish) {
+        const weakTokenRatio = words.filter(isWeakEnglishEndingToken).length / Math.max(1, words.length);
+        const tailAgreement = getEnglishOrthographicTailAgreement([...uniqueWords]);
+        const pairwiseCompatibility = getEnglishPairwiseRhymeCompatibility([...uniqueWords]);
+        if (exactRepeat) score -= 34;
+        if (weakTokenRatio >= 0.4) score -= 44;
+        if (pairwiseCompatibility < 0.34) score -= 28;
+        if (uniqueWords.size >= 2 && tailAgreement >= 0.5 && pairwiseCompatibility >= 0.34) score += 8;
+        if (uniqueWords.size < 2 || tailAgreement < 0.5 || pairwiseCompatibility < 0.34 || weakTokenRatio >= 0.4) forceDeviceOnly = true;
+        const avgCoreSize = average(rows.map(row => getEnglishRhymeCore(row.endingPhonemes || []).length));
+        if (avgCoreSize >= 3) {
+            devices.add('multisyllable');
+            score += 8;
+        }
+        if (!reason && forceDeviceOnly) reason = '영어 끝소리 근거 부족 또는 adlib/반복';
+    }
+
+    score = Math.max(0, Math.min(100, score));
+    const strength = score >= 78 && !forceDeviceOnly
+        ? 'strong'
+        : score >= 60 && !forceDeviceOnly
+            ? 'medium'
+            : score >= 42
+                ? 'weak'
+                : 'device-only';
+    return {
+        score,
+        strength,
+        devices: [...devices],
+        reason,
+        exactRepeat,
+        forceDeviceOnly,
+        isCountableEndRhyme: strength === 'strong' || strength === 'medium'
+    };
+}
+
+function refineEndRhymeGroups(groups) {
+    return (groups || []).map(group => {
+        const quality = getEndRhymeGroupQuality(group);
+        const confidenceScore = quality.score;
+        const confidence = confidenceScore >= 82 ? 'strong' : confidenceScore >= 62 ? 'medium' : 'weak';
+        return {
+            ...group,
+            endRhymeQualityScore: quality.score,
+            rhymeStrength: quality.strength,
+            isCountableEndRhyme: quality.isCountableEndRhyme,
+            literaryDeviceTypes: [...new Set([...(group.literaryDeviceTypes || []), ...quality.devices])],
+            confidence,
+            confidenceScore,
+            reason: [group.reason, quality.reason].filter(Boolean).join(' · ')
+        };
+    });
 }
 
 function getPhonemeSignature(phonemes, width = 2) {
@@ -661,6 +972,7 @@ function getLineRhymeSpanCandidates(row, minWidth = 1, maxWidth = 5) {
             const phonemes = slice.flatMap(item => item.phonemes);
             const langs = new Set(slice.map(item => item.lang).filter(Boolean));
             if (langs.size > 1) continue;
+            if (langs.has('en') && slice.some(item => isWeakEnglishEndingToken(item.token))) continue;
             if (langs.size === 1 && langs.has('ko')) continue;
             const hangulCount = Array.from(normalizedText).filter(char => LYRIC_HANGUL_RE.test(char)).length;
             const unitWidth = Math.min(5, Math.max(1, hangulCount || width));
@@ -697,6 +1009,9 @@ function getStructuralPairResult(left, right, models = null) {
     const positionDiff = Math.abs(left.centerRatio - right.centerRatio);
     const bothEnding = left.isEnding && right.isEnding;
     if (!bothEnding && positionDiff > 0.34) return null;
+    if (left.lang === 'en' && right.lang === 'en' && !areEnglishRhymeTextsCompatible(left.normalizedText || left.text, right.normalizedText || right.text)) {
+        return null;
+    }
 
     const result = getBestSlidingRhymeSimilarity(left.phonemes, right.phonemes);
     const hasShortSpan = left.width <= 1 || right.width <= 1;
@@ -993,15 +1308,18 @@ function buildStructuralRhymeGroups(lineAnalyses, models = null) {
             const rightCenter = average(b.rows.map(row => row.centerRatio));
             return leftCenter - rightCenter;
         })
-        .slice(0, 12)
+        .slice(0, 50)
         .map((group, index) => ({
             ...group,
             label: LYRIC_STRUCTURAL_RHYME_LABELS[index] || `G${index + 1}`,
             groupIndex: index
         }));
+    const classifiedGroups = typeof enrichLyricsRhymeGroups === 'function'
+        ? enrichLyricsRhymeGroups(groups, 'structural')
+        : groups;
 
     const spansByLineId = new Map();
-    groups.forEach(group => {
+    classifiedGroups.forEach(group => {
         group.rows.forEach(row => {
             const list = spansByLineId.get(row.lineId) || [];
             list.push({
@@ -1012,6 +1330,9 @@ function buildStructuralRhymeGroups(lineAnalyses, models = null) {
                 groupIndex: group.groupIndex,
                 score: group.score,
                 mode: group.mode,
+                rhymeType: group.rhymeType,
+                confidence: group.confidence,
+                reason: group.reason,
                 isEnding: row.isEnding
             });
             spansByLineId.set(row.lineId, list);
@@ -1053,7 +1374,7 @@ function buildStructuralRhymeGroups(lineAnalyses, models = null) {
         }
     }
 
-    return { groups, patterns: patterns.slice(0, 8), spansByLineId };
+    return { groups: classifiedGroups, patterns: patterns.slice(0, 8), spansByLineId };
 }
 
 function buildVocabMap(data) {
@@ -1406,6 +1727,343 @@ function getTopicTermStrength(row) {
     return Math.max(0, Math.min(1, row.score / row.count));
 }
 
+function makeLiteraryDevice(type, rows, options = {}) {
+    const lineNumbers = [...new Set((rows || [])
+        .map(row => Number.isFinite(row.index) ? row.index + 1 : Number.isFinite(row.lineIndex) ? row.lineIndex + 1 : null)
+        .filter(Boolean))];
+    const terms = [...new Set((options.terms || rows?.map(row => row.endingRhymeText || row.endingWord || row.text || row.line) || [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean))].slice(0, 10);
+    const count = Number(options.count || lineNumbers.length || rows?.length || terms.length || 0);
+    const score = Math.max(0, Math.min(100, Number(options.score || count * 12)));
+    return {
+        type,
+        label: options.label || LYRIC_DEVICE_LABELS[type] || type,
+        confidence: options.confidence || (score >= 82 ? 'strong' : score >= 58 ? 'medium' : 'weak'),
+        score,
+        count,
+        lines: lineNumbers.slice(0, 12),
+        terms,
+        description: options.description || ''
+    };
+}
+
+function addDeviceCandidate(devices, candidate) {
+    if (!candidate || !candidate.type) return;
+    const key = `${candidate.type}:${candidate.terms.join('|')}:${candidate.lines.join(',')}`;
+    if (devices.some(device => `${device.type}:${device.terms.join('|')}:${device.lines.join(',')}` === key)) return;
+    devices.push(candidate);
+}
+
+function buildRepeatedPatternDevices(lineAnalyses) {
+    const devices = [];
+    const firstWordGroups = new Map();
+    const firstInitialGroups = new Map();
+    const middleVowelGroups = new Map();
+    const endingVowelGroups = new Map();
+    const endingConsonantGroups = new Map();
+
+    lineAnalyses.forEach(row => {
+        const tokens = row.tokensWithStops?.length ? row.tokensWithStops : tokenizeLyrics(row.line, true);
+        const usefulTokens = tokens.filter(token => !LYRIC_STOPWORDS.has(token));
+        const first = usefulTokens[0] || tokens[0] || '';
+        if (first) {
+            const firstKey = normalizeLyricToken(first);
+            if (firstKey) {
+                const list = firstWordGroups.get(firstKey) || [];
+                list.push(row);
+                firstWordGroups.set(firstKey, list);
+            }
+            if (LYRIC_KO_RE.test(first)) {
+                const profile = getKoreanSoundProfile(first);
+                const key = getKoreanPatternKey(profile.initials, 1);
+                if (key) {
+                    const list = firstInitialGroups.get(key) || [];
+                    list.push({ ...row, deviceTerm: first });
+                    firstInitialGroups.set(key, list);
+                }
+            }
+        }
+
+        const lineProfile = getKoreanSoundProfile(row.line);
+        if (lineProfile.syllableCount >= 4) {
+            const middleStart = Math.max(0, Math.floor(lineProfile.syllableCount / 2) - 1);
+            const middleKey = lineProfile.broadVowels.slice(middleStart, middleStart + 2).join('|');
+            if (middleKey) {
+                const list = middleVowelGroups.get(middleKey) || [];
+                list.push(row);
+                middleVowelGroups.set(middleKey, list);
+            }
+        }
+
+        const endingText = row.endingRhymeText || row.endingWord || '';
+        const endingProfile = getKoreanSoundProfile(endingText);
+        const vowelKey = getKoreanTailPatternKey(endingProfile.broadVowels, 3);
+        const consonantKey = getKoreanTailPatternKey(endingProfile.initials, 3);
+        if (vowelKey) {
+            const list = endingVowelGroups.get(vowelKey) || [];
+            list.push(row);
+            endingVowelGroups.set(vowelKey, list);
+        }
+        if (consonantKey) {
+            const list = endingConsonantGroups.get(consonantKey) || [];
+            list.push(row);
+            endingConsonantGroups.set(consonantKey, list);
+        }
+    });
+
+    firstWordGroups.forEach((rows, term) => {
+        if (rows.length >= 3) {
+            addDeviceCandidate(devices, makeLiteraryDevice('anaphora', rows, {
+                terms: [term],
+                score: Math.min(100, 45 + rows.length * 9),
+                description: `여러 행이 "${term}"로 시작합니다.`
+            }));
+        }
+    });
+    firstInitialGroups.forEach(rows => {
+        const distinctTerms = [...new Set(rows.map(row => row.deviceTerm).filter(Boolean))];
+        if (rows.length >= 4 && distinctTerms.length >= 3) {
+            addDeviceCandidate(devices, makeLiteraryDevice('alliteration', rows, {
+                terms: distinctTerms,
+                score: Math.min(100, 42 + rows.length * 7),
+                description: '행 첫머리의 초성 반복이 두드러집니다.'
+            }));
+        }
+    });
+    middleVowelGroups.forEach(rows => {
+        if (rows.length >= 4) {
+            addDeviceCandidate(devices, makeLiteraryDevice('medialRhyme', rows, {
+                score: Math.min(100, 36 + rows.length * 6),
+                description: '행 중간부의 모음 배열이 반복됩니다.'
+            }));
+        }
+    });
+    endingVowelGroups.forEach(rows => {
+        const terms = [...new Set(rows.map(row => row.endingRhymeText || row.endingWord).filter(Boolean))];
+        if (rows.length >= 3 && terms.length >= 2) {
+            addDeviceCandidate(devices, makeLiteraryDevice('assonance', rows, {
+                terms,
+                score: Math.min(100, 40 + rows.length * 7),
+                description: '행 끝의 모음 배열이 유사합니다.'
+            }));
+        }
+    });
+    endingConsonantGroups.forEach(rows => {
+        const terms = [...new Set(rows.map(row => row.endingRhymeText || row.endingWord).filter(Boolean))];
+        if (rows.length >= 3 && terms.length >= 2) {
+            addDeviceCandidate(devices, makeLiteraryDevice('consonance', rows, {
+                terms,
+                score: Math.min(100, 38 + rows.length * 6),
+                description: '행 끝의 자음 골격이 유사합니다.'
+            }));
+        }
+    });
+
+    return devices;
+}
+
+function buildSlangAndDialectDevices(allTokens, models) {
+    const counts = new Map();
+    allTokens.forEach(token => {
+        counts.set(token, (counts.get(token) || 0) + 1);
+    });
+    const unknown = [...counts.entries()].filter(([token]) => {
+        if (!isUsefulLyricToken(token)) return false;
+        if (LYRIC_EN_RE.test(token) && token.length <= 2) return false;
+        const vocabScore = Math.max(
+            models.vocab.hiphop.get(token) || 0,
+            models.vocab.translated.get(token) || 0,
+            models.vocab.spoken.get(token) || 0
+        );
+        const unusual = /[ㅋㅎ]{2,}|[ㄱ-ㅎㅏ-ㅣ]|[a-z]+[가-힣]+|[가-힣]+[a-z]+/i.test(token);
+        return vocabScore <= 0.01 && (unusual || counts.get(token) >= 2 || token.length >= 4);
+    }).sort((a, b) => b[1] - a[1]).slice(0, 12);
+    const devices = [];
+    if (unknown.length) {
+        devices.push(makeLiteraryDevice('slang', [], {
+            terms: unknown.map(row => row[0]),
+            count: unknown.length,
+            score: Math.min(100, 45 + unknown.length * 4),
+            description: '모델 어휘권에서 약하게 잡히는 비표준/은어 후보입니다.'
+        }));
+    }
+
+    const dialectTerms = [...counts.keys()].filter(token => /(노|나|다이가|아이가|랑께|잉|유|슈|겨|것이냐|했슈|했시유)$/.test(token)).slice(0, 10);
+    if (dialectTerms.length) {
+        devices.push(makeLiteraryDevice('dialect', [], {
+            terms: dialectTerms,
+            count: dialectTerms.length,
+            score: Math.min(100, 48 + dialectTerms.length * 6),
+            description: '지역 방언 또는 방언화된 어미 후보입니다.'
+        }));
+    }
+    return devices;
+}
+
+function buildLyricsLiteraryDevices({
+    lineAnalyses,
+    endRhymeGroups,
+    slidingRhymeGroups,
+    structuralRhymeGroups,
+    allTokens,
+    repeatedWords,
+    models
+}) {
+    const devices = [];
+    endRhymeGroups.forEach(group => {
+        const type = group.isCountableEndRhyme ? 'endRhyme' : 'repetition';
+        addDeviceCandidate(devices, makeLiteraryDevice(type, group.rows, {
+            terms: [...new Set(group.rows.map(row => row.endingRhymeText || row.endingWord).filter(Boolean))],
+            score: group.endRhymeQualityScore || group.confidenceScore || 0,
+            confidence: group.confidence,
+            description: group.reason || (group.isCountableEndRhyme ? '행 끝 소리의 반복입니다.' : '라임보다 반복 장치에 가깝습니다.')
+        }));
+    });
+    slidingRhymeGroups.slice(0, 10).forEach(group => {
+        addDeviceCandidate(devices, makeLiteraryDevice('internalRhyme', group.rows, {
+            terms: [...new Set(group.rows.map(row => row.text).filter(Boolean))],
+            score: group.score || group.confidenceScore || 0,
+            confidence: group.confidence,
+            description: group.reason || '행 내부 또는 인접 행의 음운 반복입니다.'
+        }));
+    });
+    structuralRhymeGroups.slice(0, 12).forEach(group => {
+        const endingRatio = group.quality?.endingRatio || 0;
+        addDeviceCandidate(devices, makeLiteraryDevice(endingRatio >= 0.6 ? 'endRhyme' : 'structuralRhyme', group.rows, {
+            terms: [...new Set(group.rows.map(row => row.text).filter(Boolean))],
+            score: group.score || group.confidenceScore || 0,
+            confidence: group.confidence,
+            description: group.reason || '비슷한 위치에서 반복되는 구조적 음운 장치입니다.'
+        }));
+    });
+    repeatedWords.slice(0, 8).forEach(([term, count]) => {
+        if (count >= 3) {
+            addDeviceCandidate(devices, makeLiteraryDevice('repetition', [], {
+                terms: [term],
+                count,
+                score: Math.min(100, 40 + count * 6),
+                description: `"${term}" 반복이 두드러집니다.`
+            }));
+        }
+    });
+    buildRepeatedPatternDevices(lineAnalyses).forEach(device => addDeviceCandidate(devices, device));
+    buildSlangAndDialectDevices(allTokens, models).forEach(device => addDeviceCandidate(devices, device));
+
+    return devices
+        .sort((a, b) => b.score - a.score || b.count - a.count)
+        .slice(0, 32);
+}
+
+function getLineSyllableEstimate(row) {
+    const hangulCount = getLyricsMetricHangulCount(row.line);
+    if (hangulCount > 0) return hangulCount;
+    const phonemeVowels = getLyricsMetricVowelCount(row.linePhonemes || []);
+    return phonemeVowels || row.wordCount || 0;
+}
+
+function getStandardDeviation(values) {
+    const finite = values.filter(value => Number.isFinite(value));
+    if (!finite.length) return 0;
+    const avg = average(finite);
+    return Math.sqrt(average(finite.map(value => (value - avg) ** 2)));
+}
+
+function getLinearSlope(values) {
+    const finite = values.filter(value => Number.isFinite(value));
+    if (finite.length < 2) return 0;
+    const xAvg = (finite.length - 1) / 2;
+    const yAvg = average(finite);
+    const numerator = finite.reduce((sum, value, index) => sum + (index - xAvg) * (value - yAvg), 0);
+    const denominator = finite.reduce((sum, value, index) => sum + (index - xAvg) ** 2, 0);
+    return denominator ? numerator / denominator : 0;
+}
+
+function buildLyricsFlowMetrics(lineAnalyses, strictRhymeLineIds, broadRhymeLineIds) {
+    const syllables = lineAnalyses.map(getLineSyllableEstimate);
+    const words = lineAnalyses.map(row => row.wordCount || 0);
+    const avgSyllables = average(syllables);
+    const syllableStd = getStandardDeviation(syllables);
+    const syllableCv = avgSyllables ? syllableStd / avgSyllables : 0;
+    const avgWords = average(words);
+    const wordStd = getStandardDeviation(words);
+    const longLineThreshold = avgSyllables + syllableStd * 1.4;
+    const shortLineThreshold = Math.max(1, avgSyllables - syllableStd * 1.4);
+    const longLines = lineAnalyses.filter((row, index) => syllables[index] > longLineThreshold && syllables[index] >= avgSyllables + 4);
+    const shortLines = lineAnalyses.filter((row, index) => syllables[index] < shortLineThreshold && syllables[index] <= Math.max(3, avgSyllables - 3));
+    const strictIndexes = lineAnalyses
+        .map((row, index) => strictRhymeLineIds.has(`${row.section.id}:${row.index}`) ? index : -1)
+        .filter(index => index >= 0);
+    const broadIndexes = lineAnalyses
+        .map((row, index) => broadRhymeLineIds.has(`${row.section.id}:${row.index}`) ? index : -1)
+        .filter(index => index >= 0);
+    const intervals = strictIndexes.slice(1).map((index, offset) => index - strictIndexes[offset]);
+    const intervalAvg = average(intervals);
+    const intervalStd = getStandardDeviation(intervals);
+    const intervalStability = intervals.length ? Math.max(0, Math.min(1, 1 - intervalStd / Math.max(1, intervalAvg + 1))) : 0;
+    const breathStability = Math.max(0, Math.min(1,
+        1 - Math.min(0.65, syllableCv) * 0.95 - longLines.length / Math.max(1, lineAnalyses.length) * 0.28
+    ));
+    const firstHalfAvg = average(syllables.slice(0, Math.max(1, Math.floor(syllables.length / 2))));
+    const secondHalfAvg = average(syllables.slice(Math.floor(syllables.length / 2)));
+    const tensionSlope = getLinearSlope(syllables.map((value, index) => (
+        value + (broadIndexes.includes(index) ? 2 : 0)
+    )));
+    const tensionLabel = tensionSlope > 0.09 || secondHalfAvg > firstHalfAvg + 1.8
+        ? '상승'
+        : tensionSlope < -0.09 || secondHalfAvg < firstHalfAvg - 1.8
+            ? '완화'
+            : '안정';
+
+    return {
+        avgSyllables,
+        syllableStd,
+        syllableCv,
+        avgWords,
+        wordStd,
+        breathStability,
+        rhymeIntervalAvg: intervalAvg,
+        rhymeIntervalStd: intervalStd,
+        rhymeIntervalStability: intervalStability,
+        longLineCount: longLines.length,
+        shortLineCount: shortLines.length,
+        longLines: longLines.slice(0, 6).map(row => ({ line: row.index + 1, text: row.line, syllables: getLineSyllableEstimate(row) })),
+        shortLines: shortLines.slice(0, 6).map(row => ({ line: row.index + 1, text: row.line, syllables: getLineSyllableEstimate(row) })),
+        tensionSlope,
+        tensionLabel
+    };
+}
+
+function buildSectionRoleAssessment(sectionReport) {
+    const role = sectionReport.template?.role || 'verse';
+    let score = 0.5;
+    const notes = [];
+    if (role === 'hook') {
+        score = sectionReport.repeatRate * 0.42
+            + sectionReport.patternRegularity * 0.34
+            + Math.min(1, sectionReport.rhymeDensity * 1.2) * 0.24;
+        if (sectionReport.repeatRate < 0.12) notes.push('Hook치고 반복 중심성이 약합니다.');
+        if (sectionReport.patternRegularity < 0.35) notes.push('Hook 패턴 안정도가 낮습니다.');
+    } else if (role === 'transition') {
+        score = (1 - Math.min(1, sectionReport.repeatRate * 2)) * 0.35
+            + Math.min(1, sectionReport.avgSyllables / 14) * 0.25
+            + Math.min(1, sectionReport.naturalness * 1.6) * 0.40;
+        if (sectionReport.repeatRate > 0.25) notes.push('전환부치고 반복이 강합니다.');
+    } else {
+        score = Math.min(1, sectionReport.internalDensity * 2.2) * 0.30
+            + Math.min(1, sectionReport.rhymeDensity * 1.4) * 0.30
+            + Math.min(1, (1 - sectionReport.repeatRate) * 1.2) * 0.20
+            + Math.min(1, sectionReport.avgWords / 9) * 0.20;
+        if (sectionReport.repeatRate > 0.28) notes.push('Verse치고 같은 어휘 반복이 강합니다.');
+        if (sectionReport.internalDensity < 0.08 && sectionReport.lineCount >= 8) notes.push('Verse 내부 라임 밀도가 낮습니다.');
+    }
+    return {
+        role,
+        score: Math.max(0, Math.min(1, score)),
+        notes
+    };
+}
+
 function percent(value) {
     return `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
 }
@@ -1501,7 +2159,7 @@ function buildLyricsFeedback({
         type: section.type,
         verdict: getSectionFeedbackVerdict(section),
         suggestion: getSectionFeedbackSuggestion(section),
-        stats: `끝 라임 ${percent(section.rhymeDensity)} · 내부 라임 ${percent(section.internalDensity)} · 평균 ${section.avgWords.toFixed(1)}단어`
+        stats: `패턴 ${section.rhymePattern || '-'} · 반복 ${percent(section.repeatRate || 0)} · 끝 라임 ${percent(section.rhymeDensity)} · 내부 라임 ${percent(section.internalDensity)} · 평균 ${section.avgWords.toFixed(1)}단어`
     }));
 
     const lineCandidates = [
@@ -1593,7 +2251,7 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
         });
         const internalRhymes = Array.from(internalGroups.values())
             .map(words => [...new Set(words)])
-            .filter(words => words.length >= 2);
+            .filter(isMeaningfulInternalRhymeWords);
         const internalModelScore = average(Array.from(internalPhonemeGroups.entries())
             .filter(([, words]) => new Set(words).size >= 2)
             .map(([signature]) => getInternalPhonemeModelScore(models, signature)));
@@ -1623,23 +2281,41 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
         if (!rhymeGroups.has(line.rhymeSignature)) rhymeGroups.set(line.rhymeSignature, []);
         rhymeGroups.get(line.rhymeSignature).push(line);
     });
-    const repeatedRhymeGroups = Array.from(rhymeGroups.entries())
+    const repeatedRhymeGroupRows = Array.from(rhymeGroups.entries())
         .map(([signature, rows]) => ({ signature, rows }))
         .filter(group => group.rows.length >= 2)
         .filter(group => !isWeakSentenceEndingRhymeGroup(group))
         .sort((a, b) => b.rows.length - a.rows.length)
-        .slice(0, 12);
-    const slidingRhymeGroups = buildSlidingRhymeGroups(lineAnalyses);
+        .slice(0, 50);
+    const baseRepeatedRhymeGroups = typeof enrichLyricsRhymeGroups === 'function'
+        ? enrichLyricsRhymeGroups(repeatedRhymeGroupRows, 'end')
+        : repeatedRhymeGroupRows;
+    const repeatedRhymeGroups = refineEndRhymeGroups(baseRepeatedRhymeGroups);
+    const slidingRhymeGroups = typeof enrichLyricsRhymeGroups === 'function'
+        ? enrichLyricsRhymeGroups(buildSlidingRhymeGroups(lineAnalyses), 'sliding')
+        : buildSlidingRhymeGroups(lineAnalyses);
     const structuralRhymeResult = buildStructuralRhymeGroups(lineAnalyses, models);
     const structuralRhymeGroups = structuralRhymeResult.groups;
     const structuralRhymePatterns = structuralRhymeResult.patterns;
     const structuralSpansByLineId = structuralRhymeResult.spansByLineId;
+    const visibleRepeatedRhymeGroups = repeatedRhymeGroups.filter(group => group.confidence !== 'weak');
+    const countableEndRhymeGroups = repeatedRhymeGroups.filter(group => group.isCountableEndRhyme);
+    const visibleStructuralRhymeGroups = structuralRhymeGroups.filter(group => group.confidence !== 'weak');
+    const countableStructuralRhymeGroups = visibleStructuralRhymeGroups.filter(group => (
+        group.confidence === 'strong'
+        && group.source === 'parallel'
+        && group.quality?.avgWidth >= 2.5
+        && group.score >= 96
+    ));
+    const strictEndRhymeLineIds = new Set(countableEndRhymeGroups.flatMap(group => (
+        group.rows.map(row => `${row.section.id}:${row.index}`)
+    )));
     const rhymedLineIds = new Set([
-        ...repeatedRhymeGroups.flatMap(group => group.rows.map(row => `${row.section.id}:${row.index}`)),
-        ...structuralRhymeGroups.flatMap(group => group.rows.map(row => row.lineId))
+        ...strictEndRhymeLineIds,
+        ...countableStructuralRhymeGroups.flatMap(group => group.rows.map(row => row.lineId))
     ]);
     const rhymeGroupIndexByLineId = new Map();
-    repeatedRhymeGroups.forEach((group, groupIndex) => {
+    visibleRepeatedRhymeGroups.forEach((group, groupIndex) => {
         group.rows.forEach(row => {
             rhymeGroupIndexByLineId.set(`${row.section.id}:${row.index}`, groupIndex);
         });
@@ -1663,7 +2339,11 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
     const allPhonemes = lineAnalyses.flatMap(row => row.linePhonemes);
     const hiphopWordScores = allTokens.map(token => Math.max(models.vocab.hiphop.get(token) || 0, models.vocab.translated.get(token) || 0));
     const spokenWordScores = allTokens.map(token => models.vocab.spoken.get(token) || 0);
+    const endRhymeDensityScore = allLines.length ? strictEndRhymeLineIds.size / allLines.length : 0;
     const rhymeDensityScore = allLines.length ? rhymedLineIds.size / allLines.length : 0;
+    const structuralRhymeDensityScore = allLines.length
+        ? new Set(countableStructuralRhymeGroups.flatMap(group => group.rows.map(row => row.lineId))).size / allLines.length
+        : 0;
     const internalDensityScore = allLines.length ? lineAnalyses.filter(row => row.internalRhymes.length > 0).length / allLines.length : 0;
     const phonemeFlowScore = getPhonemeFlowScore(models, allPhonemes);
     const phonemeRhymeModelScore = average(lineAnalyses.map(row => row.endingModelScore));
@@ -1715,13 +2395,18 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
         .sort((a, b) => b.matchedTerms.length - a.matchedTerms.length)
         .slice(0, 6);
 
-    const sectionReports = sections.map(section => {
+    let sectionReports = sections.map(section => {
         const rows = lineAnalyses.filter(row => row.section === section);
         const tokens = rows.flatMap(row => row.tokens);
+        const template = typeof buildLyricsSectionTemplate === 'function'
+            ? buildLyricsSectionTemplate(section, rows, rhymeGroupIndexByLineId)
+            : null;
         const sectionBigrams = buildLyricNgrams(tokens, 2);
         const sectionTrigrams = buildLyricNgrams(tokens, 3);
+        const endRhymedRows = rows.filter(row => strictEndRhymeLineIds.has(`${row.section.id}:${row.index}`));
         const rhymedRows = rows.filter(row => rhymedLineIds.has(`${row.section.id}:${row.index}`));
         const sectionPhonemes = rows.flatMap(row => row.linePhonemes);
+        const sectionEndRhymeDensity = rows.length ? endRhymedRows.length / rows.length : 0;
         const sectionRhymeDensity = rows.length ? rhymedRows.length / rows.length : 0;
         const sectionPhonemeRhymeFit = average(rows.map(row => row.endingModelScore));
         const sectionPhonemeFlow = getPhonemeFlowScore(models, sectionPhonemes);
@@ -1734,7 +2419,13 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
             type: section.type,
             lineCount: rows.length,
             avgWords: average(rows.map(row => row.wordCount)),
+            avgSyllables: template?.avgSyllables || 0,
+            rhymePattern: template?.pattern || '',
+            patternRegularity: template?.patternRegularity || 0,
+            repeatRate: template?.repeatRate || 0,
+            template,
             rhymeDensity: sectionRhymeDensity,
+            endRhymeDensity: sectionEndRhymeDensity,
             internalDensity: rows.length ? rows.filter(row => row.internalRhymes.length > 0).length / rows.length : 0,
             phonemeRhymeFit: sectionPhonemeRhymeFit,
             phonemeFlow: sectionPhonemeFlow,
@@ -1756,6 +2447,10 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
             }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5)
         };
     });
+    sectionReports = sectionReports.map(section => ({
+        ...section,
+        roleAssessment: buildSectionRoleAssessment(section)
+    }));
 
     onProgress(90, '개선 포인트 정리 중');
     await yieldLyricsFrame();
@@ -1771,10 +2466,33 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
         .filter(row => row.wordCount >= 18)
         .sort((a, b) => b.wordCount - a.wordCount)
         .slice(0, 4);
+    const literaryDevices = buildLyricsLiteraryDevices({
+        lineAnalyses,
+        endRhymeGroups: repeatedRhymeGroups,
+        slidingRhymeGroups,
+        structuralRhymeGroups,
+        allTokens,
+        repeatedWords,
+        models
+    });
+    const literaryDeviceLineNumbers = new Set(literaryDevices.flatMap(device => device.lines || []));
+    const literaryDeviceLooseCount = literaryDevices
+        .filter(device => !device.lines?.length)
+        .reduce((sum, device) => sum + Math.max(1, device.count || 1), 0);
+    const literaryDeviceDensityScore = allLines.length
+        ? Math.min(1, literaryDeviceLineNumbers.size / allLines.length * 0.75 + literaryDeviceLooseCount / allLines.length * 0.08)
+        : 0;
+    const flowMetrics = buildLyricsFlowMetrics(lineAnalyses, strictEndRhymeLineIds, rhymedLineIds);
 
     const notes = [];
     if (weakRhymeLines.length > 0) {
         notes.push(`${weakRhymeLines[0].section.type}의 일부 라인은 반복 라임 그룹에 아직 묶이지 않습니다.`);
+    }
+    if (endRhymeDensityScore < 0.28 && literaryDeviceDensityScore >= 0.35) {
+        notes.push('엄격한 각운보다 두운·모음운·반복 장치 비중이 큽니다. 라임 밀도와 언어유희 밀도를 분리해서 보는 편이 정확합니다.');
+    }
+    if (flowMetrics.breathStability < 0.45 && allLines.length >= 8) {
+        notes.push('라인별 음절 수 변동이 커서 호흡 안정성이 낮게 잡힙니다. 긴 행을 쪼개거나 짧은 행과 교차 배치해 플로우를 정리할 수 있습니다.');
     }
     if (longLines.length > 0) {
         notes.push(`${longLines[0].section.type}에 단어 수가 긴 라인이 있습니다. 호흡 단위 분리를 검토할 수 있습니다.`);
@@ -1809,7 +2527,8 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
                     ? rhymeGroupIndexByLineId.get(lineId)
                     : -1;
                 const slidingHighlight = slidingHighlightsByLineId.get(lineId);
-                const structuralSpans = structuralSpansByLineId.get(lineId) || [];
+                const structuralSpans = (structuralSpansByLineId.get(lineId) || [])
+                    .filter(span => span.confidence !== 'weak');
                 return {
                     index: row.index,
                     text: row.line,
@@ -1839,10 +2558,15 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
         koRatio: (koCount + enCount) ? koCount / (koCount + enCount) : 0,
         enRatio: (koCount + enCount) ? enCount / (koCount + enCount) : 0,
         rhymeDensity: rhymeDensityScore,
+        endRhymeDensity: endRhymeDensityScore,
+        structuralRhymeDensity: structuralRhymeDensityScore,
+        literaryDeviceDensity: literaryDeviceDensityScore,
         internalDensity: internalDensityScore,
         phonemeRhymeFit: phonemeRhymeModelScore,
         internalRhymeFit: internalRhymeModelScore,
         phonemeFlow: phonemeFlowScore,
+        breathStability: flowMetrics.breathStability,
+        rhymeIntervalStability: flowMetrics.rhymeIntervalStability,
         naturalness: naturalnessScore,
         hiphopAffinity: hiphopAffinityScore,
         topicFocus: topTerms.length ? average(topTerms.slice(0, 8).map(getTopicTermStrength)) : 0
@@ -1865,6 +2589,8 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
         slidingRhymeGroups,
         structuralRhymeGroups,
         structuralRhymePatterns,
+        literaryDevices,
+        flowMetrics,
         annotatedSections,
         internalRhymes: lineAnalyses.filter(row => row.internalRhymes.length > 0).slice(0, 10),
         topTerms,
@@ -1900,7 +2626,8 @@ function renderHighlightedLyricLine(line) {
                     start: Math.max(0, Math.min(rawLine.length, span.start)),
                     end: Math.max(0, Math.min(rawLine.length, span.end)),
                     groupIndex: span.groupIndex || 0,
-                    label: span.label || `G${(span.groupIndex || 0) + 1}`
+                    label: span.label || `G${(span.groupIndex || 0) + 1}`,
+                    reason: span.reason || ''
                 });
             });
         if (ranges.length) {
@@ -1910,7 +2637,8 @@ function renderHighlightedLyricLine(line) {
             ranges.forEach(range => {
                 if (cursor < range.start) parts.push(escapeLyricsHtml(rawLine.slice(cursor, range.start)));
                 const className = `rhyme-color-${range.groupIndex % 8}`;
-                parts.push(`<span class="lyrics-rhyme-token ${className}" title="${escapeLyricsHtml(range.label)} 구조 라임">${escapeLyricsHtml(rawLine.slice(range.start, range.end))}</span>`);
+                const title = `${range.label} 구조 라임${range.reason ? ` · ${range.reason}` : ''}`;
+                parts.push(`<span class="lyrics-rhyme-token ${className}" title="${escapeLyricsHtml(title)}">${escapeLyricsHtml(rawLine.slice(range.start, range.end))}</span>`);
                 cursor = range.end;
             });
             if (cursor < rawLine.length) parts.push(escapeLyricsHtml(rawLine.slice(cursor)));
@@ -2088,13 +2816,15 @@ function renderLyricsAnalysisReport(report, container) {
         ? report.rhymeGroups.map((group, index) => {
             const words = [...new Set(group.rows.map(row => row.endingRhymeText || row.endingWord).filter(Boolean))].slice(0, 8);
             const fit = average(group.rows.map(row => row.endingModelScore));
-            return `<div class="lyrics-note">R${index + 1}: ${escapeLyricsHtml(words.join(' / '))} (${group.rows.length}라인, 모델 ${percent(fit)})</div>`;
+            const reason = group.reason ? ` · ${group.reason}` : '';
+            return `<div class="lyrics-note">R${index + 1}: ${escapeLyricsHtml(words.join(' / '))} (${group.rows.length}라인, 모델 ${percent(fit)}${escapeLyricsHtml(reason)})</div>`;
         }).join('')
         : '<div class="lyrics-note">반복되는 끝 라임 그룹이 아직 뚜렷하지 않습니다.</div>';
     const slidingRhymeHtml = report.slidingRhymeGroups?.length
         ? report.slidingRhymeGroups.slice(0, 8).map((group, index) => {
             const words = [...new Set(group.rows.map(row => row.text).filter(Boolean))].slice(0, 10);
-            return `<div class="lyrics-note">S${index + 1}: ${escapeLyricsHtml(words.join(' / '))} (${group.mode}, 유사도 ${percent(group.score / 100)})</div>`;
+            const reason = group.reason ? ` · ${group.reason}` : '';
+            return `<div class="lyrics-note">S${index + 1}: ${escapeLyricsHtml(words.join(' / '))} (${group.mode}, 유사도 ${percent(group.score / 100)}${escapeLyricsHtml(reason)})</div>`;
         }).join('')
         : '';
     const structuralRhymeHtml = report.structuralRhymeGroups?.length
@@ -2106,7 +2836,7 @@ function renderLyricsAnalysisReport(report, container) {
                     <span class="lyrics-structure-label ${className}">${escapeLyricsHtml(group.label)}</span>
                     <div>
                         <strong>${escapeLyricsHtml(words.join(' / '))}</strong>
-                        <p>${escapeLyricsHtml(group.mode)} · ${group.quality.distinctLines}행 연결 · 유사도 ${percent(group.score / 100)} · 규칙 ${percent(group.modelScore || 0)}</p>
+                        <p>${escapeLyricsHtml(group.mode)} · ${group.quality.distinctLines}행 연결 · 유사도 ${percent(group.score / 100)} · 규칙 ${percent(group.modelScore || 0)}${group.reason ? ` · ${escapeLyricsHtml(group.reason)}` : ''}</p>
                     </div>
                 </div>
             `;
@@ -2115,16 +2845,47 @@ function renderLyricsAnalysisReport(report, container) {
     const structuralPatternHtml = report.structuralRhymePatterns?.length
         ? report.structuralRhymePatterns.map(pattern => `<span class="lyrics-structure-pattern">${escapeLyricsHtml(pattern.text)}</span>`).join('')
         : '<span class="lyrics-structure-pattern is-muted">반복 패턴이 생기면 A ... B ... C 형태로 표시됩니다.</span>';
+    const literaryDeviceHtml = report.literaryDevices?.length
+        ? report.literaryDevices.slice(0, 12).map(device => `
+            <div class="lyrics-note">
+                <strong>${escapeLyricsHtml(device.label)}</strong>
+                ${device.terms.length ? `: ${escapeLyricsHtml(device.terms.join(' / '))}` : ''}
+                <span>(${device.count}건, ${device.confidence})</span>
+                ${device.description ? `<p>${escapeLyricsHtml(device.description)}</p>` : ''}
+            </div>
+        `).join('')
+        : '<div class="lyrics-note">두운·모음운·아나포라 같은 별도 언어유희 장치는 아직 뚜렷하지 않습니다.</div>';
+    const flow = report.flowMetrics || {};
+    const flowHtml = `
+        <div class="lyrics-structure-grid">
+            <div class="lyrics-structure-card">
+                <span class="lyrics-structure-label">호흡</span>
+                <div><strong>${percent(flow.breathStability || 0)}</strong><p>평균 ${Number(flow.avgSyllables || 0).toFixed(1)}음절 · 표준편차 ${Number(flow.syllableStd || 0).toFixed(1)}</p></div>
+            </div>
+            <div class="lyrics-structure-card">
+                <span class="lyrics-structure-label">간격</span>
+                <div><strong>${percent(flow.rhymeIntervalStability || 0)}</strong><p>엄격 라임 간격 평균 ${Number(flow.rhymeIntervalAvg || 0).toFixed(1)}행</p></div>
+            </div>
+            <div class="lyrics-structure-card">
+                <span class="lyrics-structure-label">긴장</span>
+                <div><strong>${escapeLyricsHtml(flow.tensionLabel || '안정')}</strong><p>음절 밀도 기울기 ${Number(flow.tensionSlope || 0).toFixed(2)}</p></div>
+            </div>
+        </div>
+    `;
 
     const sectionRows = report.sections.map(section => `
         <tr>
             <td>${escapeLyricsHtml(section.type)}</td>
             <td>${section.lineCount}</td>
             <td>${section.avgWords.toFixed(1)}</td>
+            <td>${escapeLyricsHtml(section.rhymePattern || '-')}</td>
+            <td>${percent(section.repeatRate || 0)}</td>
             <td>${percent(section.rhymeDensity)}</td>
+            <td>${percent(section.endRhymeDensity || 0)}</td>
             <td>${percent(section.internalDensity)}</td>
             <td>${percent(section.phonemeRhymeFit)}</td>
             <td>${percent(section.phonemeFlow)}</td>
+            <td>${percent(section.roleAssessment?.score || 0)}</td>
             <td>${percent(section.hiphopAffinity)}</td>
             <td>${percent(section.naturalness)}</td>
         </tr>
@@ -2181,13 +2942,27 @@ function renderLyricsAnalysisReport(report, container) {
                 ${metric('라인', report.overview.lineCount)}
                 ${metric('단어', report.overview.tokenCount)}
                 ${metric('한국어', percent(report.overview.koRatio))}
-                ${metric('끝 라임 밀도', percent(report.overview.rhymeDensity))}
+                ${metric('전체 라임 밀도', percent(report.overview.rhymeDensity))}
+                ${metric('엄격 각운 밀도', percent(report.overview.endRhymeDensity || 0))}
+                ${metric('언어유희 밀도', percent(report.overview.literaryDeviceDensity || 0))}
                 ${metric('내부 라임 밀도', percent(report.overview.internalDensity))}
                 ${metric('발음 라임 적합도', percent(report.overview.phonemeRhymeFit))}
                 ${metric('발음 플로우', percent(report.overview.phonemeFlow))}
+                ${metric('호흡 안정성', percent(report.overview.breathStability || 0))}
+                ${metric('라임 간격 안정성', percent(report.overview.rhymeIntervalStability || 0))}
                 ${metric('구어체 자연도', percent(report.overview.naturalness))}
                 ${metric('힙합 친화도', percent(report.overview.hiphopAffinity))}
             </div>
+        </section>
+
+        <section class="lyrics-report-section">
+            <h3>언어유희 장치</h3>
+            <div class="lyrics-note-list">${literaryDeviceHtml}</div>
+        </section>
+
+        <section class="lyrics-report-section">
+            <h3>플로우/호흡</h3>
+            ${flowHtml}
         </section>
 
         <section class="lyrics-report-section">
@@ -2195,7 +2970,7 @@ function renderLyricsAnalysisReport(report, container) {
             <table class="lyrics-section-table">
                 <thead>
                     <tr>
-                        <th>섹션</th><th>라인</th><th>평균 단어</th><th>끝 라임</th><th>내부 라임</th><th>발음 라임</th><th>발음 플로우</th><th>힙합</th><th>자연도</th>
+                        <th>섹션</th><th>라인</th><th>평균 단어</th><th>패턴</th><th>반복</th><th>전체 라임</th><th>각운</th><th>내부 라임</th><th>발음 라임</th><th>발음 플로우</th><th>역할 적합</th><th>힙합</th><th>자연도</th>
                     </tr>
                 </thead>
                 <tbody>${sectionRows}</tbody>
