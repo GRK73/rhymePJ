@@ -22,6 +22,7 @@ function checkAppSyntax() {
         'public/js/semantic.js',
         'public/js/linkedRhyme.js',
         'public/js/lyricsAnalysis.js',
+        'public/js/lyricsAnalysisMetrics.js',
         'public/js/render.js',
         'public/js/tts.js',
         'public/js/app.js',
@@ -99,6 +100,7 @@ function checkLyricsEnglishRimes() {
         'public/js/phonetics.js',
         'public/js/koreanPronunciation.js',
         'public/js/lyricsAnalysis.js',
+        'public/js/lyricsAnalysisMetrics.js',
     ].forEach(relativePath => {
         const source = fs.readFileSync(path.join(ROOT_DIR, relativePath), 'utf8');
         vm.runInContext(source, context, { filename: relativePath });
@@ -133,6 +135,69 @@ function checkLyricsEnglishRimes() {
     assert(mixedEnding.signature === crownSignature, 'mixed Korean/English line ending must keep the English rime signature');
     assert(endingWindows.some(row => row.text === 'crown' && row.lang === 'en'), 'structural ending candidates must prefer final English words');
     assert(!mixedWindows.some(row => row.lang === 'mixed'), 'mixed Korean/English token windows must not become structural rhyme spans');
+}
+
+function checkLyricsTemplateWithBugsSample() {
+    const bugsPath = path.join(ROOT_DIR, '..', 'bugs_hiphop_corpus.json');
+    if (!fs.existsSync(bugsPath)) return;
+
+    const corpus = JSON.parse(fs.readFileSync(bugsPath, 'utf8'));
+    const sample = corpus.find(item => typeof item.lyrics === 'string' && item.lyrics.split(/\r?\n/).filter(Boolean).length >= 6);
+    assert(sample, 'bugs lyrics corpus must include a usable lyrics sample');
+
+    const context = {
+        console,
+        dictionary: readJson('public/data/model/rhyme_dict_practical.json'),
+        loanwordOverrides: {},
+        document: { getElementById: () => null, querySelectorAll: () => [] },
+        window: {},
+        sampleLyrics: sample.lyrics
+    };
+    context.globalThis = context;
+    vm.createContext(context);
+
+    [
+        'public/js/data.js',
+        'public/js/phonetics.js',
+        'public/js/koreanPronunciation.js',
+        'public/js/lyricsAnalysis.js',
+        'public/js/lyricsAnalysisMetrics.js',
+    ].forEach(relativePath => {
+        const source = fs.readFileSync(path.join(ROOT_DIR, relativePath), 'utf8');
+        vm.runInContext(source, context, { filename: relativePath });
+    });
+
+    const template = JSON.parse(vm.runInContext(`
+        const bugsLines = splitLyricsLines(sampleLyrics).slice(0, 8);
+        const bugsSection = { id: 'bugs', type: 'Verse', lines: bugsLines };
+        const bugsRows = bugsLines.map((line, index) => {
+            const tokens = tokenizeLyrics(line);
+            const endingWord = getLastLyricWord(line);
+            const endingData = getLineEndingRhymeData(line);
+            return {
+                section: bugsSection,
+                index,
+                line,
+                tokens,
+                wordCount: tokens.length,
+                linePhonemes: tokens.flatMap(token => getLyricWordPhonemes(token)),
+                endingWord,
+                endingRhymeText: endingData.text,
+                rhymeSignature: endingData.signature
+            };
+        });
+        const bugsPatternMap = new Map();
+        bugsRows.forEach((row, index) => {
+            if (row.rhymeSignature) bugsPatternMap.set(row.section.id + ':' + row.index, index % 2);
+        });
+        JSON.stringify(buildLyricsSectionTemplate(bugsSection, bugsRows, bugsPatternMap));
+    `, context));
+
+    assert(template.lineCount > 0, 'bugs lyrics template must include lines');
+    assert(template.patternLabels.length === template.lineCount, 'section template pattern must align with line count');
+    assert(Number.isFinite(template.repeatRate), 'section template repeat rate must be finite');
+    assert(Number.isFinite(template.patternRegularity), 'section template regularity must be finite');
+    assert(template.avgSyllables > 0, 'section template must estimate syllable density from bugs lyrics');
 }
 
 function checkLoanwordOverrides() {
@@ -245,6 +310,7 @@ function main() {
     checkKoreanPronunciationRules();
     checkDictionary();
     checkLyricsEnglishRimes();
+    checkLyricsTemplateWithBugsSample();
     checkLoanwordOverrides();
     checkSemanticVectors();
     checkBigramIndexes();

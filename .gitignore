@@ -9,6 +9,7 @@ public/data/semantic_vectors*.json
 scripts/scrape_progress.json
 scripts/cache/
 raw_lyrics/
+NLP연계/
 public/data/hiphop_corpus.jsonl
 public/data/english_hiphop_ipa_ngram.json
 public/data/hiphop_surface_bigram_ko.json
