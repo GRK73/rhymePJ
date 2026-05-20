@@ -56,7 +56,7 @@ const LYRIC_STOPWORDS = new Set([
 const LYRIC_EN_WEAK_ENDING_WORDS = new Set([
     'i', 'im', "i'm", 'me', 'my', 'mine', 'you', 'u', 'ya', 'ye', 'yo', 'your',
     'we', 'us', 'our', 'it', 'its', 'that', 'this', 'there', 'here',
-    'uh', 'um', 'umm', 'ah', 'oh', 'ooh', 'woo', 'woah', 'whoa', 'huh', 'ha',
+    'uh', 'um', 'umm', 'ah', 'oh', 'ooh', 'woo', 'woah', 'whoa', 'huh', 'ha', 'hey',
     'yeah', 'yea', 'yep', 'nah', 'no', 'ok', 'okay', 'ayy', 'ay', 'ey',
     'skrrt', 'brr', 'rrr', 'la', 'na', 'da',
     'verse', 'chorus', 'bridge', 'hook', 'intro', 'outro', 'prechorus', 'refrain'
@@ -195,6 +195,7 @@ function areEnglishRhymeTextsCompatible(left, right) {
     const leftKey = getEnglishOrthographicRhymeKey(leftClean);
     const rightKey = getEnglishOrthographicRhymeKey(rightClean);
     if (!leftKey || !rightKey) return false;
+    if (leftKey.length <= 1 || rightKey.length <= 1) return false;
     if (leftKey === rightKey) return true;
     return leftClean.endsWith(rightKey) || rightClean.endsWith(leftKey);
 }
@@ -623,11 +624,15 @@ function getEndRhymeGroupQuality(group) {
         const weakTokenRatio = words.filter(isWeakEnglishEndingToken).length / Math.max(1, words.length);
         const tailAgreement = getEnglishOrthographicTailAgreement([...uniqueWords]);
         const pairwiseCompatibility = getEnglishPairwiseRhymeCompatibility([...uniqueWords]);
+        const largeGroup = uniqueWords.size >= 4;
+        const requiredTailAgreement = largeGroup ? 0.66 : 0.5;
+        const requiredPairwiseCompatibility = largeGroup ? 0.45 : 0.34;
         if (exactRepeat) score -= 34;
         if (weakTokenRatio >= 0.4) score -= 44;
-        if (pairwiseCompatibility < 0.34) score -= 28;
-        if (uniqueWords.size >= 2 && tailAgreement >= 0.5 && pairwiseCompatibility >= 0.34) score += 8;
-        if (uniqueWords.size < 2 || tailAgreement < 0.5 || pairwiseCompatibility < 0.34 || weakTokenRatio >= 0.4) forceDeviceOnly = true;
+        if (pairwiseCompatibility < requiredPairwiseCompatibility) score -= 28;
+        if (tailAgreement < requiredTailAgreement) score -= 18;
+        if (uniqueWords.size >= 2 && tailAgreement >= requiredTailAgreement && pairwiseCompatibility >= requiredPairwiseCompatibility) score += 8;
+        if (uniqueWords.size < 2 || tailAgreement < requiredTailAgreement || pairwiseCompatibility < requiredPairwiseCompatibility || weakTokenRatio >= 0.4) forceDeviceOnly = true;
         const avgCoreSize = average(rows.map(row => getEnglishRhymeCore(row.endingPhonemes || []).length));
         if (avgCoreSize >= 3) {
             devices.add('multisyllable');
@@ -657,11 +662,25 @@ function getEndRhymeGroupQuality(group) {
 
 function refineEndRhymeGroups(groups) {
     return (groups || []).map(group => {
-        const quality = getEndRhymeGroupQuality(group);
+        const rows = Array.isArray(group?.rows) ? group.rows : [];
+        const langs = new Set(rows.map(row => {
+            const word = normalizeLyricToken(row.endingWord || row.endingRhymeText);
+            return LYRIC_EN_RE.test(word) ? 'en' : LYRIC_KO_RE.test(word) ? 'ko' : '';
+        }).filter(Boolean));
+        const strongEnglishRows = langs.size === 1 && langs.has('en')
+            ? rows.filter(row => (
+                !isWeakEnglishEndingToken(row.endingWord)
+                && !isWeakEnglishEndingToken(row.endingRhymeText)
+            ))
+            : rows;
+        const refinedGroup = strongEnglishRows.length >= 2 && strongEnglishRows.length < rows.length
+            ? { ...group, rows: strongEnglishRows }
+            : group;
+        const quality = getEndRhymeGroupQuality(refinedGroup);
         const confidenceScore = quality.score;
         const confidence = confidenceScore >= 82 ? 'strong' : confidenceScore >= 62 ? 'medium' : 'weak';
         return {
-            ...group,
+            ...refinedGroup,
             endRhymeQualityScore: quality.score,
             rhymeStrength: quality.strength,
             isCountableEndRhyme: quality.isCountableEndRhyme,
@@ -1982,9 +2001,12 @@ function getLinearSlope(values) {
 function buildLyricsFlowMetrics(lineAnalyses, strictRhymeLineIds, broadRhymeLineIds) {
     const syllables = lineAnalyses.map(getLineSyllableEstimate);
     const words = lineAnalyses.map(row => row.wordCount || 0);
+    const syllableDeltas = syllables.slice(1).map((value, index) => Math.abs(value - syllables[index]));
     const avgSyllables = average(syllables);
     const syllableStd = getStandardDeviation(syllables);
     const syllableCv = avgSyllables ? syllableStd / avgSyllables : 0;
+    const avgSyllableDelta = average(syllableDeltas);
+    const syllableDeltaStd = getStandardDeviation(syllableDeltas);
     const avgWords = average(words);
     const wordStd = getStandardDeviation(words);
     const longLineThreshold = avgSyllables + syllableStd * 1.4;
@@ -2001,9 +2023,27 @@ function buildLyricsFlowMetrics(lineAnalyses, strictRhymeLineIds, broadRhymeLine
     const intervalAvg = average(intervals);
     const intervalStd = getStandardDeviation(intervals);
     const intervalStability = intervals.length ? Math.max(0, Math.min(1, 1 - intervalStd / Math.max(1, intervalAvg + 1))) : 0;
+    const cadenceFit = intervals.length
+        ? average(intervals.map(interval => {
+            const twoBarDistance = Math.min(Math.abs(interval - 2), Math.abs(interval - 4));
+            return Math.max(0, 1 - twoBarDistance / 4);
+        }))
+        : 0;
+    const phraseStability = syllableDeltas.length
+        ? Math.max(0, Math.min(1, 1 - avgSyllableDelta / Math.max(4, avgSyllables * 0.55)))
+        : 0;
     const breathStability = Math.max(0, Math.min(1,
-        1 - Math.min(0.65, syllableCv) * 0.95 - longLines.length / Math.max(1, lineAnalyses.length) * 0.28
+        1 - Math.min(0.65, syllableCv) * 0.70
+          - longLines.length / Math.max(1, lineAnalyses.length) * 0.24
+          + phraseStability * 0.12
     ));
+    const quarterSize = Math.max(1, Math.ceil(lineAnalyses.length / 4));
+    const densityByQuarter = [0, 1, 2, 3].map(bucket => {
+        const start = bucket * quarterSize;
+        const rows = lineAnalyses.slice(start, Math.min(lineAnalyses.length, start + quarterSize));
+        if (!rows.length) return 0;
+        return rows.filter(row => broadRhymeLineIds.has(`${row.section.id}:${row.index}`)).length / rows.length;
+    });
     const firstHalfAvg = average(syllables.slice(0, Math.max(1, Math.floor(syllables.length / 2))));
     const secondHalfAvg = average(syllables.slice(Math.floor(syllables.length / 2)));
     const tensionSlope = getLinearSlope(syllables.map((value, index) => (
@@ -2019,18 +2059,162 @@ function buildLyricsFlowMetrics(lineAnalyses, strictRhymeLineIds, broadRhymeLine
         avgSyllables,
         syllableStd,
         syllableCv,
+        avgSyllableDelta,
+        syllableDeltaStd,
+        phraseStability,
         avgWords,
         wordStd,
         breathStability,
         rhymeIntervalAvg: intervalAvg,
         rhymeIntervalStd: intervalStd,
         rhymeIntervalStability: intervalStability,
+        rhymeCadenceFit: cadenceFit,
+        densityByQuarter,
         longLineCount: longLines.length,
         shortLineCount: shortLines.length,
         longLines: longLines.slice(0, 6).map(row => ({ line: row.index + 1, text: row.line, syllables: getLineSyllableEstimate(row) })),
         shortLines: shortLines.slice(0, 6).map(row => ({ line: row.index + 1, text: row.line, syllables: getLineSyllableEstimate(row) })),
         tensionSlope,
         tensionLabel
+    };
+}
+
+function buildRhymeTechniqueSummary(endRhymeGroups, literaryDevices, lineCount) {
+    const countable = endRhymeGroups.filter(group => group.isCountableEndRhyme);
+    const deviceOnly = endRhymeGroups.filter(group => !group.isCountableEndRhyme);
+    const typeCounts = {};
+    [...endRhymeGroups, ...literaryDevices].forEach(item => {
+        const types = item.literaryDeviceTypes || [item.type].filter(Boolean);
+        types.forEach(type => {
+            typeCounts[type] = (typeCounts[type] || 0) + 1;
+        });
+    });
+    const countableLines = new Set(countable.flatMap(group => group.rows.map(row => `${row.section.id}:${row.index}`)));
+    const deviceLines = new Set(deviceOnly.flatMap(group => group.rows.map(row => `${row.section.id}:${row.index}`)));
+    const strongCount = countable.filter(group => group.rhymeStrength === 'strong').length;
+    const mediumCount = countable.filter(group => group.rhymeStrength === 'medium').length;
+    const repetitionCount = deviceOnly.filter(group => group.exactRepeat || group.literaryDeviceTypes?.includes('repetition')).length;
+    const multisyllableCount = countable.filter(group => group.literaryDeviceTypes?.includes('multisyllable')).length;
+    return {
+        countableGroupCount: countable.length,
+        countableLineDensity: lineCount ? countableLines.size / lineCount : 0,
+        deviceOnlyGroupCount: deviceOnly.length,
+        deviceOnlyLineDensity: lineCount ? deviceLines.size / lineCount : 0,
+        strongCount,
+        mediumCount,
+        repetitionCount,
+        multisyllableCount,
+        assonanceCount: typeCounts.assonance || 0,
+        consonanceCount: typeCounts.consonance || 0,
+        alliterationCount: typeCounts.alliteration || 0,
+        internalRhymeCount: typeCounts.internalRhyme || 0,
+        typeCounts
+    };
+}
+
+function buildHipHopStructureMetrics(lineAnalyses, strictRhymeLineIds, broadRhymeLineIds, rhymeGroupIndexByLineId) {
+    const sections = [...new Set(lineAnalyses.map(row => row.section))];
+    const sectionRows = sections.map(section => ({
+        section,
+        rows: lineAnalyses.filter(row => row.section === section)
+    })).filter(item => item.rows.length > 0);
+    let pairTotal = 0;
+    let exactCouplets = 0;
+    let broadCouplets = 0;
+    let evenSlots = 0;
+    let evenRhymes = 0;
+    let oddSlots = 0;
+    let oddRhymes = 0;
+    let fourBarTotal = 0;
+    let fourBarPatterned = 0;
+    const sectionSummaries = [];
+
+    sectionRows.forEach(({ section, rows }) => {
+        let localPairs = 0;
+        let localExact = 0;
+        let localBroad = 0;
+        for (let index = 0; index < rows.length - 1; index += 2) {
+            const left = rows[index];
+            const right = rows[index + 1];
+            const leftId = `${left.section.id}:${left.index}`;
+            const rightId = `${right.section.id}:${right.index}`;
+            const leftGroup = rhymeGroupIndexByLineId.get(leftId);
+            const rightGroup = rhymeGroupIndexByLineId.get(rightId);
+            const exactPair = leftGroup !== undefined && leftGroup === rightGroup;
+            const broadPair = exactPair || (broadRhymeLineIds.has(leftId) && broadRhymeLineIds.has(rightId));
+            localPairs += 1;
+            pairTotal += 1;
+            if (exactPair) {
+                localExact += 1;
+                exactCouplets += 1;
+            }
+            if (broadPair) {
+                localBroad += 1;
+                broadCouplets += 1;
+            }
+        }
+        rows.forEach((row, index) => {
+            const lineId = `${row.section.id}:${row.index}`;
+            if (index % 2 === 1) {
+                evenSlots += 1;
+                if (strictRhymeLineIds.has(lineId)) evenRhymes += 1;
+            } else {
+                oddSlots += 1;
+                if (strictRhymeLineIds.has(lineId)) oddRhymes += 1;
+            }
+        });
+        for (let index = 0; index < rows.length - 3; index += 4) {
+            const block = rows.slice(index, index + 4).map(row => {
+                const lineId = `${row.section.id}:${row.index}`;
+                return rhymeGroupIndexByLineId.has(lineId) ? rhymeGroupIndexByLineId.get(lineId) : null;
+            });
+            const [a, b, c, d] = block;
+            const hasPattern = (
+                a !== null && b !== null && a === b
+            ) || (
+                c !== null && d !== null && c === d
+            ) || (
+                a !== null && c !== null && a === c
+            ) || (
+                b !== null && d !== null && b === d
+            );
+            fourBarTotal += 1;
+            if (hasPattern) fourBarPatterned += 1;
+        }
+        sectionSummaries.push({
+            sectionId: section.id,
+            sectionType: section.type,
+            pairCount: localPairs,
+            coupletRate: localPairs ? localExact / localPairs : 0,
+            broadCoupletRate: localPairs ? localBroad / localPairs : 0
+        });
+    });
+
+    const coupletRate = pairTotal ? exactCouplets / pairTotal : 0;
+    const broadCoupletRate = pairTotal ? broadCouplets / pairTotal : 0;
+    const evenLineRhymeRate = evenSlots ? evenRhymes / evenSlots : 0;
+    const oddLineRhymeRate = oddSlots ? oddRhymes / oddSlots : 0;
+    const fourBarPatternRate = fourBarTotal ? fourBarPatterned / fourBarTotal : 0;
+    const twoBarScore = Math.max(0, Math.min(1,
+        coupletRate * 0.48
+        + broadCoupletRate * 0.22
+        + evenLineRhymeRate * 0.20
+        + Math.max(0, evenLineRhymeRate - oddLineRhymeRate) * 0.10
+    ));
+    const structureScore = Math.max(0, Math.min(1, twoBarScore * 0.72 + fourBarPatternRate * 0.28));
+    return {
+        pairTotal,
+        exactCouplets,
+        broadCouplets,
+        coupletRate,
+        broadCoupletRate,
+        evenLineRhymeRate,
+        oddLineRhymeRate,
+        fourBarTotal,
+        fourBarPatternRate,
+        twoBarScore,
+        structureScore,
+        sections: sectionSummaries
     };
 }
 
@@ -2051,7 +2235,8 @@ function buildSectionRoleAssessment(sectionReport) {
         if (sectionReport.repeatRate > 0.25) notes.push('전환부치고 반복이 강합니다.');
     } else {
         score = Math.min(1, sectionReport.internalDensity * 2.2) * 0.30
-            + Math.min(1, sectionReport.rhymeDensity * 1.4) * 0.30
+            + Math.min(1, sectionReport.rhymeDensity * 1.4) * 0.22
+            + Math.min(1, sectionReport.broadCoupletRate * 1.4) * 0.08
             + Math.min(1, (1 - sectionReport.repeatRate) * 1.2) * 0.20
             + Math.min(1, sectionReport.avgWords / 9) * 0.20;
         if (sectionReport.repeatRate > 0.28) notes.push('Verse치고 같은 어휘 반복이 강합니다.');
@@ -2334,6 +2519,12 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
     onProgress(80, '주제와 표현 점수 계산 중');
     await yieldLyricsFrame();
 
+    const structureMetrics = buildHipHopStructureMetrics(
+        lineAnalyses,
+        strictEndRhymeLineIds,
+        rhymedLineIds,
+        rhymeGroupIndexByLineId
+    );
     const bigrams = buildLyricNgrams(allTokens, 2);
     const trigrams = buildLyricNgrams(allTokens, 3);
     const allPhonemes = lineAnalyses.flatMap(row => row.linePhonemes);
@@ -2415,6 +2606,7 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
             ...sectionBigrams.map(phrase => Math.max(getNgramScore(models.ngrams.hiphop2, phrase), getNgramScore(models.ngrams.translatedBigram, phrase))),
             ...sectionTrigrams.map(phrase => getNgramScore(models.ngrams.hiphop3, phrase))
         ]);
+        const sectionStructure = structureMetrics.sections.find(row => row.sectionId === section.id) || {};
         return {
             type: section.type,
             lineCount: rows.length,
@@ -2427,6 +2619,8 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
             rhymeDensity: sectionRhymeDensity,
             endRhymeDensity: sectionEndRhymeDensity,
             internalDensity: rows.length ? rows.filter(row => row.internalRhymes.length > 0).length / rows.length : 0,
+            coupletRate: sectionStructure.coupletRate || 0,
+            broadCoupletRate: sectionStructure.broadCoupletRate || 0,
             phonemeRhymeFit: sectionPhonemeRhymeFit,
             phonemeFlow: sectionPhonemeFlow,
             hiphopAffinity: (
@@ -2482,6 +2676,7 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
     const literaryDeviceDensityScore = allLines.length
         ? Math.min(1, literaryDeviceLineNumbers.size / allLines.length * 0.75 + literaryDeviceLooseCount / allLines.length * 0.08)
         : 0;
+    const rhymeTechniqueSummary = buildRhymeTechniqueSummary(repeatedRhymeGroups, literaryDevices, allLines.length);
     const flowMetrics = buildLyricsFlowMetrics(lineAnalyses, strictEndRhymeLineIds, rhymedLineIds);
 
     const notes = [];
@@ -2567,6 +2762,11 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
         phonemeFlow: phonemeFlowScore,
         breathStability: flowMetrics.breathStability,
         rhymeIntervalStability: flowMetrics.rhymeIntervalStability,
+        phraseStability: flowMetrics.phraseStability,
+        rhymeCadenceFit: flowMetrics.rhymeCadenceFit,
+        twoBarStructure: structureMetrics.twoBarScore,
+        coupletRate: structureMetrics.coupletRate,
+        fourBarPatternRate: structureMetrics.fourBarPatternRate,
         naturalness: naturalnessScore,
         hiphopAffinity: hiphopAffinityScore,
         topicFocus: topTerms.length ? average(topTerms.slice(0, 8).map(getTopicTermStrength)) : 0
@@ -2590,7 +2790,9 @@ async function analyzeLyricsSections(sections, onProgress = updateLyricsProgress
         structuralRhymeGroups,
         structuralRhymePatterns,
         literaryDevices,
+        rhymeTechniqueSummary,
         flowMetrics,
+        structureMetrics,
         annotatedSections,
         internalRhymes: lineAnalyses.filter(row => row.internalRhymes.length > 0).slice(0, 10),
         topTerms,
