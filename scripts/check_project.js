@@ -137,6 +137,44 @@ function checkLyricsEnglishRimes() {
     assert(!mixedWindows.some(row => row.lang === 'mixed'), 'mixed Korean/English token windows must not become structural rhyme spans');
 }
 
+function checkPhoneticSimilarityEngine() {
+    const context = {
+        console,
+        dictionary: [],
+        document: { getElementById: () => ({ checked: false }) },
+        vowelWeightInput: { value: '1' },
+        consoWeightInput: { value: '1' },
+        window: {}
+    };
+    context.globalThis = context;
+    vm.createContext(context);
+
+    const source = fs.readFileSync(path.join(ROOT_DIR, 'public/js/phonetics.js'), 'utf8');
+    vm.runInContext(source, context, { filename: 'public/js/phonetics.js' });
+
+    const exactStop = vm.runInContext('get_score_1d("p", "p")', context);
+    const voicedStop = vm.runInContext('get_score_1d("p", "b")', context);
+    const adjacentStop = vm.runInContext('get_score_1d("p", "t")', context);
+    const distantStop = vm.runInContext('get_score_1d("p", "k")', context);
+    const nasalMismatch = vm.runInContext('get_score_1d("p", "m")', context);
+
+    assert(exactStop === 1, 'identical phonemes must keep exact similarity');
+    assert(voicedStop > adjacentStop, 'same-place stop voicing must outrank place-shifted stops');
+    assert(adjacentStop > distantStop, 'nearby stop places must outrank distant stop places');
+    assert(distantStop > 0, 'consonant place differences should retain a conservative soft score');
+    assert(nasalMismatch < adjacentStop, 'manner mismatches must stay below same-manner stops');
+
+    const exactScore = vm.runInContext('calculateScore(["k", "a", "t"], ["k", "a", "t"]).score', context);
+    const baseScore = vm.runInContext('calculateScore(["k", "a", "t"], ["p", "a", "t"]).score', context);
+    const candidate = vm.runInContext('scoreCandidate(["k", "a", "t"], ["p", "a", "t"], [], "native", "")', context);
+    const suffixMismatch = vm.runInContext('scoreCandidate(["s", "k", "i", "l", "z"], ["s", "k", "i", "l"], [], "native", "")', context);
+
+    assert(exactScore === 100, 'exact phoneme sequences must remain 100');
+    assert(candidate.rimeScore > baseScore, 'ending rime score must detect shared vowel-coda tails');
+    assert(candidate.score > baseScore && candidate.score <= 100, 'candidate score must include a bounded rime boost');
+    assert(suffixMismatch.rawScore === 100 && suffixMismatch.score < 95, 'non-ending substring matches must not keep an unqualified 100 score');
+}
+
 function checkLinkedSurfaceHelpers() {
     const context = {
         console,
@@ -357,6 +395,7 @@ function main() {
     checkKoreanPronunciationRules();
     checkDictionary();
     checkLyricsEnglishRimes();
+    checkPhoneticSimilarityEngine();
     checkLinkedSurfaceHelpers();
     checkLyricsTemplateWithBugsSample();
     checkLoanwordOverrides();

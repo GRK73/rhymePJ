@@ -424,6 +424,23 @@ function isExcludedWord(word, excludeWords) {
     return excludeWords.some(exWord => lowerWord.includes(exWord));
 }
 
+function compareSearchResults(a, b) {
+    const scoreDiff = (b.score || 0) - (a.score || 0);
+    if (Math.abs(scoreDiff) > 0.001) return scoreDiff;
+
+    const rimeDiff = (b.rimeScore || 0) - (a.rimeScore || 0);
+    if (Math.abs(rimeDiff) > 0.001) return rimeDiff;
+
+    const rawDiff = (b.rawPhoneticScore || 0) - (a.rawPhoneticScore || 0);
+    if (Math.abs(rawDiff) > 0.001) return rawDiff;
+
+    const aLengthDelta = Number.isFinite(a.queryLengthDelta) ? a.queryLengthDelta : 0;
+    const bLengthDelta = Number.isFinite(b.queryLengthDelta) ? b.queryLengthDelta : 0;
+    if (aLengthDelta !== bLengthDelta) return aLengthDelta - bLengthDelta;
+
+    return String(a.word || '').localeCompare(String(b.word || ''));
+}
+
 
 function dedupeResultsByWordLang(results) {
     const bestByKey = new Map();
@@ -431,7 +448,7 @@ function dedupeResultsByWordLang(results) {
     results.forEach(result => {
         const key = `${result.lang}:${result.word}`;
         const current = bestByKey.get(key);
-        if (!current || result.score > current.score) {
+        if (!current || compareSearchResults(result, current) < 0) {
             bestByKey.set(key, result);
         }
     });
@@ -668,6 +685,9 @@ async function handleWordSearch() {
                 matchPhonemes: result.matchPhonemes,
                 matchLayer: result.matchLayer,
                 matchLayerLabel: result.matchLayerLabel,
+                rawPhoneticScore: result.rawScore ?? result.score,
+                rimeScore: result.rimeScore ?? 0,
+                queryLengthDelta: Math.abs(String(item.word || '').length - query.length),
                 semanticSimilarity: semanticResult.similarity,
                 corpusAffinity: corpusAffinity.score
             });
@@ -675,7 +695,7 @@ async function handleWordSearch() {
     }
 
     results = dedupeResultsByWordLang(results);
-    results.sort((a, b) => b.score - a.score);
+    results.sort(compareSearchResults);
 
     displayResults(results);
 }

@@ -259,33 +259,118 @@ function getQueryPhonemes(query) {
     }
 }
 
+function clamp01(value) {
+    return Math.max(0, Math.min(1, value));
+}
+
+function getVowelFeatureSimilarity(ipa1, ipa2) {
+    const v1 = ipaFeatures[ipa1];
+    const v2 = ipaFeatures[ipa2];
+    if (!v1 || !v2) return 0;
+
+    const height = clamp01(1 - Math.abs(v1[0] - v2[0]));
+    const backness = clamp01(1 - Math.abs(v1[1] - v2[1]));
+    const rounding = clamp01(1 - Math.abs(v1[2] - v2[2]));
+    const strictScore = height * backness * rounding;
+    const featureScore = height * 0.42 + backness * 0.36 + rounding * 0.22;
+
+    return clamp01(strictScore * 0.55 + featureScore * 0.45);
+}
+
+function getConsonantFeatureSimilarity(ipa1, ipa2) {
+    const c1 = ipaConsoFeatures[ipa1];
+    const c2 = ipaConsoFeatures[ipa2];
+    if (!c1 || !c2) return 0;
+
+    const place = clamp01(1 - Math.abs(c1[0] - c2[0]));
+    const manner = clamp01(1 - Math.abs(c1[1] - c2[1]));
+    const strength = clamp01(1 - Math.abs(c1[2] - c2[2]));
+    const voice = clamp01(1 - Math.abs(c1[3] - c2[3]));
+    let score = place * 0.40 + manner * 0.34 + strength * 0.16 + voice * 0.10;
+
+    const placeDiff = Math.abs(c1[0] - c2[0]);
+    const mannerDiff = Math.abs(c1[1] - c2[1]);
+    let cap = 1.0;
+    if (placeDiff > 0) {
+        cap = Math.min(cap, placeDiff <= 0.25 ? 0.72 : placeDiff <= 0.5 ? 0.58 : 0.42);
+    }
+    if (mannerDiff > 0) {
+        cap = Math.min(cap, mannerDiff <= 0.25 ? 0.68 : mannerDiff <= 0.5 ? 0.52 : 0.35);
+    }
+    if (placeDiff > 0 && mannerDiff > 0) {
+        cap = Math.min(cap, 0.46);
+    }
+
+    return clamp01(Math.min(score, cap));
+}
+
 function get_score_1d(ipa1, ipa2) {
     if (ipa1 === ipa2) return 1.0;
     
-    // Both vowels
     if (ipaFeatures[ipa1] && ipaFeatures[ipa2]) {
-        const v1 = ipaFeatures[ipa1];
-        const v2 = ipaFeatures[ipa2];
-        let score = 1.0;
-        score *= 1 - Math.abs(v1[0] - v2[0]);
-        score *= 1 - Math.abs(v1[1] - v2[1]);
-        score *= 1 - Math.abs(v1[2] - v2[2]);
-        return Math.max(0, score);
-    } 
-    // Both consonants
-    else if (ipaConsoFeatures[ipa1] && ipaConsoFeatures[ipa2]) {
-        const c1 = ipaConsoFeatures[ipa1];
-        const c2 = ipaConsoFeatures[ipa2];
-        if (c1[0] !== c2[0] || c1[1] !== c2[1]) {
-            return 0; // If position or manner are different, score 0
-        }
-        let score = 1.0;
-        score *= 1 - Math.abs(c1[2] - c2[2]); // strength
-        score *= 1 - Math.abs(c1[3] - c2[3]); // voice
-        return Math.max(0, score);
+        return getVowelFeatureSimilarity(ipa1, ipa2);
+    } else if (ipaConsoFeatures[ipa1] && ipaConsoFeatures[ipa2]) {
+        return getConsonantFeatureSimilarity(ipa1, ipa2);
     } 
     
     return 0;
+}
+
+function findLastVowelIndex(phonemes) {
+    for (let i = phonemes.length - 1; i >= 0; i--) {
+        if (ipaFeatures[phonemes[i]]) return i;
+    }
+    return -1;
+}
+
+function calculateEndingAlignedScore(targetTail, queryTail) {
+    const pairCount = Math.min(targetTail.length, queryTail.length);
+    if (pairCount === 0) return 0;
+
+    let weightedScore = 0;
+    let totalWeight = 0;
+    for (let offset = 1; offset <= pairCount; offset++) {
+        const targetPhoneme = targetTail[targetTail.length - offset];
+        const queryPhoneme = queryTail[queryTail.length - offset];
+        const isVowel = Boolean(ipaFeatures[queryPhoneme]);
+        const isFinal = offset === 1;
+        const weight = 1 + (isVowel ? 0.3 : 0) + (isFinal ? 0.25 : 0);
+        weightedScore += get_score_1d(targetPhoneme, queryPhoneme) * weight;
+        totalWeight += weight;
+    }
+
+    const missingCount = Math.abs(targetTail.length - queryTail.length);
+    totalWeight += missingCount * 0.85;
+
+    return totalWeight > 0 ? (weightedScore / totalWeight) * 100 : 0;
+}
+
+function getEndingRimeScore(targetPhonemes, queryPhonemes) {
+    const targetLastVowel = findLastVowelIndex(targetPhonemes);
+    const queryLastVowel = findLastVowelIndex(queryPhonemes);
+    if (targetLastVowel < 0 || queryLastVowel < 0) return 0;
+
+    const targetTail = targetPhonemes.slice(targetLastVowel);
+    const queryTail = queryPhonemes.slice(queryLastVowel);
+    return calculateEndingAlignedScore(targetTail, queryTail);
+}
+
+function blendRimeAwareScore(baseScore, rimeScore, targetLength, queryLength) {
+    if (!Number.isFinite(rimeScore) || queryLength <= 1) return baseScore;
+
+    let adjustedScore = baseScore;
+    if (targetLength > queryLength && baseScore >= 95 && rimeScore < 85) {
+        const extraLength = Math.min(4, targetLength - queryLength);
+        const endingPenalty = Math.min(32, (85 - rimeScore) * 0.42 + extraLength * 1.5);
+        adjustedScore = Math.max(0, adjustedScore - endingPenalty);
+    }
+
+    if (rimeScore > adjustedScore) {
+        const boost = Math.min(6, (rimeScore - adjustedScore) * 0.14);
+        adjustedScore = Math.min(100, adjustedScore + boost);
+    }
+
+    return adjustedScore;
 }
 
 function calculateScore(targetPhonemes, queryPhonemes, detailMultipliers = []) {
@@ -400,9 +485,13 @@ function calculateScore(targetPhonemes, queryPhonemes, detailMultipliers = []) {
 
 function scoreCandidate(targetPhonemes, queryPhonemes, detailMultipliers, matchLayer, matchLayerLabel, penalty = 1) {
     const result = calculateScore(targetPhonemes, queryPhonemes, detailMultipliers);
+    const rimeScore = getEndingRimeScore(targetPhonemes, queryPhonemes);
+    const blendedScore = blendRimeAwareScore(result.score, rimeScore, targetPhonemes.length, queryPhonemes.length);
     return {
         ...result,
-        score: result.score * penalty,
+        rawScore: result.score,
+        rimeScore,
+        score: blendedScore * penalty,
         matchPhonemes: targetPhonemes,
         matchLayer,
         matchLayerLabel
