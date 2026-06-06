@@ -6,6 +6,8 @@
   "scripts": {
     "start": "python -m http.server 4173 --bind 127.0.0.1 --directory public",
     "check": "node scripts/check_project.js",
+    "validate:phonetic": "node scripts/validate_phonetic_search_pipeline.js --iterations=3 --stable-passes=3",
+    "validate:linked": "node scripts/validate_linked_search_pipeline.js --iterations=3 --stable-passes=3",
     "extract:loanwords": "python scripts/extract_loanword_overrides.py",
     "convert:word2vec": "python scripts/convert_word2vec_to_json.py",
     "build:bigram": "python scripts/build_bigram_index.py",
@@ -23,7 +25,7 @@
     "build:dict": "node scripts/build_dict.js && node scripts/enrich_korean_pronunciations.js public/data/model/rhyme_dict.json",
     "filter:dict": "python scripts/filter_corpus.py && node scripts/enrich_korean_pronunciations.js public/data/model/rhyme_dict_practical.json && node scripts/build_compound_pronunciations.js",
     "scrape:nikl": "node scripts/scrape_nikl.js",
-    "test": "npm run check"
+    "test": "npm run check && npm run validate:phonetic && npm run validate:linked"
   },
   "keywords": [],
   "author": "",

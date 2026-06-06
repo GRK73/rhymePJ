@@ -36,6 +36,16 @@ function getEnglishPhonemes(arpaPhonemes) {
     return phonemes;
 }
 
+function getEnglishStressPattern(arpaPhonemes) {
+    return arpaPhonemes
+        .split(' ')
+        .map(part => {
+            const match = part.match(/^([A-Z]+)([0-2])$/);
+            return match && arpaToIpaVowels[match[1]] ? Number(match[2]) : null;
+        })
+        .filter(value => value !== null);
+}
+
 // For IPA-dict, extract all relevant phonemes (vowels + consonants)
 const allowedIpaRegex = /tʃ|dʒ|aɪ|eɪ|ɔɪ|aʊ|oʊ|ju|jʌ|jo|jɛ|ja|je|wi|wʌ|wɛ|wa|we|ɰi|tɕʰ|tɕ\*|tɕ|dʑ|pʰ|p\*|tʰ|t\*|kʰ|k\*|s\*|i|ɯ|u|ɛ|ʌ|o|a|ɑ|æ|e|ɔ|ɪ|ʊ|ə|ɚ|b|d|f|ɡ|h|k|l|m|n|ŋ|p|ɹ|s|ʃ|t|θ|ð|v|w|j|z|ʒ|ɾ/g;
 
@@ -105,7 +115,7 @@ async function buildDict() {
                 
                 const phonemes = getEnglishPhonemes(phonemesRaw);
                 if (phonemes.length > 0) {
-                    dict.push({ word: word, lang: 'en', phonemes: phonemes, display: word });
+                    dict.push({ word: word, lang: 'en', phonemes: phonemes, stress: getEnglishStressPattern(phonemesRaw), display: word });
                     processedEnWords.add(word);
                     count++;
                 }
@@ -167,7 +177,7 @@ async function buildDict() {
                     
                     const phonemes = getEnglishPhonemes(phonemesRaw);
                     if (phonemes.length > 0) {
-                        dict.push({ word: word, lang: 'en', phonemes: phonemes, display: word });
+                        dict.push({ word: word, lang: 'en', phonemes: phonemes, stress: getEnglishStressPattern(phonemesRaw), display: word });
                         processedEnWords.add(word);
                         countRhymez++;
                     }

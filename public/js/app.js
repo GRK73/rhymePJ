@@ -431,6 +431,12 @@ function compareSearchResults(a, b) {
     const rimeDiff = (b.rimeScore || 0) - (a.rimeScore || 0);
     if (Math.abs(rimeDiff) > 0.001) return rimeDiff;
 
+    const stressDiff = (b.stressRimeScore || 0) - (a.stressRimeScore || 0);
+    if (Math.abs(stressDiff) > 0.001) return stressDiff;
+
+    const syllableDiff = (b.koreanSyllableScore || 0) - (a.koreanSyllableScore || 0);
+    if (Math.abs(syllableDiff) > 0.001) return syllableDiff;
+
     const rawDiff = (b.rawPhoneticScore || 0) - (a.rawPhoneticScore || 0);
     if (Math.abs(rawDiff) > 0.001) return rawDiff;
 
@@ -687,6 +693,8 @@ async function handleWordSearch() {
                 matchLayerLabel: result.matchLayerLabel,
                 rawPhoneticScore: result.rawScore ?? result.score,
                 rimeScore: result.rimeScore ?? 0,
+                stressRimeScore: result.stressRimeScore ?? 0,
+                koreanSyllableScore: result.koreanSyllableScore ?? 0,
                 queryLengthDelta: Math.abs(String(item.word || '').length - query.length),
                 semanticSimilarity: semanticResult.similarity,
                 corpusAffinity: corpusAffinity.score

@@ -168,11 +168,28 @@ function checkPhoneticSimilarityEngine() {
     const baseScore = vm.runInContext('calculateScore(["k", "a", "t"], ["p", "a", "t"]).score', context);
     const candidate = vm.runInContext('scoreCandidate(["k", "a", "t"], ["p", "a", "t"], [], "native", "")', context);
     const suffixMismatch = vm.runInContext('scoreCandidate(["s", "k", "i", "l", "z"], ["s", "k", "i", "l"], [], "native", "")', context);
+    const koreanSyllableScore = vm.runInContext('getKoreanSyllableScore("\\uAC00\\uB09C", "\\uBC14\\uB09C")', context);
+    const koreanContextReadings = JSON.parse(vm.runInContext(
+        'JSON.stringify(getKoreanContextualPronunciationCandidates("\\uC0AC\\uB791\\uC740").map(candidate => candidate.reading))',
+        context
+    ));
+    const stressCandidate = vm.runInContext(
+        'scoreCandidate(["k", "a", "t"], ["b", "a", "t"], [], "native", "", 1, { lang: "en", targetStress: [1], queryStress: [1] })',
+        context
+    );
+    const mixedKoTarget = vm.runInContext(
+        'calculatePronunciationScore({ word: "\\uB77C\\uC784", lang: "ko", phonemes: ["\\u027E", "a", "i", "m"] }, { phonemes: ["\\u027E", "a", "i", "m"], koreanizedCandidates: [{ phonemes: ["\\u027E", "a", "i", "m"], label: "test", form: "\\uB77C\\uC784" }] }, [], "mixed")',
+        context
+    );
 
     assert(exactScore === 100, 'exact phoneme sequences must remain 100');
     assert(candidate.rimeScore > baseScore, 'ending rime score must detect shared vowel-coda tails');
     assert(candidate.score > baseScore && candidate.score <= 100, 'candidate score must include a bounded rime boost');
     assert(suffixMismatch.rawScore === 100 && suffixMismatch.score < 95, 'non-ending substring matches must not keep an unqualified 100 score');
+    assert(koreanSyllableScore > 70 && koreanSyllableScore < 100, 'Korean syllable score must reward shared nucleus/coda while preserving onset differences');
+    assert(koreanContextReadings.includes('\uC0AC\uB791'), 'Korean contextual G2P must add particle-stripped stem candidates');
+    assert(stressCandidate.stressRimeScore > 70, 'English stress-aware rime score must be exposed on scored candidates');
+    assert(mixedKoTarget.score > 90, 'mixed search must allow English query koreanized candidates to match Korean targets');
 }
 
 function checkLinkedSurfaceHelpers() {
