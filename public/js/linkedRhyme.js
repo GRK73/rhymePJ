@@ -65,17 +65,91 @@ function parseSurfaceFollowerRow(row) {
     };
 }
 
-function formatSurfaceLinkedDisplay(firstSurface, secondSurface) {
+function getBoundarySurfaceMatch(surface, queryText, side) {
+    const surfaceChars = Array.from(surface || '');
+    const queryChars = Array.from(queryText || '');
+    if (surfaceChars.length === 0 || queryChars.length === 0) {
+        return { score: 0, exact: false, overlap: 0 };
+    }
+
+    const maxOverlap = Math.min(surfaceChars.length, queryChars.length);
+    for (let size = maxOverlap; size > 0; size--) {
+        const surfaceSegment = side === 'end'
+            ? surfaceChars.slice(surfaceChars.length - size).join('')
+            : surfaceChars.slice(0, size).join('');
+        const querySegment = side === 'end'
+            ? queryChars.slice(queryChars.length - size).join('')
+            : queryChars.slice(0, size).join('');
+        if (surfaceSegment === querySegment) {
+            const exact = size === queryChars.length;
+            const ratio = size / queryChars.length;
+            return {
+                score: exact ? 100 : 60 + ratio * 25,
+                exact,
+                overlap: size
+            };
+        }
+    }
+
+    return { score: 0, exact: false, overlap: 0 };
+}
+
+function sumDetailImportance(detailMultipliers) {
+    if (!Array.isArray(detailMultipliers) || detailMultipliers.length === 0) return 1;
+    return detailMultipliers.reduce((sum, value) => sum + (Number.isFinite(value) ? Math.max(0, value) : 1), 0) || 1;
+}
+
+function getWeightedLinkedBoundaryScore({
+    leftSurfaceMatch,
+    rightSurfaceMatch,
+    leftPhoneticScore,
+    rightPhoneticScore,
+    leftDetailMultipliers,
+    rightDetailMultipliers
+}) {
+    const leftImportance = sumDetailImportance(leftDetailMultipliers);
+    const rightImportance = sumDetailImportance(rightDetailMultipliers);
+    const totalImportance = leftImportance + rightImportance;
+    const exactBoundaryScore = totalImportance > 0
+        ? ((leftSurfaceMatch.score * leftImportance) + (rightSurfaceMatch.score * rightImportance)) / totalImportance
+        : (leftSurfaceMatch.score + rightSurfaceMatch.score) / 2;
+    const phoneticBoundaryScore = totalImportance > 0
+        ? ((leftPhoneticScore * leftImportance) + (rightPhoneticScore * rightImportance)) / totalImportance
+        : (leftPhoneticScore + rightPhoneticScore) / 2;
+    const score = exactBoundaryScore > 0
+        ? exactBoundaryScore * 0.85 + phoneticBoundaryScore * 0.15
+        : phoneticBoundaryScore;
+
+    return {
+        score,
+        exactBoundaryScore,
+        phoneticBoundaryScore
+    };
+}
+
+function getSurfaceMatchType(leftSurfaceMatch, rightSurfaceMatch) {
+    if (leftSurfaceMatch.exact && rightSurfaceMatch.exact) {
+        return { type: 'exact-surface', label: '정확 연결' };
+    }
+    if (leftSurfaceMatch.score > 0 || rightSurfaceMatch.score > 0) {
+        return { type: 'partial-surface', label: '부분 연결' };
+    }
+    return { type: 'phonetic-fallback', label: '발음 유사' };
+}
+
+function formatSurfaceLinkedDisplay(firstSurface, secondSurface, leftText = '', rightText = '') {
     const firstChars = Array.from(firstSurface || '');
     const secondChars = Array.from(secondSurface || '');
     if (firstChars.length === 0 || secondChars.length === 0) {
         return `${firstSurface || ''} ${secondSurface || ''}`.trim();
     }
 
-    const firstPrefix = firstChars.slice(0, -1).join('');
-    const firstBoundary = firstChars[firstChars.length - 1];
-    const secondBoundary = secondChars[0];
-    const secondSuffix = secondChars.slice(1).join('');
+    const leftLength = Math.max(1, Math.min(firstChars.length, Array.from(leftText || '').length || 1));
+    const rightLength = Math.max(1, Math.min(secondChars.length, Array.from(rightText || '').length || 1));
+    const firstPrefix = firstChars.slice(0, firstChars.length - leftLength).join('');
+    const firstBoundary = firstChars.slice(firstChars.length - leftLength).join('');
+    const secondBoundary = secondChars.slice(0, rightLength).join('');
+    const secondSuffix = secondChars.slice(rightLength).join('');
     return `${firstPrefix}[${firstBoundary} ${secondBoundary}]${secondSuffix}`;
 }
 

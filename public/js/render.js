@@ -41,13 +41,16 @@ function renderMoreResults() {
                     <div class="badge-container">
                         <span class="lang-badge ${res.lang}">${res.lang === 'ko' ? '한국어' : '영어'}</span>
                         <span class="layer-badge">연결</span>
-                        ${res.surfaceMode ? '<span class="layer-badge">조사 포함</span>' : ''}
+                        ${res.matchTypeLabel ? `<span class="layer-badge">${escapeHtml(res.matchTypeLabel)}</span>` : ''}
                     </div>
                 </div>
                 <div class="linked-score-breakdown">
                     <span>앞끝 ${res.leftScore.toFixed(1)}</span>
                     <span>뒤앞 ${res.rightScore.toFixed(1)}</span>
+                    ${res.surfaceExactScore !== undefined ? `<span>표면 ${res.surfaceExactScore.toFixed(1)}</span>` : ''}
                     <span>bigram ${res.bigramScore.toFixed(1)}</span>
+                    ${res.spokenSurfaceScore ? `<span>구어 ${res.spokenSurfaceScore.toFixed(1)}</span>` : ''}
+                    ${res.hiphopSurfaceScore ? `<span>힙합 ${res.hiphopSurfaceScore.toFixed(1)}</span>` : ''}
                     ${res.corpusScore ? `<span>corpus ${res.corpusScore.toFixed(1)}</span>` : ''}
                     <span>빈도 ${res.frequencyScore.toFixed(1)}</span>
                 </div>

@@ -137,6 +137,49 @@ function checkLyricsEnglishRimes() {
     assert(!mixedWindows.some(row => row.lang === 'mixed'), 'mixed Korean/English token windows must not become structural rhyme spans');
 }
 
+function checkLinkedSurfaceHelpers() {
+    const context = {
+        console,
+        ipaFeatures: {},
+        calculateScore: () => ({ score: 0, matchIndices: [] }),
+        remapDetailMultipliers: (values) => values
+    };
+    vm.createContext(context);
+
+    const source = fs.readFileSync(path.join(ROOT_DIR, 'public/js/linkedRhyme.js'), 'utf8');
+    vm.runInContext(source, context, { filename: 'public/js/linkedRhyme.js' });
+
+    const exact = vm.runInContext('getBoundarySurfaceMatch("소가", "가", "end")', context);
+    assert(exact.exact && exact.score === 100, 'surface helper must detect exact left boundary matches');
+
+    const partial = vm.runInContext('getBoundarySurfaceMatch("나간다", "나다", "start")', context);
+    assert(!partial.exact && partial.score > 0, 'surface helper must detect partial right boundary matches');
+
+    const display = vm.runInContext('formatSurfaceLinkedDisplay("A가나", "다B", "가나", "다")', context);
+    assert(display === 'A[가나 다]B', `surface display must bracket split-length matches, got ${display}`);
+
+    const balanced = vm.runInContext(`getWeightedLinkedBoundaryScore({
+        leftSurfaceMatch: { score: 100 },
+        rightSurfaceMatch: { score: 0 },
+        leftPhoneticScore: 100,
+        rightPhoneticScore: 0,
+        leftDetailMultipliers: [1],
+        rightDetailMultipliers: [1]
+    }).score`, context);
+    const rightHeavy = vm.runInContext(`getWeightedLinkedBoundaryScore({
+        leftSurfaceMatch: { score: 100 },
+        rightSurfaceMatch: { score: 0 },
+        leftPhoneticScore: 100,
+        rightPhoneticScore: 0,
+        leftDetailMultipliers: [1],
+        rightDetailMultipliers: [4]
+    }).score`, context);
+    assert(rightHeavy < balanced, 'detail weights must lower results missing a heavily weighted boundary');
+
+    const matchType = vm.runInContext('getSurfaceMatchType({ exact: true, score: 100 }, { exact: true, score: 100 }).type', context);
+    assert(matchType === 'exact-surface', 'exact surface matches must be labelled exact-surface');
+}
+
 function checkLyricsTemplateWithBugsSample() {
     const bugsPath = path.join(ROOT_DIR, '..', 'bugs_hiphop_corpus.json');
     if (!fs.existsSync(bugsPath)) return;
@@ -310,6 +353,7 @@ function main() {
     checkKoreanPronunciationRules();
     checkDictionary();
     checkLyricsEnglishRimes();
+    checkLinkedSurfaceHelpers();
     checkLyricsTemplateWithBugsSample();
     checkLoanwordOverrides();
     checkSemanticVectors();

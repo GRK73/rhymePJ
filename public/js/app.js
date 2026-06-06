@@ -4,11 +4,13 @@ let compoundPronunciationsKo = {};
 let semanticVectorStores = { ko: {}, en: {} };
 let bigramStores = { ko: null, en: null };
 let surfaceBigramStoreKo = null;
+let auxiliarySurfaceBigramStoresKo = { spoken: null, hiphop: null };
 let topicTranslations = {};
 let semanticResourcesLoaded = false;
 let semanticResourcesLoadingPromise = null;
 let bigramResourcesLoadingPromises = {};
 let surfaceBigramResourceLoadingPromise = null;
+let auxiliarySurfaceBigramResourceLoadingPromise = null;
 let isReady = false;
 
 if (typeof window !== 'undefined') {
@@ -27,7 +29,6 @@ const searchModeButtons = document.querySelectorAll('.mode-toggle-btn');
 const loadMoreBtn = document.getElementById('loadMoreBtn');
 const linkedSurfaceOptions = document.getElementById('linkedSurfaceOptions');
 const firstParticleOption = document.getElementById('firstParticleOption');
-const useSurfaceKoBigram = document.getElementById('useSurfaceKoBigram');
 const allowFirstParticleKo = document.getElementById('allowFirstParticleKo');
 const searchBox = document.querySelector('.search-box');
 const topicBox = document.querySelector('.topic-box');
@@ -95,6 +96,8 @@ syncDetailWeightControls();
 function syncSearchModeControls() {
     const isLinkedMode = currentSearchMode === 'linked';
     const isLyricsMode = currentSearchMode === 'lyrics';
+    const selectedLang = getSelectedLang();
+    const isKoreanLinkedSurfaceMode = isLinkedMode && selectedLang !== 'en';
     appLayout?.classList.toggle('lyrics-mode', isLyricsMode);
     if (!isLyricsMode) {
         appLayout?.classList.remove('lyrics-results');
@@ -106,18 +109,19 @@ function syncSearchModeControls() {
     if (lyricsAnalysisPanel) lyricsAnalysisPanel.hidden = !isLyricsMode;
     if (detailGroup) detailGroup.hidden = isLyricsMode;
     if (linkedSurfaceOptions) {
-        linkedSurfaceOptions.hidden = !isLinkedMode || isLyricsMode;
+        linkedSurfaceOptions.hidden = !isKoreanLinkedSurfaceMode || isLyricsMode;
     }
     if (firstParticleOption) {
-        const showFirstParticleOption = isLinkedMode && Boolean(useSurfaceKoBigram?.checked);
-        firstParticleOption.hidden = !showFirstParticleOption;
-        if (!showFirstParticleOption && allowFirstParticleKo) {
+        firstParticleOption.hidden = !isKoreanLinkedSurfaceMode || isLyricsMode;
+        if ((!isKoreanLinkedSurfaceMode || isLyricsMode) && allowFirstParticleKo) {
             allowFirstParticleKo.checked = false;
         }
     }
 }
 
-useSurfaceKoBigram?.addEventListener('change', syncSearchModeControls);
+Array.from(langRadios).forEach(radio => {
+    radio.addEventListener('change', syncSearchModeControls);
+});
 
 searchModeButtons.forEach(button => {
     button.addEventListener('click', () => {
@@ -275,6 +279,27 @@ async function ensureSurfaceBigramKoLoaded() {
     return surfaceBigramResourceLoadingPromise;
 }
 
+async function ensureAuxiliarySurfaceBigramKoLoaded() {
+    if (auxiliarySurfaceBigramStoresKo.spoken || auxiliarySurfaceBigramStoresKo.hiphop) {
+        return auxiliarySurfaceBigramStoresKo;
+    }
+    if (auxiliarySurfaceBigramResourceLoadingPromise) return auxiliarySurfaceBigramResourceLoadingPromise;
+
+    auxiliarySurfaceBigramResourceLoadingPromise = (async () => {
+        const [spoken, hiphop] = await Promise.all([
+            loadOptionalJson(dataPath('spoken_korean_surface_bigram_ko.json')),
+            loadOptionalJson(dataPath('hiphop_surface_bigram_ko.json'))
+        ]);
+        auxiliarySurfaceBigramStoresKo = {
+            spoken: extractBigramEntries(spoken),
+            hiphop: extractBigramEntries(hiphop)
+        };
+        return auxiliarySurfaceBigramStoresKo;
+    })();
+
+    return auxiliarySurfaceBigramResourceLoadingPromise;
+}
+
 function getSurfacePronunciationCandidates(surface) {
     const key = String(surface || '');
     if (surfacePronunciationCache.has(key)) return surfacePronunciationCache.get(key);
@@ -297,6 +322,34 @@ function getSurfacePronunciationCandidates(surface) {
         .filter(phonemes => phonemes.length > 0);
     surfacePronunciationCache.set(key, phonemeCandidates);
     return phonemeCandidates;
+}
+
+function getSurfaceFollowerRows(store, head) {
+    if (!store || typeof store !== 'object') return [];
+    const payload = store[head] || store[String(head || '').toLowerCase()];
+    if (!Array.isArray(payload)) return [];
+    if (Array.isArray(payload[1])) return payload[1];
+    return payload;
+}
+
+function normalizeSurfaceCountScore(count) {
+    const numeric = Number(count) || 0;
+    return Math.max(0, Math.min(100, Math.log1p(Math.max(0, numeric)) / Math.log1p(200000) * 100));
+}
+
+function getAuxiliarySurfacePairScores(firstSurface, secondSurface) {
+    const stores = auxiliarySurfaceBigramStoresKo || {};
+    const spokenRow = getSurfaceFollowerRows(stores.spoken, firstSurface)
+        .find(row => String(row?.[0] || '') === secondSurface);
+    const hiphopRow = getSurfaceFollowerRows(stores.hiphop, firstSurface)
+        .find(row => String(row?.[0] || '') === secondSurface);
+    const spokenScore = spokenRow ? normalizeSurfaceCountScore(spokenRow[1]) : 0;
+    const hiphopScore = hiphopRow ? normalizeSurfaceCountScore(hiphopRow[1]) : 0;
+    return {
+        spokenScore,
+        hiphopScore,
+        combinedScore: spokenScore * 0.55 + hiphopScore * 0.45
+    };
 }
 
 // Load dictionary
@@ -662,15 +715,27 @@ function appendSurfaceLinkedResults({
             if (normalizedHead && isExcludedWord(normalizedHead, excludeWords)) continue;
             if (!allowFirstParticle && normalizedHead && normalizedHead !== surfaceHead) continue;
 
-            const leftResult = getBestBoundaryScore(getSurfacePronunciationCandidates(surfaceHead), split.leftPhonemes, 'end', leftDetailMultipliers);
-            if (leftResult.score > 40) {
-                firstCandidates.push({ surfaceHead, normalizedHead, payload, leftResult });
+            const leftSurfaceMatch = getBoundarySurfaceMatch(surfaceHead, split.leftText, 'end');
+            let leftResult = null;
+            if (leftSurfaceMatch.score <= 0) {
+                leftResult = getBestBoundaryScore(getSurfacePronunciationCandidates(surfaceHead), split.leftPhonemes, 'end', leftDetailMultipliers);
+            }
+            if (leftSurfaceMatch.score > 0 || leftResult?.score > 40) {
+                firstCandidates.push({ surfaceHead, normalizedHead, payload, leftSurfaceMatch, leftResult });
             }
         }
 
-        firstCandidates
-            .sort((a, b) => b.leftResult.score - a.leftResult.score)
-            .slice(0, maxFirstCandidates)
+        const exactFirstCandidates = firstCandidates.filter(candidate => candidate.leftSurfaceMatch.exact);
+        const fallbackFirstCandidates = firstCandidates
+            .filter(candidate => !candidate.leftSurfaceMatch.exact)
+            .sort((a, b) => {
+                const aScore = Math.max(a.leftSurfaceMatch.score, a.leftResult?.score || 0);
+                const bScore = Math.max(b.leftSurfaceMatch.score, b.leftResult?.score || 0);
+                return bScore - aScore;
+            })
+            .slice(0, maxFirstCandidates);
+
+        [...exactFirstCandidates, ...fallbackFirstCandidates]
             .forEach(firstCandidate => {
                 const followers = Array.isArray(firstCandidate.payload) ? firstCandidate.payload[1] : [];
                 if (!Array.isArray(followers)) return;
@@ -681,8 +746,17 @@ function appendSurfaceLinkedResults({
                     if (isExcludedWord(follower.surface, excludeWords)) return;
                     if (follower.normalized && isExcludedWord(follower.normalized, excludeWords)) return;
 
-                    const rightResult = getBestBoundaryScore(getSurfacePronunciationCandidates(follower.surface), split.rightPhonemes, 'start', rightDetailMultipliers);
-                    if (rightResult.score <= 40) return;
+                    const rightSurfaceMatch = getBoundarySurfaceMatch(follower.surface, split.rightText, 'start');
+                    let rightResult = null;
+                    if (rightSurfaceMatch.score <= 0) {
+                        rightResult = getBestBoundaryScore(getSurfacePronunciationCandidates(follower.surface), split.rightPhonemes, 'start', rightDetailMultipliers);
+                        if (rightResult.score <= 40) return;
+                    } else {
+                        rightResult = getBestBoundaryScore(getSurfacePronunciationCandidates(follower.surface), split.rightPhonemes, 'start', rightDetailMultipliers);
+                    }
+                    if (!firstCandidate.leftResult) {
+                        firstCandidate.leftResult = getBestBoundaryScore(getSurfacePronunciationCandidates(firstCandidate.surfaceHead), split.leftPhonemes, 'end', leftDetailMultipliers);
+                    }
 
                     const headDict = dictByWord.get(firstCandidate.normalizedHead) || dictByWord.get(firstCandidate.surfaceHead);
                     const nextDict = dictByWord.get(follower.normalized) || dictByWord.get(follower.surface);
@@ -702,8 +776,18 @@ function appendSurfaceLinkedResults({
                     const topicResult = getPhraseTopicSimilarity(first, second, 'ko', semanticContext);
                     if (!topicResult.matched) return;
 
-                    const boundaryScore = (firstCandidate.leftResult.score + rightResult.score) / 2;
-                    const bigramScore = normalizeBigramScore(follower.score);
+                    const boundary = getWeightedLinkedBoundaryScore({
+                        leftSurfaceMatch: firstCandidate.leftSurfaceMatch,
+                        rightSurfaceMatch,
+                        leftPhoneticScore: firstCandidate.leftResult.score,
+                        rightPhoneticScore: rightResult.score,
+                        leftDetailMultipliers,
+                        rightDetailMultipliers
+                    });
+                    const boundaryScore = boundary.score;
+                    const auxiliarySurfaceScores = getAuxiliarySurfacePairScores(firstCandidate.surfaceHead, follower.surface);
+                    const baseBigramScore = normalizeBigramScore(follower.score);
+                    const bigramScore = Math.max(baseBigramScore, auxiliarySurfaceScores.combinedScore);
                     const frequencyScore = getPairFrequencyScore(first, second);
                     const topicScore = topicResult.topicScore ?? 0;
                     const corpusScore = getLinkedCorpusScore(first, second, 'ko');
@@ -712,7 +796,8 @@ function appendSurfaceLinkedResults({
                         : boundaryScore * (0.70 - freqRatio * 0.15) + bigramScore * 0.25 + frequencyScore * (freqRatio * 0.20);
                     const balanceMultiplier = 0.85 + split.balance * 0.15;
                     const finalScore = Math.max(0, Math.min(100, blendLinkedCorpusScore(rawScore, corpusScore) * balanceMultiplier));
-                    const surfaceDisplay = formatSurfaceLinkedDisplay(firstCandidate.surfaceHead, follower.surface);
+                    const surfaceDisplay = formatSurfaceLinkedDisplay(firstCandidate.surfaceHead, follower.surface, split.leftText, split.rightText);
+                    const matchType = getSurfaceMatchType(firstCandidate.leftSurfaceMatch, rightSurfaceMatch);
 
                     results.push({
                         resultType: 'linked',
@@ -727,10 +812,17 @@ function appendSurfaceLinkedResults({
                         splitLabel: split.label,
                         leftScore: firstCandidate.leftResult.score,
                         rightScore: rightResult.score,
+                        surfaceExactScore: boundary.exactBoundaryScore,
+                        phoneticBoundaryScore: boundary.phoneticBoundaryScore,
                         bigramScore,
+                        baseBigramScore,
+                        spokenSurfaceScore: auxiliarySurfaceScores.spokenScore,
+                        hiphopSurfaceScore: auxiliarySurfaceScores.hiphopScore,
                         corpusScore,
                         frequencyScore,
-                        topicSimilarity: topicResult.similarity
+                        topicSimilarity: topicResult.similarity,
+                        matchType: matchType.type,
+                        matchTypeLabel: matchType.label
                     });
                 });
             });
@@ -767,9 +859,9 @@ async function handleLinkedRhymeSearch() {
         });
     }
 
-    const useSurfaceKo = Boolean(useSurfaceKoBigram?.checked);
-    const allowFirstParticle = Boolean(useSurfaceKo && allowFirstParticleKo?.checked);
     const targetLangs = getLinkedSearchLangs(selectedLang);
+    const useSurfaceKo = targetLangs.includes('ko');
+    const allowFirstParticle = Boolean(useSurfaceKo && allowFirstParticleKo?.checked);
     const splitsByLang = targetLangs.map(lang => ({ lang, splits: buildLinkedSplits(query, lang) }));
     const allSplits = splitsByLang.flatMap(entry => entry.splits);
     if (allSplits.length === 0) {
@@ -783,7 +875,11 @@ async function handleLinkedRhymeSearch() {
     let surfaceEntriesKo = null;
     await Promise.all(targetLangs.map(async lang => {
         if (lang === 'ko' && useSurfaceKo) {
-            surfaceEntriesKo = await ensureSurfaceBigramKoLoaded();
+            const [surfaceEntries] = await Promise.all([
+                ensureSurfaceBigramKoLoaded(),
+                ensureAuxiliarySurfaceBigramKoLoaded()
+            ]);
+            surfaceEntriesKo = surfaceEntries;
         } else {
             bigramStoresByLang[lang] = await ensureBigramResourceLoaded(lang);
         }
@@ -812,7 +908,7 @@ async function handleLinkedRhymeSearch() {
     }
 
     const surfaceModeText = useSurfaceKo && targetLangs.includes('ko')
-        ? ` / 한국어 조사 포함${allowFirstParticle ? ' / 첫 단어 조사 허용' : ''}`
+        ? `${allowFirstParticle ? ' / 첫 단어 조사 허용' : ''}`
         : '';
     statusEl.textContent = `"${query}"의 연결 라임을 찾습니다... (${allSplits.map(split => `${split.lang}:${split.label}`).join(', ')}${surfaceModeText})`;
 
