@@ -178,6 +178,10 @@ function checkLinkedSurfaceHelpers() {
 
     const matchType = vm.runInContext('getSurfaceMatchType({ exact: true, score: 100 }, { exact: true, score: 100 }).type', context);
     assert(matchType === 'exact-surface', 'exact surface matches must be labelled exact-surface');
+
+    const rareSpike = vm.runInContext('getCountAwareBigramScore(12, 5)', context);
+    const commonPhrase = vm.runInContext('getCountAwareBigramScore(1.5, 500)', context);
+    assert(commonPhrase >= rareSpike * 0.85, 'count-aware bigram score must dampen rare association spikes');
 }
 
 function checkLyricsTemplateWithBugsSample() {

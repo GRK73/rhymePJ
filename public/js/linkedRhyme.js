@@ -169,6 +169,17 @@ function normalizeBigramScore(value) {
     return Math.max(0, Math.min(100, Math.log1p(Math.max(0, numeric)) / Math.log1p(24) * 100));
 }
 
+function normalizeLinkedBigramCount(count) {
+    const numeric = Number(count) || 0;
+    return Math.max(0, Math.min(100, Math.log1p(Math.max(0, numeric)) / Math.log1p(200000) * 100));
+}
+
+function getCountAwareBigramScore(score, count) {
+    const associationScore = normalizeBigramScore(score);
+    const countScore = normalizeLinkedBigramCount(count);
+    return associationScore * 0.40 + countScore * 0.60;
+}
+
 function averageVectors(a, b) {
     if (!a || !b || a.length !== b.length) return null;
     return a.map((value, index) => (value + b[index]) / 2);

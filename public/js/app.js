@@ -786,14 +786,14 @@ function appendSurfaceLinkedResults({
                     });
                     const boundaryScore = boundary.score;
                     const auxiliarySurfaceScores = getAuxiliarySurfacePairScores(firstCandidate.surfaceHead, follower.surface);
-                    const baseBigramScore = normalizeBigramScore(follower.score);
+                    const baseBigramScore = getCountAwareBigramScore(follower.score, follower.count);
                     const bigramScore = Math.max(baseBigramScore, auxiliarySurfaceScores.combinedScore);
                     const frequencyScore = getPairFrequencyScore(first, second);
                     const topicScore = topicResult.topicScore ?? 0;
                     const corpusScore = getLinkedCorpusScore(first, second, 'ko');
                     const rawScore = semanticContext.active
-                        ? boundaryScore * (0.62 - freqRatio * 0.12) + bigramScore * 0.20 + frequencyScore * (freqRatio * 0.15) + topicScore * 0.15
-                        : boundaryScore * (0.70 - freqRatio * 0.15) + bigramScore * 0.25 + frequencyScore * (freqRatio * 0.20);
+                        ? boundaryScore * (0.57 - freqRatio * 0.08) + bigramScore * 0.20 + frequencyScore * (0.08 + freqRatio * 0.08) + topicScore * 0.15
+                        : boundaryScore * (0.65 - freqRatio * 0.10) + bigramScore * 0.25 + frequencyScore * (0.10 + freqRatio * 0.10);
                     const balanceMultiplier = 0.85 + split.balance * 0.15;
                     const finalScore = Math.max(0, Math.min(100, blendLinkedCorpusScore(rawScore, corpusScore) * balanceMultiplier));
                     const surfaceDisplay = formatSurfaceLinkedDisplay(firstCandidate.surfaceHead, follower.surface, split.leftText, split.rightText);
@@ -988,8 +988,8 @@ async function handleLinkedRhymeSearch() {
                         const topicScore = topicResult.topicScore ?? 0;
                         const corpusScore = getLinkedCorpusScore(firstCandidate.item, second, lang);
                         const rawScore = semanticContext.active
-                            ? boundaryScore * (0.62 - freqRatio * 0.12) + bigramScore * 0.20 + frequencyScore * (freqRatio * 0.15) + topicScore * 0.15
-                            : boundaryScore * (0.70 - freqRatio * 0.15) + bigramScore * 0.25 + frequencyScore * (freqRatio * 0.20);
+                            ? boundaryScore * (0.57 - freqRatio * 0.08) + bigramScore * 0.20 + frequencyScore * (0.08 + freqRatio * 0.08) + topicScore * 0.15
+                            : boundaryScore * (0.65 - freqRatio * 0.10) + bigramScore * 0.25 + frequencyScore * (0.10 + freqRatio * 0.10);
                         const balanceMultiplier = 0.85 + split.balance * 0.15;
                         const finalScore = Math.max(0, Math.min(100, blendLinkedCorpusScore(rawScore, corpusScore) * balanceMultiplier));
 
