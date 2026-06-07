@@ -39,6 +39,10 @@ const addLyricsSectionBtn = document.getElementById('addLyricsSectionBtn');
 const lyricsSectionTypeMenu = document.getElementById('lyricsSectionTypeMenu');
 const lyricsAnalyzeBtn = document.getElementById('lyricsAnalyzeBtn');
 const lyricsAnalysisResults = document.getElementById('lyricsAnalysisResults');
+const principleInfoBtn = document.getElementById('principleInfoBtn');
+const principleInfoDialog = document.getElementById('principleInfoDialog');
+const principleInfoCloseBtn = document.getElementById('principleInfoCloseBtn');
+const principleInfoPanel = principleInfoDialog?.querySelector('.principle-info-panel');
 
 const consoWeightInput = document.getElementById('consoWeight');
 const vowelWeightInput = document.getElementById('vowelWeight');
@@ -64,6 +68,33 @@ const surfacePronunciationCache = new Map();
 
 const reSearchBtn = document.getElementById('reSearchBtn');
 reSearchBtn.addEventListener('click', handleSearch);
+
+function openPrincipleInfoDialog() {
+    if (!principleInfoDialog) return;
+    principleInfoDialog.hidden = false;
+    principleInfoBtn?.setAttribute('aria-expanded', 'true');
+    principleInfoPanel?.focus();
+}
+
+function closePrincipleInfoDialog() {
+    if (!principleInfoDialog || principleInfoDialog.hidden) return;
+    principleInfoDialog.hidden = true;
+    principleInfoBtn?.setAttribute('aria-expanded', 'false');
+    principleInfoBtn?.focus();
+}
+
+principleInfoBtn?.addEventListener('click', openPrincipleInfoDialog);
+principleInfoCloseBtn?.addEventListener('click', closePrincipleInfoDialog);
+principleInfoDialog?.addEventListener('click', event => {
+    if (event.target && typeof event.target.hasAttribute === 'function' && event.target.hasAttribute('data-principle-close')) {
+        closePrincipleInfoDialog();
+    }
+});
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && principleInfoDialog && !principleInfoDialog.hidden) {
+        closePrincipleInfoDialog();
+    }
+});
 
 // No auto-render on toggle since there's a research button, but we can toggle visibility of sliders
 // If detail weights is checked, we just leave it. If they uncheck it, they can also click re-search.

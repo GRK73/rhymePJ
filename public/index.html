@@ -6,10 +6,74 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rhyme Finder (한/영 통합 검색)</title>
     <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="style.css?v=20260518-lyrics-analysis">
+    <link rel="stylesheet" href="style.css?v=20260607-principle-info">
 </head>
 
 <body>
+    <button type="button" id="principleInfoBtn" class="principle-info-btn" aria-haspopup="dialog" aria-controls="principleInfoDialog" aria-expanded="false">
+        지루하고 현학적인 원리 설명
+    </button>
+
+    <div id="principleInfoDialog" class="principle-info-dialog" role="dialog" aria-modal="true" aria-labelledby="principleInfoTitle" hidden>
+        <div class="principle-info-backdrop" data-principle-close></div>
+        <section class="principle-info-panel" tabindex="-1">
+            <div class="principle-info-header">
+                <div>
+                    <p class="principle-info-kicker">검색 원리</p>
+                    <h2 id="principleInfoTitle">지루하고 현학적인 원리 설명</h2>
+                </div>
+                <button type="button" id="principleInfoCloseBtn" class="principle-info-close" aria-label="원리 설명 닫기">×</button>
+            </div>
+
+            <div class="principle-info-content">
+                <section>
+                    <h3>1. 글자가 아니라 발음을 검색합니다</h3>
+                    <p>검색어와 사전 단어를 먼저 발음 단위로 바꾼 뒤 비교합니다. 한국어는 표기 그대로의 발음뿐 아니라 표준발음 후보, 복합어/문맥형 후보, 조사나 어미가 붙은 형태의 어간 후보를 함께 봅니다. 영어는 실제 영어 발음과 한국어 화자가 외래어처럼 읽는 한국식 발음 후보를 같이 만듭니다.</p>
+                </section>
+
+                <section>
+                    <h3>2. 소리 하나하나를 조음 특징으로 비교합니다</h3>
+                    <p>각 음소는 단순히 같고 다름으로 처리하지 않습니다. 자음은 조음 위치, 조음 방법, 기식/경음 강도, 유성성을 기준으로 점수를 냅니다. 모음은 혀의 높이, 전후 위치, 입술 모양을 기준으로 계산합니다. 그래서 <span class="principle-inline">p</span>와 <span class="principle-inline">b</span>처럼 비슷한 소리는 부분 점수를 받고, 멀리 떨어진 소리는 낮은 점수를 받습니다.</p>
+                </section>
+
+                <section>
+                    <h3>3. 전체 발음 배열은 두 방식으로 맞춰봅니다</h3>
+                    <p>첫째, 동적 계획법 편집거리로 전체 발음 배열이 얼마나 자연스럽게 대응되는지 봅니다. 둘째, 검색어 발음이 대상 단어 안의 어느 구간과 가장 잘 맞는지 sliding window 방식으로 훑습니다. 둘 중 더 높은 점수를 기본 발음 점수로 씁니다.</p>
+                </section>
+
+                <section>
+                    <h3>4. 라임에서는 끝소리를 더 중요하게 봅니다</h3>
+                    <p>마지막 모음부터 끝까지를 rime core로 잡아 별도 점수를 냅니다. 예를 들어 <span class="principle-inline">skill</span>과 <span class="principle-inline">kill</span>은 앞소리가 달라도 끝 라임이 강하게 맞습니다. 반대로 <span class="principle-inline">skills</span>나 <span class="principle-inline">skilled</span>처럼 단어 안에 검색어가 들어 있어도 실제 끝소리가 달라지면 100점을 유지하지 못하게 낮춥니다.</p>
+                </section>
+
+                <section>
+                    <h3>5. 한국어는 음절 구조도 따로 봅니다</h3>
+                    <p>한국어 단어는 초성, 중성, 종성으로 다시 나누어 뒤쪽 음절부터 비교합니다. 중성은 라임의 중심이라 가장 크게 보고, 종성은 끝맛을 결정하므로 그다음으로 크게 봅니다. 초성도 보지만 라임 검색에서는 상대적으로 낮게 반영합니다.</p>
+                </section>
+
+                <section>
+                    <h3>6. 영어는 강세와 한국식 발음을 같이 고려합니다</h3>
+                    <p>영어 사전에 강세 정보가 있으면 강세가 있는 모음부터 끝까지를 핵심 라임으로 봅니다. 강세 정보가 없으면 마지막 모음부터 끝까지를 fallback rime으로 씁니다. 혼합 검색에서는 영어 native 발음, 한국식 영어 발음, native와 한국식 발음을 서로 건너 비교하는 bridge 후보까지 계산합니다.</p>
+                </section>
+
+                <section>
+                    <h3>7. 최종 점수는 여러 보조 점수를 섞어 정합니다</h3>
+                    <p>기본 발음 점수에 rime 점수, 한국어 음절 점수, 영어 stress-rime 점수, native/한국식 이중층 보완 점수를 더합니다. 보조 점수가 기본 점수보다 좋으면 소폭 올리고, 기본 점수는 높지만 끝소리나 음절 구조가 어긋나면 점수를 낮춥니다.</p>
+                </section>
+
+                <section>
+                    <h3>8. 연결 라임 검색은 단어 경계를 쪼개서 봅니다</h3>
+                    <p>연결 라임 모드는 검색어를 가능한 모든 분할로 나눈 뒤, 앞 단어의 끝과 뒤 단어의 시작이 각각 맞는지 계산합니다. 한국어 표면 문자열이 정확히 이어지는 경우를 우선하고, 발음 점수, 실제 말뭉치에서 같이 나오는 정도, 빈도, 주제 유사도 등을 함께 반영합니다.</p>
+                </section>
+
+                <section>
+                    <h3>9. 결과 정렬은 점수 동률까지 다시 풉니다</h3>
+                    <p>최종 점수가 같으면 rime 점수, stress-rime 점수, 한국어 음절 점수, 원 발음 점수, 검색어와 후보 단어의 길이 차이를 순서대로 비교합니다. 그래서 단순히 검색어가 포함된 긴 단어보다 실제 라임이 잘 맞는 단어가 위로 올라오도록 조정합니다.</p>
+                </section>
+            </div>
+        </section>
+    </div>
+
     <div class="app-layout">
         <aside class="sidebar">
             <div class="filter-group">
@@ -174,7 +238,7 @@
     <script src="js/lyricsAnalysisMetrics.js?v=20260519-section-template"></script>
     <script src="js/render.js?v=20260518-corpus-boost"></script>
     <script src="js/tts.js?v=20260516-compound-pronunciation"></script>
-    <script src="js/app.js?v=20260518-corpus-boost"></script>
+    <script src="js/app.js?v=20260607-principle-info"></script>
 </body>
 
 </html>
