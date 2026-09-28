@@ -13,8 +13,10 @@ const ALWAYS_DENIED = [
 ];
 const SERVER_ONLY_API_PATTERN = /(?:^|[^a-z0-9_])\/?api\/v2\/generate(?:[^a-z0-9_]|$)/i;
 const EXTERNAL_EXECUTABLE_HTML_PATTERN = /<(?:script|link)\b[^>]*(?:src|href)\s*=\s*["']https?:\/\//i;
-const EXTERNAL_FETCH_PATTERN = /\b(?:fetch|importScripts)\s*\(\s*["'`]https?:\/\//i;
-// No exceptions: topics are compared in one ko/en meaning space, nothing is translated (2026-09-28).
+const EXTERNAL_FETCH_PATTERN = /\b(?:fetch|importScripts)\s*\(\s*["'`]https?:\/\/([^/"'`]+)/gi;
+// The only allowed outside requests: result meanings in js/app.js (V1 behaviour, restored
+// 2026-09-28 by the owner). Topics never leave the browser; nothing else is fetched.
+const ALLOWED_EXTERNAL_FETCHES = { 'js/app.js': new Set(['translate.googleapis.com', 'ko.wikipedia.org']) };
 
 function fail(message) {
     throw new Error(message);
@@ -103,8 +105,12 @@ function checkArtifact(rootDir, allowlistPath, options = {}) {
             if (/\.html?$/i.test(relativePath) && EXTERNAL_EXECUTABLE_HTML_PATTERN.test(source)) {
                 fail(`External executable dependency remains in the static Pages artifact: ${relativePath}`);
             }
-            if (/\.js$/i.test(relativePath) && EXTERNAL_FETCH_PATTERN.test(source)) {
-                fail(`Automatic external fetch remains in the static Pages artifact: ${relativePath}`);
+            if (/\.js$/i.test(relativePath)) {
+                for (const [, host] of source.matchAll(EXTERNAL_FETCH_PATTERN)) {
+                    if (!ALLOWED_EXTERNAL_FETCHES[relativePath]?.has(host)) {
+                        fail(`Automatic external fetch remains in the static Pages artifact: ${relativePath} (${host})`);
+                    }
+                }
             }
         }
     }

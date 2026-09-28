@@ -129,12 +129,14 @@ function checkDeploymentAndPrivacyGuards() {
     assert(!/<script[^>]+src="https?:/.test(index), 'the page must not load external scripts');
     const app = fs.readFileSync(path.join(ROOT_DIR, 'public/js/app.js'), 'utf8');
     const wordWorker = fs.readFileSync(path.join(ROOT_DIR, 'public/workers/word-worker.js'), 'utf8');
-    assert(!app.includes('translate.googleapis.com'), 'search words must not be sent to Google Translate');
-    assert(!app.includes('wikipedia.org/w/api.php'), 'search words must not be sent to Wikipedia');
+    // Result meanings (V1 behaviour, restored 2026-09-28 by the owner) are the page's only
+    // outside requests: a result word is looked up when it scrolls into view.
+    assert(app.includes('function lookupMeaning('), 'result meanings are looked up by lookupMeaning');
     // Topics are compared in one ko/en meaning space; no search or topic word is translated.
     assert(!wordWorker.includes('translate.googleapis.com'), 'topic words must not be sent to Google Translate');
     assert(!index.includes('Google 번역으로 전송'), 'the UI must not describe a topic translation that no longer happens');
-    assert(app.includes('사용자가 직접 사전 검색'), 'dictionary lookup must remain user-initiated');
+    assert(app.includes('renderExternalDictionaryLink(meaningEl'), 'a result without a meaning falls back to a dictionary link');
+    assert(index.includes('결과 단어의 뜻:'), 'the footer must say where result meanings come from');
     assert(!app.includes('api/v2/generate'), 'search product must not call the retired generation API');
     assert(!index.includes('data-search-mode="generate"'), 'search product must not expose generation');
 }

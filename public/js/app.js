@@ -227,24 +227,45 @@ function renderExternalDictionaryLink(element, word, lang) {
     const baseUrl = lang === 'en'
         ? 'https://en.dict.naver.com/#/search?query='
         : 'https://ko.dict.naver.com/#/search?query=';
-    element.innerHTML = `<a href="${baseUrl}${encodeURIComponent(word)}" target="_blank" rel="noopener noreferrer" class="dict-link">사용자가 직접 사전 검색 ↗</a>`;
+    element.innerHTML = `<a href="${baseUrl}${encodeURIComponent(word)}" target="_blank" rel="noopener noreferrer" class="dict-link">사전 검색 ↗</a>`;
 }
 
-// Do not send search words to third-party APIs. Offer a user-initiated link instead.
+// Meanings under word-search results, as in V1: loaded when a result scrolls into view.
+// English: Korean glosses from Google Translate's dictionary data; Korean: the first
+// sentence of the Korean Wikipedia article. When neither has one, a dictionary link.
+const KO_DISAMBIGUATION = ['다음을 가리', '뜻으로 쓰인', '다음을 의미', '동음이의', '다른 뜻', '다음과 같'];
+
+async function lookupMeaning(word, lang) {
+    if (lang === 'en') {
+        const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&dt=t&dt=bd&q=${encodeURIComponent(word)}`);
+        const data = await response.json();
+        const meanings = [...new Set((data?.[1] || []).flatMap(pos => (Array.isArray(pos?.[1]) ? pos[1] : [])))];
+        if (meanings.length) return meanings.slice(0, 8).join(', ');
+        const translation = data?.[0]?.[0]?.[0];
+        return translation && translation.toLowerCase() !== word.toLowerCase() ? translation : null;
+    }
+    const response = await fetch(`https://ko.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&exsentences=1&redirects=1&titles=${encodeURIComponent(word)}&format=json&origin=*`);
+    const pages = (await response.json())?.query?.pages || {};
+    const extract = Object.values(pages)[0]?.extract?.trim();
+    // Disambiguation pages and raw wiki templates ({{노래 정보 ...) are not meanings.
+    return extract && !extract.includes('{{') && !KO_DISAMBIGUATION.some(marker => extract.includes(marker)) ? extract : null;
+}
+
 const meaningObserver = new IntersectionObserver((entries, observer) => {
     entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            const el = entry.target;
-            const word = el.dataset.word;
-            const lang = el.dataset.lang;
-            const meaningEl = el.querySelector('.result-meaning');
-            
-            if (meaningEl && !meaningEl.dataset.loaded) {
-                meaningEl.dataset.loaded = 'true';
-                renderExternalDictionaryLink(meaningEl, word, lang);
-            }
-            observer.unobserve(el);
-        }
+        if (!entry.isIntersecting) return;
+        const el = entry.target;
+        const meaningEl = el.querySelector('.result-meaning');
+        observer.unobserve(el);
+        if (!meaningEl || meaningEl.dataset.loaded) return;
+        meaningEl.dataset.loaded = 'true';
+        const { word, lang } = el.dataset;
+        lookupMeaning(word, lang)
+            .then(meaning => {
+                if (meaning) meaningEl.textContent = meaning;
+                else renderExternalDictionaryLink(meaningEl, word, lang);
+            })
+            .catch(() => renderExternalDictionaryLink(meaningEl, word, lang));
     });
 }, { rootMargin: '100px' });
 
