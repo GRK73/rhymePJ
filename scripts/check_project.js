@@ -94,7 +94,7 @@ function checkWordSearchEngine() {
     assert(linkedSource.includes('wordSearchRuntime.linked'), 'linked mode must call the V2 linked engine in the word Worker');
     assert(!linkedSource.includes('linkedSearchRuntime'), 'linked mode must not use the retired linked Worker');
     assert(!wordSearchSource.includes('for (const item of dictionary)'), 'word mode must not scan the dictionary on the main thread');
-    ['vowelOnlySearch', 'searchProgressBar', 'cancelSearchBtn', 'pronunciationModeOptions'].forEach(id => {
+    ['searchProgressBar', 'cancelSearchBtn', 'pronunciationModeOptions'].forEach(id => {
         assert(indexSource.includes(`id="${id}"`), `word search UI is missing #${id}`);
     });
 }

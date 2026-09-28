@@ -33,7 +33,6 @@ const globalPhonemeWeightContainers = document.querySelectorAll('.global-phoneme
 const excludeInput = document.getElementById('excludeInput');
 
 const useDetailWeights = document.getElementById('useDetailWeights');
-const vowelOnlySearch = document.getElementById('vowelOnlySearch');
 const detailGroup = document.getElementById('detailGroup');
 const detailSlidersContainer = document.getElementById('detailSlidersContainer');
 const searchProgress = document.getElementById('searchProgress');
@@ -167,10 +166,9 @@ function syncSearchModeControls() {
     const isLinkedMode = currentSearchMode === 'linked';
     const selectedLang = getSelectedLang();
     const isKoreanLinkedSurfaceMode = isLinkedMode && selectedLang !== 'en';
-    // Pronunciation mode applies to both searches; vowel-only to word search.
+    // Pronunciation mode applies to both searches.
     const pronunciationOptions = document.getElementById('pronunciationModeOptions');
     if (pronunciationOptions) pronunciationOptions.hidden = false;
-    vowelOnlySearch.disabled = isLinkedMode;
     const pronunciationNotice = '영어 단어를 실제 영어 발음, 한국식 발음, 또는 둘 다(혼합)로 비교합니다.';
     pronunciationFilterGroup?.setAttribute('title', pronunciationNotice);
     const pronunciationNoticeEl = document.getElementById('pronunciationModeNotice');
@@ -357,7 +355,6 @@ function noPronunciationMessage() {
 
 function wordCompletionMessage(response, request) {
     const parts = [`결과 ${response.total.toLocaleString()}개`, `${Math.round(response.timings.total_ms).toLocaleString()}ms`];
-    if (request.vowelsOnly) parts.push('모음만');
     if (getTargetLanguages().includes('en')) parts.push(getPronunciationModeLabel(request.mode));
     const notes = [...new Set(response.resolved.sources)].map(source => PRONUNCIATION_SOURCE_NOTES[source]).filter(Boolean);
     parts.push(...notes);
@@ -408,7 +405,7 @@ async function handleWordSearch() {
             query, languages: getTargetLanguages(), mode: getSelectedPronunciationMode(),
             vowelWeight: Number(vowelWeightInput.value), consonantWeight: Number(consoWeightInput.value),
             useDetailWeights: useDetailWeights.checked, detail: getDetailMultipliers(phonemes.length),
-            vowelsOnly: vowelOnlySearch.checked, frequencyWeight: Number(freqWeightInput.value),
+            frequencyWeight: Number(freqWeightInput.value),
             topicWord: topicInput.value.trim(), topicWeight: Number(topicWeightInput.value),
             excludeWords: getExcludeWords()
         };

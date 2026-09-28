@@ -334,10 +334,6 @@ body.preloading { overflow: hidden; }
     margin-bottom: 1rem;
 }
 
-.vowel-only-toggle {
-    margin-top: 0.75rem;
-}
-
 .v2-control-disabled {
     opacity: 0.45;
 }
