@@ -8,3 +8,6 @@ tests/reference/opt3/** -text
 tests/reference/opt4/** -text
 public/vendor/hangul-js-0.2.6/** -text
 tests/fixtures/search_product_v1.json -text
+# Generated files the project check compares byte for byte with their generator's output.
+public/js/v2/phoneme-similarity-config.js text eol=lf
+tests/fixtures/phoneme_similarity_golden_v0.json text eol=lf
