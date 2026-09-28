@@ -18,10 +18,39 @@
     const VOWELS = new Set(['a', 'ɛ', 'ʌ', 'e', 'o', 'u', 'ɯ', 'i',
         'ja', 'jɛ', 'jʌ', 'je', 'jo', 'ju', 'wa', 'wɛ', 'we', 'wʌ', 'wi', 'ɰi']);
 
-    // One slider per Hangul syllable: onset consonant(s), vowel and coda. Falls back
-    // to one slider per phoneme when vowels and syllables do not line up.
-    // Each written syllable gets the sounds that come from its own letters, even when
-    // pronunciation moves them (맛있다 [마딛따]: the t from ㅅ stays with 맛).
+    // Detail sliders are one per sound, as in V1, named by its jamo (나도: ㄴ ㅏ ㄷ ㅗ).
+    // The name follows the pronunciation (맛있다 [마딛따]: ㅁ ㅏ ㄷ ㅣ ㄷ ㄸ ㅏ); a vowel takes
+    // its written jamo when that is how it is pronounced (외 -> ㅚ rather than ㅞ).
+    const JAMO_OF = {
+        k: 'ㄱ', 'k*': 'ㄲ', kʰ: 'ㅋ', n: 'ㄴ', t: 'ㄷ', 't*': 'ㄸ', tʰ: 'ㅌ', ɾ: 'ㄹ', l: 'ㄹ', m: 'ㅁ',
+        p: 'ㅂ', 'p*': 'ㅃ', pʰ: 'ㅍ', s: 'ㅅ', 's*': 'ㅆ', tɕ: 'ㅈ', 'tɕ*': 'ㅉ', tɕʰ: 'ㅊ', h: 'ㅎ', ŋ: 'ㅇ',
+        a: 'ㅏ', ɛ: 'ㅐ', ja: 'ㅑ', jɛ: 'ㅒ', ʌ: 'ㅓ', e: 'ㅔ', jʌ: 'ㅕ', je: 'ㅖ', o: 'ㅗ', wa: 'ㅘ', wɛ: 'ㅙ',
+        we: 'ㅞ', jo: 'ㅛ', u: 'ㅜ', wʌ: 'ㅝ', wi: 'ㅟ', ju: 'ㅠ', ɯ: 'ㅡ', ɰi: 'ㅢ', i: 'ㅣ',
+    };
+    const JUNG_JAMO = 'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ';
+    const JUNG_IPA = ['a', 'ɛ', 'ja', 'jɛ', 'ʌ', 'e', 'jʌ', 'je', 'o', 'wa', 'wɛ', 'we', 'jo', 'u', 'wʌ', 'we', 'wi', 'ju', 'ɯ', 'ɰi', 'i'];
+
+    function jamoMap(word, phonemes, offset) {
+        const syllables = Array.from(word);
+        const vowels = phonemes.flatMap((phoneme, index) => (VOWELS.has(phoneme) ? [index] : []));
+        const written = new Map();
+        if (vowels.length === syllables.length) {
+            syllables.forEach((char, k) => {
+                const code = char.codePointAt(0) - 0xac00;
+                if (code < 0 || code > 11171) return;
+                const jung = Math.floor(code / 28) % 21;
+                if (JUNG_IPA[jung] === phonemes[vowels[k]]) written.set(vowels[k], JUNG_JAMO[jung]);
+            });
+        }
+        return phonemes.map((phoneme, index) => ({ char: written.get(index) || JAMO_OF[phoneme] || phoneme,
+            startIndex: offset + index, endIndex: offset + index + 1 }));
+    }
+
+    // Written syllables of a Korean word over its sounds, for linked search, which splits a
+    // Korean query only between syllables. Each written syllable gets the sounds that come
+    // from its own letters, even when pronunciation moves them (맛있다 [마딛따]: the t from
+    // ㅅ stays with 맛). Falls back to spreading the sounds evenly when vowels and
+    // syllables do not line up.
     function syllableMap(word, phonemes, offset) {
         const syllables = Array.from(word);
         const vowels = phonemes.flatMap((phoneme, index) => (VOWELS.has(phoneme) ? [index] : []));
@@ -126,18 +155,28 @@
                 else if (part.source === 'number') skipped.push(token);
             }
             const native = parts.flatMap(part => part.native);
-            if (!native.length) return { query, phonemes: [], charMap: [], tokens: [], sources: [], skipped };
+            if (!native.length) return { query, phonemes: [], charMap: [], syllables: [], tokens: [], sources: [], skipped };
+            // charMap: one detail slider per sound; syllables: where linked search may split.
             let offset = 0;
-            const charMap = parts.flatMap(part => {
-                const map = part.charMap ? part.charMap.map(item => ({ ...item, startIndex: item.startIndex + offset, endIndex: item.endIndex + offset }))
-                    : part.korean ? syllableMap(part.text, part.native, offset) : phonemeMap(part.native, offset);
+            const charMap = [], syllables = [];
+            for (const part of parts) {
+                const shift = item => ({ ...item, startIndex: item.startIndex + offset, endIndex: item.endIndex + offset });
+                if (part.charMap) {
+                    const jamo = part.charMap.map(shift);
+                    charMap.push(...jamo);
+                    syllables.push(...jamo);
+                } else if (part.korean) {
+                    charMap.push(...jamoMap(part.text, part.native, offset));
+                    syllables.push(...syllableMap(part.text, part.native, offset));
+                } else {
+                    charMap.push(...phonemeMap(part.native, offset));
+                }
                 offset += part.native.length;
-                return map;
-            });
+            }
             const allKorean = parts.every(part => part.korean);
             const koreanized = parts.flatMap(part => part.koreanized);
             return {
-                query, phonemes: native, charMap,
+                query, phonemes: native, charMap, syllables,
                 koreanPronunciationCandidates: allKorean ? [{ phonemes: native }] : undefined,
                 koreanizedCandidates: allKorean ? undefined : [{ phonemes: koreanized }],
                 tokens: parts.map(part => part.text), sources: parts.map(part => part.source), skipped,
@@ -154,5 +193,5 @@
         };
     }
 
-    root.RhymeWordQuery = Object.freeze({ QueryResolver, toEngineQuery, syllableMap });
+    root.RhymeWordQuery = Object.freeze({ QueryResolver, toEngineQuery, syllableMap, jamoMap });
 })(typeof self !== 'undefined' ? self : globalThis);

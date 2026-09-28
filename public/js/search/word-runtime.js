@@ -7,7 +7,7 @@
 (function (root) {
     'use strict';
     const scriptUrl = typeof document !== 'undefined' ? document.currentScript?.src : null;
-    const defaultWorkerUrl = scriptUrl ? new URL('../../workers/word-worker.js?v=20260928-final3', scriptUrl).href : null;
+    const defaultWorkerUrl = scriptUrl ? new URL('../../workers/word-worker.js?v=20260928-jamo1', scriptUrl).href : null;
     const failure = (code, message) => Object.assign(new Error(message), { code });
 
     class WordSearchRuntime {

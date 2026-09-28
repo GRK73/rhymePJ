@@ -9,7 +9,7 @@ importScripts(
     '../js/phonetics.js',
     '../js/search/word-engine.js?v=20260928-engine1',
     '../js/search/g2p-heami.js?v=20260928-final1',
-    '../js/search/word-query.js?v=20260928-final1',
+    '../js/search/word-query.js?v=20260928-jamo1',
     '../js/search/topic-vectors.js?v=20260928-int4',
     '../js/search/linked-engine.js?v=20260928-int4',
 );
@@ -251,8 +251,8 @@ async function handleLinked(requestId, request) {
     const linked = await ensureLinked(p => progress(p.phase, p));
     const topic = await topicContext(request, lexicon, progress, true);
     // A Korean query splits only between its written syllables (one syllable: no split, as V1).
-    const syllables = resolved.koreanPronunciationCandidates && resolved.charMap.length
-        ? { chars: resolved.charMap.map(item => item.char), starts: resolved.charMap.map(item => item.startIndex) } : null;
+    const syllables = resolved.koreanPronunciationCandidates && resolved.syllables.length
+        ? { chars: resolved.syllables.map(item => item.char), starts: resolved.syllables.map(item => item.startIndex) } : null;
     const engine = {
         ...engineRequest(request, resolved, { similarity: null }), vowelsOnly: false, syllables,
         allowFirstParticle: Boolean(request.allowFirstParticle),
