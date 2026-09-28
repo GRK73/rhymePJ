@@ -1,85 +1,76 @@
 # Rhyme Finder
 
-**한국어/영어 단어 라임 검색기**
+**한국어/영어 라임 검색기**
 
-Rhyme Finder는 한국어와 영어 단어의 발음 기호(IPA)를 기반으로 철자가 아닌 **실제 소리(발음)가 유사한 단어**를 찾아주는 고도화된 검색 엔진입니다. 단순히 글자가 같은 단어가 아니라, 조음 위치와 방법 등 언어학적 특성을 고려하여 입에 착 감기는 완벽한 라임을 제안합니다.
+철자가 아니라 **발음**이 비슷한 한국어·영어 단어(단어 검색)와 두 단어 조합(연결 라임 검색)을 찾습니다. 모든 계산은 브라우저의 Worker에서 하며 서버가 필요 없습니다.
 
-## 주요 기능
-- **한/영 통합 검색**: "나비"를 검색하면 "nobby" 같은 영어 단어가 검색될 정도로 언어의 장벽을 넘나드는 발음 유사도 교차 검색을 제공합니다.
-- **초정밀 음소 매칭**: 단순히 모음만 비교하는 것이 아니라, 초성/중성/종성 및 모든 영어 자/모음을 IPA(국제 음성 기호)로 치환하여 비교합니다.
-- **한국식 영어 발음 모드**: 실제 영어 발음뿐 아니라 한국어 화자가 외래어처럼 읽는 발음도 함께 비교합니다. `모바일`을 검색하면 `mobile`의 외래어 표기 발음이 우선 반영되는 식입니다.
-- **외래어 용례 코퍼스 연동**: 국립국어원 외래어 표기 용례 엑셀에서 F열 `영어` 행을 추출해 `public/data/model/loanword_overrides.json`으로 관리합니다. 코퍼스에 없는 단어는 규칙 기반 한국식 발음 변환으로 보완합니다.
-- **주제 기반 점수 보정**: 선택적으로 word2vec 벡터 JSON을 로드해, 입력한 주제 단어와 의미적으로 먼 결과의 점수를 낮출 수 있습니다.
-- **실전 압축 사전**: 방대한 Google N-grams와 한국어 위키백과 말뭉치(Korpora)를 교차 검증하여, 현대에 한 번도 쓰이지 않는 죽은 단어나 오타를 100% 솎아낸 25만 개의 고품질 단어 사전을 사용합니다.
-- **음성 듣기 및 뜻 확인**: 웹 브라우저 내장 TTS 기능을 통해 즉시 발음을 들어볼 수 있으며, Google Translate 및 Wikipedia API를 통해 단어의 뜻을 실시간(Lazy-loading)으로 가져와 표시해 줍니다.
+> V2 개발 중입니다. 공개 배포는 자료 공개 권리 검토가 끝날 때까지 막아 두었습니다. 설계는 [V2검색엔진설계.md](V2검색엔진설계.md), 진행 기록은 [V2 검색 엔진 보고서](reports/search_v2_engine_20260928.md)에 있습니다.
 
----
+## 검색 원리 (요약)
 
-## 실행 및 데이터 갱신
+- **발음:** 사전 38만 7천 단어를 Windows 한국어 음성(Heami)이 실제로 읽는 발음으로 바꿔 두었습니다. 영어 단어는 실제 영어 발음과 한국식 발음을 함께 가집니다. 사전에 없는 검색어는 Heami를 흉내 내도록 학습한 작은 발음 모델이 읽습니다.
+- **비교:** 음소를 조음 특징(자음: 위치·방법·기식·유성, 모음: 높이·전후·원순)으로 비교하고, V1과 같은 가중 편집거리와 sliding window 중 높은 점수를 씁니다. 끝소리 우대 같은 숨은 보정은 없고, 사용자가 정한 모음·자음·세부 가중치만 반영합니다.
+- **빈도·주제:** 빈도는 V1 식 그대로(한국어 위키백과, 영어 wordfreq). 주제는 LaBSE로 한국어·영어 단어를 같은 의미 공간에 두고 비교합니다(번역 없음).
+- **연결 라임:** 검색어를 둘로 나눠 앞 단어의 끝소리·뒤 단어의 첫소리를 비교합니다. 후보는 실제 문장에서 이어 나온 단어 쌍입니다.
+
+자세한 설명은 화면의 "검색 원리" 안내창에 있습니다.
+
+## 실행
 
 ```bash
+npm ci
 npm start
 ```
 
-로컬 서버가 `http://127.0.0.1:4173`에서 실행됩니다.
+`http://127.0.0.1:4173/rhymePJ/`에서 열립니다. `public/`을 `build/preview/`에 복사해 제공하므로(`public/data/`는 제외) 코드를 고친 뒤에는 다시 실행합니다. 포트는 `RHYME_APP_PORT`로 바꿉니다.
+
+검색 자산(`public/assets/`)은 생성물이라 Git에서 제외했습니다. 없으면 아래 빌드를 먼저 실행해야 합니다.
+
+## 검사
 
 ```bash
 npm test
 ```
 
-앱 스크립트 문법, 핵심 사전 JSON, 외래어 override 파일을 빠르게 검증합니다.
-
-한국어 사전 엔트리는 `phonemes`에 표준 발음법 기반 IPA를 저장합니다. 표기 발음이나 복수 표준 발음 후보가 필요한 경우에는 `pronunciations`에 함께 보관합니다.
-합성어/파생어의 ㄴ 첨가, 사이시옷 계열 보정은 `public/data/model/compound_pronunciations_ko.json`에 별도로 저장합니다. 생성 시 `kiwipiepy`가 설치되어 있으면 `scripts/cache/morph_analysis_ko.json` 형태소 캐시를 만든 뒤 품사/형태소 경계를 활용하고, 캐시는 배포 파일에 포함하지 않습니다.
+프로젝트 검사(`scripts/check_project.js`), Node 테스트(`tests/search/`), Python 테스트를 실행합니다. V1과의 동일성 검사는 오래 걸려 따로 실행합니다.
 
 ```bash
-npm run extract:loanwords
+npm run check:v1-parity -- --extra --topic
 ```
 
-프로젝트 루트의 `*외래어 표기법*.xlsx` 파일에서 영어 외래어 표기를 다시 추출해 `public/data/model/loanword_overrides.json`을 생성합니다. 원본 `.xlsx`는 큰 입력 자료라 git에서 무시하고, 생성된 JSON만 앱 산출물로 관리합니다.
+기준값은 V1 엔진을 그대로 돌려 얻으므로 한 사례에 15초~2분이 걸립니다(전체 298개를 한 줄로 돌리면 약 6시간). 그래서 여러 스레드로 나눠 돌리고(`--jobs`, 기본 최대 6), 끝난 V1 결과는 `build/parity-cache/`에 바로 저장합니다. V1은 고정된 커밋이라 다음 실행부터는 V2 쪽만 계산해 몇 분이면 끝납니다. 기준 코드나 사례가 바뀌면 그 사례만 다시 계산하고, 캐시와 다르면 V1을 다시 돌려 실제로 비교합니다. 처음부터 다시 계산하려면 `--fresh`를 붙입니다.
 
-```bash
-npm run convert:word2vec -- path/to/english-model.txt --lang en
-npm run convert:word2vec -- path/to/korean-model.txt --lang ko
-```
+## 자산 빌드
 
-텍스트 형식 word2vec 모델을 각각 `public/data/model/semantic_vectors_en.json`, `public/data/model/semantic_vectors_ko.json`으로 변환합니다. 브라우저 성능을 위해 기본값은 앱 사전과 외래어 override에 있는 단어만 남깁니다. 두 파일이 없으면 주제 입력칸은 표시되지만 의미 점수 보정은 적용되지 않습니다.
+| 자산 | 만드는 방법 | 입력 |
+|---|---|---|
+| 발음 (Heami) | `scripts/pronunciation/extract_heami.ps1` → `build-heami-pronunciations.mjs` | Windows Heami 음성, `data/source/loanword_overrides.json` |
+| 빈도 | `python scripts/pronunciation/build_word_frequencies.py` | kowikitext, wordfreq |
+| 검색 사전 `assets/lexicon/v1` | `npm run build:lexicon` | 발음·빈도, `data/source/rhyme_dict_practical.json`(영어 원어 발음) |
+| 발음 모델 `assets/g2p/v1` | `train_g2p.py` → `npm run build:g2p-assets` | Heami 발음 |
+| 주제 벡터 `assets/topic/v1` | `scripts/semantic/`: `export_lexicon_words.mjs` → `embed_labse.py` → `build_topic_vectors.py` | LaBSE (Hugging Face) |
+| 연결 자산 `assets/linked/v2` | `build_linked_surfaces.mjs` → `build_linked_frequencies.py` → (LaBSE, `build_topic_vectors.py --extra`) → `npm run build:linked` | `data/source/bigram_surface_ko.json`, `bigram_next_en.json` |
 
-바이너리 word2vec(`.bin`)이나 gensim `KeyedVectors`(`.kv`, `.model`) 파일은 `gensim` 설치 후 변환할 수 있습니다.
+각 스크립트 머리말에 사용법이 있습니다. 음소 유사도 상수는 `configs/phoneme_similarity_v0.json` 하나에서 `npm run build:similarity-config`로 생성합니다.
 
-```bash
-pip install gensim
-npm run convert:word2vec -- path/to/model.bin --lang en --format binary
-npm run convert:word2vec -- path/to/model.kv --lang ko --format gensim
-```
+## 구조
 
-한국어 주제를 영어 후보와 비교할 때는 브라우저에서 입력된 주제어만 즉시 번역합니다. 번역 결과는 현재 페이지 세션의 메모리에만 잠깐 보관되고, 새로고침 후에는 다시 요청합니다.
+- `public/index.html`, `js/app.js`, `js/render.js`: 화면
+- `public/workers/word-worker.js`: 사전·발음 모델·주제 벡터·연결 자료를 들고 단어·연결 검색을 계산
+- `public/js/search/`: 엔진(`word-engine.js`, `linked-engine.js`), 검색어 발음(`word-query.js`, `g2p-heami.js`), 주제(`topic-vectors.js`), Worker 연결(`word-runtime.js`)
+- `public/js/phonetics.js`: V1 음소 특징·유사도·`calculateScore`
 
-앱이 기대하는 벡터 포맷은 [semantic_vectors_ko.example.json](public/data/model/semantic_vectors_ko.example.json), [semantic_vectors_en.example.json](public/data/model/semantic_vectors_en.example.json)을 참고하면 됩니다.
+## 배포 (GitHub Pages)
 
-### 프로젝트 구조
+검색 자산은 생성물이라 Git에 없으므로, 검토를 거친 자산 묶음(Release zip)으로 배포합니다. 배포는 수동 실행만 됩니다.
 
-정적 앱 진입점은 `public/index.html`, 런타임 스크립트는 `public/js/`, 이미지 같은 정적 자산은 `public/assets/`에 둡니다. 브라우저에서 로드하는 사전, semantic vector, bigram index 같은 JSON 모델 자산은 `public/data/model/`, 원본 코퍼스 자산은 `public/data/corpus/` 아래에 나눠 관리합니다. 데이터 생성/검증 도구는 `scripts/`에 있으며, 기본 출력 경로도 `public/data/model/`를 기준으로 동작합니다.
+1. `npm run prepare:pages-review` → `build/pages-review/`에 허용 목록 초안(`reviewed: false`), 자산 목록, 자료 출처 목록(`source-inventory.json`)을 만듭니다.
+2. 출처 목록으로 공개·재배포 조건을 확인하고, 초안을 검토한 뒤 `reviewed: true`로 바꿔 저장합니다.
+3. `python scripts/search/pages_asset_bundle.py create --policy <검토한 허용 목록>` → `build/rhyme-search-assets.zip`과 SHA-256을 얻습니다.
+4. zip을 이 저장소의 Release에 올리고, Actions에서 "Manual GitHub Pages Deploy (gated)"를 Release 태그와 SHA-256으로 실행합니다.
 
----
+workflow는 zip의 SHA-256 → 자산 무결성과 검토 목록의 고정값(`npm run check:search-assets`) → `npm test` → 허용 파일만 조립(`npm run stage:pages`) → 코퍼스·빌드 입력이 없는지 → 파일 목록·용량(`npm run check:deploy-artifact`) 순서로 확인하고 `build/pages/`만 올립니다. 빌드 입력(`data/source/`)과 제한 코퍼스는 사이트에 들어가지 않습니다.
 
-## 유사도 계산 방식 (Similarity Algorithm)
+## 보관한 것
 
-Rhyme Finder의 핵심은 텍스트가 아닌 **소리의 유사성**을 수학적으로 계산하는 3단계 복합 알고리즘에 있습니다. 
-
-### 1. IPA(국제 음성 기호) 언어학적 자질 벡터화
-각 자음과 모음을 단순히 다른 기호로 취급하지 않고, 언어학적 자질(Phonological Features)을 바탕으로 수치화(벡터화)하였습니다.
-- **자음**: 조음 위치(입술, 치조, 연구개 등), 조음 방법(파열, 마찰, 비음 등), 조음 강도, 유성음 여부 등 4가지 축을 기준으로 평가합니다. 
-  - 예: `p`와 `b`는 조음 위치(입술)와 방법(파열)이 같고 유성음 여부만 다르므로 부분 점수를 받습니다. 반면 `p`와 `s`는 조음 위치와 방법이 완전히 달라 0점에 가까운 점수를 받습니다.
-- **모음**: 혀의 최고점 위치(전설/후설), 혀의 높낮이(고모음/저모음), 입술의 둥글기(원순/평순)의 3차원 좌표로 변환하여 두 모음 간의 기하학적 거리를 기반으로 유사도를 채점합니다.
-
-### 2. Levenshtein 기반 음성학적 동적 계획법 (Phonetic DP)
-두 단어의 전체적인 발음 구조가 얼마나 비슷한지 측정하기 위해 동적 계획법(Dynamic Programming)을 사용합니다.
-일반적인 편집 거리(Edit Distance) 알고리즘처럼 글자가 같으면 1점, 다르면 0점을 부여하는 것이 아니라, **위에서 설명한 음소 간의 수치적 거리를 '대체 비용(Substitution Cost)'으로 사용**합니다. 이를 통해 완전히 다른 발음에는 큰 페널티를, 발음이 비슷한 음소 교체에는 적은 페널티를 부여하는 정교한 채점이 이루어집니다.
-
-### 3. 부분 매칭 (Sliding Window Algorithm)
-랩 가사를 쓰거나 라임을 맞출 때는 단어 전체가 완벽하게 일치하는 것보다 **단어의 뒷부분이나 일부분이 절묘하게 맞아떨어지는 부분 라임(Partial Rhyme)**이 훨씬 유용합니다.
-따라서 검색어(Query)의 발음 기호 배열을 대상 단어(Target)의 발음 기호 배열 위에 미끄러뜨리며(Sliding Window), 가장 겹치는 점수가 높은 구간의 점수를 최종 점수로 채택합니다. 
-
-### 4. 역추적 하이라이팅 (Backtracking)
-위에서 계산된 DP 행렬과 슬라이딩 윈도우 인덱스를 역추적(Backtracking)하여, 검색어와 실제로 소리가 겹치는 부분의 음소만을 찾아내어 화면에 **파란색으로 강조(Highlighting)** 하여 보여줍니다. 이를 통해 사용자는 단어 내의 어떤 파트가 라임으로 맞아떨어졌는지 직관적으로 알 수 있습니다.
+가사 생성·분석 연구와 이전 기획 문서는 `../rhymePJ_archive_20260927/`에 있습니다. 2026-09-28에 V2 엔진으로 바꾸면서 은퇴한 이전 엔진(V2 정적 단어 검색, 규칙 발음 연결 검색, 이전 주제 벡터와 Google 번역, 힙합·구어 말뭉치 가산, V1 데이터 파이프라인)은 같은 폴더의 `v2_old_engines_20260928/`로 옮겼고, 목록은 그 안의 `MANIFEST.json`에 있습니다. V1 원본은 Git 커밋 `5df2ae8`에 있습니다.

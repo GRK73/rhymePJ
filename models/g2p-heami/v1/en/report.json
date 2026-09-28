@@ -1,0 +1,524 @@
+{
+  "lang": "en",
+  "params": 1245995,
+  "best_dev_exact": 0.6570190156599552,
+  "test": {
+    "exact_rate": 0.6602369798842657,
+    "phoneme_error_rate": 0.08720200752823086,
+    "count": 7258
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 0.6426693053522994,
+      "dev": {
+        "exact_rate": 0.4324664429530201,
+        "phoneme_error_rate": 0.15284521266265294,
+        "count": 7152
+      },
+      "seconds": 433.665132522583
+    },
+    {
+      "epoch": 2,
+      "loss": 0.31887869489851317,
+      "dev": {
+        "exact_rate": 0.4973434004474273,
+        "phoneme_error_rate": 0.13142357739366867,
+        "count": 7152
+      },
+      "seconds": 560.6213762760162
+    },
+    {
+      "epoch": 3,
+      "loss": 0.2678870922597437,
+      "dev": {
+        "exact_rate": 0.5345357941834452,
+        "phoneme_error_rate": 0.11907166440085454,
+        "count": 7152
+      },
+      "seconds": 658.6223890781403
+    },
+    {
+      "epoch": 4,
+      "loss": 0.2482710120064267,
+      "dev": {
+        "exact_rate": 0.5578859060402684,
+        "phoneme_error_rate": 0.11365313653136531,
+        "count": 7152
+      },
+      "seconds": 698.8153610229492
+    },
+    {
+      "epoch": 5,
+      "loss": 0.22681814220530042,
+      "dev": {
+        "exact_rate": 0.5546700223713646,
+        "phoneme_error_rate": 0.1119246455622451,
+        "count": 7152
+      },
+      "seconds": 872.3164522647858
+    },
+    {
+      "epoch": 6,
+      "loss": 0.21479503019791854,
+      "dev": {
+        "exact_rate": 0.5834731543624161,
+        "phoneme_error_rate": 0.10833171489609633,
+        "count": 7152
+      },
+      "seconds": 858.3120288848877
+    },
+    {
+      "epoch": 7,
+      "loss": 0.20859446748356378,
+      "dev": {
+        "exact_rate": 0.5866890380313199,
+        "phoneme_error_rate": 0.1063507477180035,
+        "count": 7152
+      },
+      "seconds": 1008.6467864513397
+    },
+    {
+      "epoch": 8,
+      "loss": 0.20058348048955965,
+      "dev": {
+        "exact_rate": 0.5952181208053692,
+        "phoneme_error_rate": 0.10252476208972616,
+        "count": 7152
+      },
+      "seconds": 1068.4296743869781
+    },
+    {
+      "epoch": 9,
+      "loss": 0.17474238918377802,
+      "dev": {
+        "exact_rate": 0.617589485458613,
+        "phoneme_error_rate": 0.09555253447271315,
+        "count": 7152
+      },
+      "seconds": 1058.0497734546661
+    },
+    {
+      "epoch": 10,
+      "loss": 0.16222869321204267,
+      "dev": {
+        "exact_rate": 0.6258389261744967,
+        "phoneme_error_rate": 0.09559137696640124,
+        "count": 7152
+      },
+      "seconds": 979.8363482952118
+    },
+    {
+      "epoch": 11,
+      "loss": 0.15301049969487876,
+      "dev": {
+        "exact_rate": 0.6332494407158836,
+        "phoneme_error_rate": 0.09120217517964653,
+        "count": 7152
+      },
+      "seconds": 799.9064648151398
+    },
+    {
+      "epoch": 12,
+      "loss": 0.14378262978392475,
+      "dev": {
+        "exact_rate": 0.6342281879194631,
+        "phoneme_error_rate": 0.09172654884443582,
+        "count": 7152
+      },
+      "seconds": 764.535596370697
+    },
+    {
+      "epoch": 13,
+      "loss": 0.1388478206665323,
+      "dev": {
+        "exact_rate": 0.638003355704698,
+        "phoneme_error_rate": 0.09026995533113226,
+        "count": 7152
+      },
+      "seconds": 763.3141534328461
+    },
+    {
+      "epoch": 14,
+      "loss": 0.13285942358025432,
+      "dev": {
+        "exact_rate": 0.6417785234899329,
+        "phoneme_error_rate": 0.09061953777432512,
+        "count": 7152
+      },
+      "seconds": 764.0231568813324
+    },
+    {
+      "epoch": 15,
+      "loss": 0.1266168197378134,
+      "dev": {
+        "exact_rate": 0.6420581655480985,
+        "phoneme_error_rate": 0.08939599922315013,
+        "count": 7152
+      },
+      "seconds": 762.4002478122711
+    },
+    {
+      "epoch": 16,
+      "loss": 0.12104693870748993,
+      "dev": {
+        "exact_rate": 0.639821029082774,
+        "phoneme_error_rate": 0.09003690036900369,
+        "count": 7152
+      },
+      "seconds": 764.2687246799469
+    },
+    {
+      "epoch": 17,
+      "loss": 0.10663011733302938,
+      "dev": {
+        "exact_rate": 0.6570190156599552,
+        "phoneme_error_rate": 0.08510390367061565,
+        "count": 7152
+      },
+      "seconds": 758.2865569591522
+    },
+    {
+      "epoch": 18,
+      "loss": 0.09919074289427236,
+      "dev": {
+        "exact_rate": 0.6535234899328859,
+        "phoneme_error_rate": 0.08681297339289182,
+        "count": 7152
+      },
+      "seconds": 772.667403459549
+    },
+    {
+      "epoch": 19,
+      "loss": 0.09395487292043321,
+      "dev": {
+        "exact_rate": 0.6510067114093959,
+        "phoneme_error_rate": 0.08681297339289182,
+        "count": 7152
+      },
+      "seconds": 764.8182709217072
+    },
+    {
+      "epoch": 20,
+      "loss": 0.08937972432821695,
+      "dev": {
+        "exact_rate": 0.656599552572707,
+        "phoneme_error_rate": 0.08654107593707516,
+        "count": 7152
+      },
+      "seconds": 763.723227262497
+    },
+    {
+      "epoch": 21,
+      "loss": 0.08520401014966607,
+      "dev": {
+        "exact_rate": 0.6550615212527964,
+        "phoneme_error_rate": 0.08640512720916683,
+        "count": 7152
+      },
+      "seconds": 828.2955904006958
+    }
+  ],
+  "test_error_examples": [
+    {
+      "word": "hz",
+      "heami": "h ʌ tɕʰ ɯ",
+      "model": "e i tɕʰ i tɕ i"
+    },
+    {
+      "word": "pu",
+      "heami": "pʰ i ju",
+      "model": "pʰ u"
+    },
+    {
+      "word": "ra",
+      "heami": "ɾ a",
+      "model": "a ɾ e i"
+    },
+    {
+      "word": "vi",
+      "heami": "ju k",
+      "model": "p i"
+    },
+    {
+      "word": "ry",
+      "heami": "ɾ i",
+      "model": "ɾ a i"
+    },
+    {
+      "word": "ahh",
+      "heami": "e i e i tɕʰ e i tɕʰ i",
+      "model": "a"
+    },
+    {
+      "word": "alu",
+      "heami": "e i e ɾ ju",
+      "model": "ɛ l ɾ o"
+    },
+    {
+      "word": "ate",
+      "heami": "e i t",
+      "model": "e i tʰ ɯ"
+    },
+    {
+      "word": "bea",
+      "heami": "p i i e i",
+      "model": "p i"
+    },
+    {
+      "word": "bui",
+      "heami": "p u i",
+      "model": "p i"
+    },
+    {
+      "word": "bus",
+      "heami": "p* ʌ s* ɯ",
+      "model": "p ʌ s* ɯ"
+    },
+    {
+      "word": "dar",
+      "heami": "t i e i a ʌ",
+      "model": "t a ʌ"
+    },
+    {
+      "word": "dep",
+      "heami": "t i i pʰ i",
+      "model": "t i pʰ ɯ"
+    },
+    {
+      "word": "die",
+      "heami": "t a i",
+      "model": "t i"
+    },
+    {
+      "word": "eda",
+      "heami": "i t i e i",
+      "model": "e t ʌ"
+    },
+    {
+      "word": "eka",
+      "heami": "i kʰ e i e i",
+      "model": "i kʰ ʌ"
+    },
+    {
+      "word": "gov",
+      "heami": "k ʌ p ɯ",
+      "model": "k o p ɯ"
+    },
+    {
+      "word": "jai",
+      "heami": "tɕ e i",
+      "model": "tɕ e i a i"
+    },
+    {
+      "word": "kea",
+      "heami": "kʰ i ʌ",
+      "model": "kʰ i"
+    },
+    {
+      "word": "koh",
+      "heami": "kʰ e i o e i tɕʰ i",
+      "model": "kʰ o"
+    },
+    {
+      "word": "mun",
+      "heami": "m u n",
+      "model": "m ʌ n"
+    },
+    {
+      "word": "oop",
+      "heami": "o o pʰ i",
+      "model": "o ʌ pʰ ɯ"
+    },
+    {
+      "word": "opp",
+      "heami": "a pʰ ɯ",
+      "model": "o pʰ i pʰ i"
+    },
+    {
+      "word": "pon",
+      "heami": "pʰ i o e n",
+      "model": "pʰ a n"
+    },
+    {
+      "word": "poo",
+      "heami": "pʰ i o o",
+      "model": "pʰ u"
+    },
+    {
+      "word": "pty",
+      "heami": "tʰ a i",
+      "model": "pʰ i tʰ i wa i"
+    },
+    {
+      "word": "ras",
+      "heami": "a ɾ e i e s ɯ",
+      "model": "ɾ ɛ s ɯ"
+    },
+    {
+      "word": "sri",
+      "heami": "s* ɯ ɾ i",
+      "model": "s ɯ ɾ i"
+    },
+    {
+      "word": "uwe",
+      "heami": "ju wi",
+      "model": "jo"
+    },
+    {
+      "word": "xue",
+      "heami": "s we",
+      "model": "e k s* ju"
+    },
+    {
+      "word": "y2k",
+      "heami": "wa i i kʰ e i",
+      "model": "wa i tɕ i kʰ e i"
+    },
+    {
+      "word": "kwh",
+      "heami": "kʰ i l ɾ ʌ wa tʰ a wʌ",
+      "model": "kʰ e i t ʌ p e l ɾ ju e i tɕʰ i"
+    },
+    {
+      "word": "une",
+      "heami": "ʌ n",
+      "model": "ju n"
+    },
+    {
+      "word": "ils",
+      "heami": "a i e l ɾ e s* ɯ",
+      "model": "i l tɕ* ɯ"
+    },
+    {
+      "word": "sto",
+      "heami": "s* ɯ tʰ o",
+      "model": "e s* ɯ tʰ o"
+    },
+    {
+      "word": "tes",
+      "heami": "tʰ e tɕ ɯ",
+      "model": "tʰ i i e s ɯ"
+    },
+    {
+      "word": "wut",
+      "heami": "wa tʰ ɯ",
+      "model": "u tʰ ɯ"
+    },
+    {
+      "word": "oww",
+      "heami": "a u",
+      "model": "wa u"
+    },
+    {
+      "word": "vas",
+      "heami": "p ɛ s ɯ",
+      "model": "p a tɕ ɯ"
+    },
+    {
+      "word": "ext",
+      "heami": "i e k s* ɯ tʰ i",
+      "model": "i k s* ɯ tʰ ɯ"
+    },
+    {
+      "word": "ind",
+      "heami": "a i e n t i",
+      "model": "i n t ɯ"
+    },
+    {
+      "word": "tas",
+      "heami": "tʰ i e i e s ɯ",
+      "model": "tʰ a s ɯ"
+    },
+    {
+      "word": "zab",
+      "heami": "tɕ ɛ p ɯ",
+      "model": "tɕ i p ɯ"
+    },
+    {
+      "word": "seu",
+      "heami": "e s* i ju",
+      "model": "s* u"
+    },
+    {
+      "word": "vit",
+      "heami": "p i a i tʰ i",
+      "model": "p i tʰ ɯ"
+    },
+    {
+      "word": "lyr",
+      "heami": "e ɾ wa i a ʌ",
+      "model": "ɾ i ʌ"
+    },
+    {
+      "word": "fri",
+      "heami": "pʰ ɯ ɾ a i t e i",
+      "model": "pʰ ɯ ɾ i"
+    },
+    {
+      "word": "dou",
+      "heami": "t o",
+      "model": "t u"
+    },
+    {
+      "word": "gif",
+      "heami": "tɕ i pʰ ɯ",
+      "model": "k i pʰ ɯ"
+    },
+    {
+      "word": "ily",
+      "heami": "a i l ɾ i",
+      "model": "i l ɾ i"
+    },
+    {
+      "word": "kum",
+      "heami": "k ɯ m",
+      "model": "kʰ ʌ m"
+    },
+    {
+      "word": "wwf",
+      "heami": "t ʌ p e l ɾ ju t ʌ p e l ɾ ju e pʰ ɯ",
+      "model": "t ʌ p e l ɾ ju t ʌ p e l ɾ ju t ʌ p e l ɾ ju t ʌ p e"
+    },
+    {
+      "word": "eer",
+      "heami": "i ʌ",
+      "model": "i i a ʌ"
+    },
+    {
+      "word": "obe",
+      "heami": "o p i i",
+      "model": "o p ɯ"
+    },
+    {
+      "word": "jal",
+      "heami": "tɕ ɛ l",
+      "model": "tɕ e l"
+    },
+    {
+      "word": "oon",
+      "heami": "o n",
+      "model": "u n"
+    },
+    {
+      "word": "cui",
+      "heami": "kʰ u i",
+      "model": "kʰ wi"
+    },
+    {
+      "word": "urs",
+      "heami": "ju a ɾ e s* ɯ",
+      "model": "ju a ʌ tɕ ɯ"
+    },
+    {
+      "word": "pul",
+      "heami": "pʰ u l",
+      "model": "pʰ o l"
+    },
+    {
+      "word": "zep",
+      "heami": "tɕ e pʰ ɯ",
+      "model": "tɕ i a i pʰ i"
+    }
+  ]
+}

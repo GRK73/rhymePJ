@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "attestation": "sqlite-static-worker-parity",
+  "verdict": "passed",
+  "generated_at": "2026-08-03T15:45:16.775419+00:00",
+  "static_manifest": {
+    "path": "indexes/phoneme/v0/static/search-manifest.json",
+    "sha256": "8ac3adeb28d541ad304a2df134c3871c0ed27380183c25e978a995a116d1a3f5",
+    "asset_version": "v0",
+    "data_bytes": 69756809,
+    "source_sqlite_sha256": "0e56a39ba0b9c8719d3d3c1faf4b3157282c1f92c324a06c7ae79c730cb05378"
+  },
+  "benchmark": {
+    "report": "reports/sqlite_static_parity_benchmark_v0.md",
+    "cases": 16,
+    "repeats": 3,
+    "all_checks_passed": true,
+    "all_top_k_parity": true,
+    "all_candidate_set_parity": true,
+    "all_ranked_order_parity": true,
+    "all_warm_cache_reuse": true,
+    "minimum_candidate_recall": 1.0,
+    "minimum_candidate_precision": 1.0,
+    "maximum_score_delta": 0.0,
+    "scenario_ids": [
+      "time_default",
+      "sarang_default",
+      "sarang_vowels",
+      "banana_global_default",
+      "banana_all_equal",
+      "banana_only_0",
+      "banana_only_1",
+      "banana_only_2",
+      "banana_only_3",
+      "banana_only_4",
+      "banana_only_5",
+      "banana_syllable_0",
+      "banana_syllable_1",
+      "banana_syllable_2",
+      "banana_vowels",
+      "banana_consonants"
+    ]
+  }
+}

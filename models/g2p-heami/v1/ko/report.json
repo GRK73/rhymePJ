@@ -1,0 +1,584 @@
+{
+  "lang": "ko",
+  "params": 1250219,
+  "best_dev_exact": 0.9623231326094109,
+  "test": {
+    "exact_rate": 0.9579113398638552,
+    "phoneme_error_rate": 0.006788938273700289,
+    "count": 12046
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 0.1756198442373512,
+      "dev": {
+        "exact_rate": 0.903751233958539,
+        "phoneme_error_rate": 0.033005757915823254,
+        "count": 12156
+      },
+      "seconds": 990.0641598701477
+    },
+    {
+      "epoch": 2,
+      "loss": 0.042399526605813406,
+      "dev": {
+        "exact_rate": 0.9299111549851925,
+        "phoneme_error_rate": 0.017357651525480612,
+        "count": 12156
+      },
+      "seconds": 1295.1122555732727
+    },
+    {
+      "epoch": 3,
+      "loss": 0.03910206105760255,
+      "dev": {
+        "exact_rate": 0.9318032247449819,
+        "phoneme_error_rate": 0.012879272551836974,
+        "count": 12156
+      },
+      "seconds": 1725.8726861476898
+    },
+    {
+      "epoch": 4,
+      "loss": 0.03284192918234061,
+      "dev": {
+        "exact_rate": 0.9378907535373479,
+        "phoneme_error_rate": 0.015197122090889068,
+        "count": 12156
+      },
+      "seconds": 2164.8383169174194
+    },
+    {
+      "epoch": 5,
+      "loss": 0.032886664779687075,
+      "dev": {
+        "exact_rate": 0.9406877262257322,
+        "phoneme_error_rate": 0.013613433039319538,
+        "count": 12156
+      },
+      "seconds": 2067.888695001602
+    },
+    {
+      "epoch": 6,
+      "loss": 0.029344329899873272,
+      "dev": {
+        "exact_rate": 0.9397005593945377,
+        "phoneme_error_rate": 0.011054359340094601,
+        "count": 12156
+      },
+      "seconds": 1540.0293304920197
+    },
+    {
+      "epoch": 7,
+      "loss": 0.030136620327743276,
+      "dev": {
+        "exact_rate": 0.9437314906219151,
+        "phoneme_error_rate": 0.013581969018427429,
+        "count": 12156
+      },
+      "seconds": 1370.5480334758759
+    },
+    {
+      "epoch": 8,
+      "loss": 0.02731119412558902,
+      "dev": {
+        "exact_rate": 0.9420862125699243,
+        "phoneme_error_rate": 0.01149485563258414,
+        "count": 12156
+      },
+      "seconds": 1299.9710190296173
+    },
+    {
+      "epoch": 9,
+      "loss": 0.02067856074835252,
+      "dev": {
+        "exact_rate": 0.9523692003948667,
+        "phoneme_error_rate": 0.008956757947287277,
+        "count": 12156
+      },
+      "seconds": 1247.5425748825073
+    },
+    {
+      "epoch": 10,
+      "loss": 0.018859807540886713,
+      "dev": {
+        "exact_rate": 0.9475156301414939,
+        "phoneme_error_rate": 0.013288304823434403,
+        "count": 12156
+      },
+      "seconds": 1243.1034412384033
+    },
+    {
+      "epoch": 11,
+      "loss": 0.01852866248869572,
+      "dev": {
+        "exact_rate": 0.9516288252714709,
+        "phoneme_error_rate": 0.009386766232812779,
+        "count": 12156
+      },
+      "seconds": 1227.4313790798187
+    },
+    {
+      "epoch": 12,
+      "loss": 0.01830546576072784,
+      "dev": {
+        "exact_rate": 0.953027311615663,
+        "phoneme_error_rate": 0.009470670288525072,
+        "count": 12156
+      },
+      "seconds": 1208.7672686576843
+    },
+    {
+      "epoch": 13,
+      "loss": 0.01626730471616611,
+      "dev": {
+        "exact_rate": 0.9506416584402764,
+        "phoneme_error_rate": 0.008925293926395168,
+        "count": 12156
+      },
+      "seconds": 1008.2373569011688
+    },
+    {
+      "epoch": 14,
+      "loss": 0.017079442569759684,
+      "dev": {
+        "exact_rate": 0.9523692003948667,
+        "phoneme_error_rate": 0.010194342769043598,
+        "count": 12156
+      },
+      "seconds": 1050.7450244426727
+    },
+    {
+      "epoch": 15,
+      "loss": 0.015855274739279192,
+      "dev": {
+        "exact_rate": 0.953027311615663,
+        "phoneme_error_rate": 0.008117717390164347,
+        "count": 12156
+      },
+      "seconds": 696.8701498508453
+    },
+    {
+      "epoch": 16,
+      "loss": 0.014848780894443114,
+      "dev": {
+        "exact_rate": 0.9557420204014478,
+        "phoneme_error_rate": 0.008495285640869666,
+        "count": 12156
+      },
+      "seconds": 683.9800400733948
+    },
+    {
+      "epoch": 17,
+      "loss": 0.012035074919597115,
+      "dev": {
+        "exact_rate": 0.9581276735768345,
+        "phoneme_error_rate": 0.006806716519659769,
+        "count": 12156
+      },
+      "seconds": 811.7204883098602
+    },
+    {
+      "epoch": 18,
+      "loss": 0.010774873804723166,
+      "dev": {
+        "exact_rate": 0.9582099374794341,
+        "phoneme_error_rate": 0.007435996937501966,
+        "count": 12156
+      },
+      "seconds": 601.9076099395752
+    },
+    {
+      "epoch": 19,
+      "loss": 0.00914324026187081,
+      "dev": {
+        "exact_rate": 0.9591971043106285,
+        "phoneme_error_rate": 0.007435996937501966,
+        "count": 12156
+      },
+      "seconds": 492.8448131084442
+    },
+    {
+      "epoch": 20,
+      "loss": 0.009046876319971319,
+      "dev": {
+        "exact_rate": 0.9597729516288253,
+        "phoneme_error_rate": 0.007750637146423065,
+        "count": 12156
+      },
+      "seconds": 490.58233642578125
+    },
+    {
+      "epoch": 21,
+      "loss": 0.008538423797222307,
+      "dev": {
+        "exact_rate": 0.9585389930898321,
+        "phoneme_error_rate": 0.007509412986250223,
+        "count": 12156
+      },
+      "seconds": 494.7576084136963
+    },
+    {
+      "epoch": 22,
+      "loss": 0.007850090425818393,
+      "dev": {
+        "exact_rate": 0.9607601184600197,
+        "phoneme_error_rate": 0.007813565188207285,
+        "count": 12156
+      },
+      "seconds": 488.1336307525635
+    },
+    {
+      "epoch": 23,
+      "loss": 0.007376686335906058,
+      "dev": {
+        "exact_rate": 0.9623231326094109,
+        "phoneme_error_rate": 0.006166948094853535,
+        "count": 12156
+      },
+      "seconds": 486.4501769542694
+    },
+    {
+      "epoch": 24,
+      "loss": 0.006712217983043378,
+      "dev": {
+        "exact_rate": 0.9607601184600197,
+        "phoneme_error_rate": 0.007331116867861601,
+        "count": 12156
+      },
+      "seconds": 491.82086515426636
+    },
+    {
+      "epoch": 25,
+      "loss": 0.006330497907235278,
+      "dev": {
+        "exact_rate": 0.9599374794340243,
+        "phoneme_error_rate": 0.007047940679832611,
+        "count": 12156
+      },
+      "seconds": 494.3151729106903
+    },
+    {
+      "epoch": 26,
+      "loss": 0.005974575191073633,
+      "dev": {
+        "exact_rate": 0.961253701875617,
+        "phoneme_error_rate": 0.0067647644918036225,
+        "count": 12156
+      },
+      "seconds": 498.7811551094055
+    },
+    {
+      "epoch": 27,
+      "loss": 0.005848363568874676,
+      "dev": {
+        "exact_rate": 0.9598552155314248,
+        "phoneme_error_rate": 0.006345244213242157,
+        "count": 12156
+      },
+      "seconds": 501.99742603302
+    }
+  ],
+  "test_error_examples": [
+    {
+      "word": "띄",
+      "heami": "t* ɰi",
+      "model": "t* i"
+    },
+    {
+      "word": "뚫",
+      "heami": "t* u l",
+      "model": "t* u l ɾ u l"
+    },
+    {
+      "word": "많",
+      "heami": "m a n",
+      "model": "m a n a"
+    },
+    {
+      "word": "저취",
+      "heami": "tɕ ʌ t wi",
+      "model": "tɕ ʌ tɕʰ wi"
+    },
+    {
+      "word": "주스",
+      "heami": "tɕ u s* ɯ",
+      "model": "tɕ u s ɯ"
+    },
+    {
+      "word": "유희",
+      "heami": "ju h ɰi",
+      "model": "ju h i"
+    },
+    {
+      "word": "키즈",
+      "heami": "kʰ i tɕ ɯ",
+      "model": "kʰ i i tɕ ɯ"
+    },
+    {
+      "word": "극시",
+      "heami": "k ɯ k s i",
+      "model": "k ɯ k s* i"
+    },
+    {
+      "word": "군요",
+      "heami": "k u n n jo",
+      "model": "k u n jo"
+    },
+    {
+      "word": "녀석",
+      "heami": "jʌ s ʌ k",
+      "model": "n jʌ s ʌ k"
+    },
+    {
+      "word": "간해",
+      "heami": "k a n ɛ",
+      "model": "k a n h ɛ"
+    },
+    {
+      "word": "멜바",
+      "heami": "m e l p* a",
+      "model": "m e l p a"
+    },
+    {
+      "word": "빌다",
+      "heami": "p i l t* a",
+      "model": "p i l t a"
+    },
+    {
+      "word": "솔거",
+      "heami": "s o l k ʌ",
+      "model": "s o l k* ʌ"
+    },
+    {
+      "word": "약계",
+      "heami": "ja k k* je",
+      "model": "ja k k* e"
+    },
+    {
+      "word": "앙의",
+      "heami": "a ŋ e",
+      "model": "a ŋ ɰi"
+    },
+    {
+      "word": "반요",
+      "heami": "p a n jo",
+      "model": "p a n n jo"
+    },
+    {
+      "word": "안후",
+      "heami": "a n h u",
+      "model": "a n u"
+    },
+    {
+      "word": "신호",
+      "heami": "s i n h o",
+      "model": "s i n o"
+    },
+    {
+      "word": "원의",
+      "heami": "wʌ n ɰi",
+      "model": "wʌ n e"
+    },
+    {
+      "word": "집유",
+      "heami": "tɕ i m n ju",
+      "model": "tɕ i p ju"
+    },
+    {
+      "word": "품귀",
+      "heami": "pʰ u m k wʌ",
+      "model": "pʰ u m k* wi"
+    },
+    {
+      "word": "품세",
+      "heami": "pʰ u m s* e",
+      "model": "pʰ u m s e"
+    },
+    {
+      "word": "피습",
+      "heami": "pʰ i s ɯ p",
+      "model": "pʰ i s* ɯ p"
+    },
+    {
+      "word": "효건",
+      "heami": "h jo k* ʌ n",
+      "model": "h jo k ʌ n"
+    },
+    {
+      "word": "화광",
+      "heami": "h wa k* wa ŋ",
+      "model": "h wa k wa ŋ"
+    },
+    {
+      "word": "화열",
+      "heami": "h wa jɛ l",
+      "model": "h wa jʌ l"
+    },
+    {
+      "word": "만화",
+      "heami": "m a n h wa",
+      "model": "m a n wa"
+    },
+    {
+      "word": "번과",
+      "heami": "p ʌ n k* wa",
+      "model": "p ʌ n k wa"
+    },
+    {
+      "word": "삿니",
+      "heami": "s a t n i",
+      "model": "s a n n i"
+    },
+    {
+      "word": "얹혀",
+      "heami": "ʌ n jʌ",
+      "model": "ʌ n tɕʰ jʌ"
+    },
+    {
+      "word": "연해",
+      "heami": "jʌ n ɛ",
+      "model": "jʌ n h ɛ"
+    },
+    {
+      "word": "오션",
+      "heami": "o s* jʌ n",
+      "model": "o s jʌ n"
+    },
+    {
+      "word": "과거세",
+      "heami": "k wa k ʌ s* e",
+      "model": "k wa k ʌ s e"
+    },
+    {
+      "word": "간단",
+      "heami": "k a n t* a n",
+      "model": "k a n t a n"
+    },
+    {
+      "word": "굴젓",
+      "heami": "k u l tɕ* ʌ t",
+      "model": "k u l tɕ ʌ t"
+    },
+    {
+      "word": "관할",
+      "heami": "k wa n h a l",
+      "model": "k wa n a l"
+    },
+    {
+      "word": "관활",
+      "heami": "k wa n h wa l",
+      "model": "k wa n wa l"
+    },
+    {
+      "word": "금욕",
+      "heami": "k ɯ m jo k",
+      "model": "k ɯ m n jo k"
+    },
+    {
+      "word": "동권",
+      "heami": "t o ŋ k wʌ n",
+      "model": "t o ŋ k* wʌ n"
+    },
+    {
+      "word": "돌진",
+      "heami": "t o l tɕ* i n",
+      "model": "t o l tɕ i n"
+    },
+    {
+      "word": "본격",
+      "heami": "p o n k* jʌ k",
+      "model": "p o n k jʌ k"
+    },
+    {
+      "word": "봄잠",
+      "heami": "p o m tɕ a m",
+      "model": "p o m tɕ* a m"
+    },
+    {
+      "word": "숫놈",
+      "heami": "s u t n o m",
+      "model": "s u n n o m"
+    },
+    {
+      "word": "순동",
+      "heami": "s u n t* o ŋ",
+      "model": "s u n t o ŋ"
+    },
+    {
+      "word": "슈페너",
+      "heami": "s ju pʰ e n ʌ",
+      "model": "s u pʰ e n ʌ"
+    },
+    {
+      "word": "세레스",
+      "heami": "s e ɾ e s* ɯ",
+      "model": "s e ɾ e s ɯ"
+    },
+    {
+      "word": "세례자",
+      "heami": "s e ɾ e tɕ a",
+      "model": "s e ɾ je tɕ a"
+    },
+    {
+      "word": "발장",
+      "heami": "p a l tɕ a ŋ",
+      "model": "p a l tɕ* a ŋ"
+    },
+    {
+      "word": "왕법",
+      "heami": "wa ŋ p ʌ p",
+      "model": "wa ŋ p* ʌ p"
+    },
+    {
+      "word": "열흘",
+      "heami": "jʌ l h ɯ l",
+      "model": "jʌ ɾ ɯ l"
+    },
+    {
+      "word": "인골",
+      "heami": "i n k o l",
+      "model": "i n k* o l"
+    },
+    {
+      "word": "임방",
+      "heami": "i m p* a ŋ",
+      "model": "i m p a ŋ"
+    },
+    {
+      "word": "시어사",
+      "heami": "s i o s a",
+      "model": "s i ʌ s a"
+    },
+    {
+      "word": "영적",
+      "heami": "jʌ ŋ tɕ* ʌ k",
+      "model": "jʌ ŋ tɕ ʌ k"
+    },
+    {
+      "word": "창감",
+      "heami": "tɕʰ a ŋ k* a m",
+      "model": "tɕʰ a ŋ k a m"
+    },
+    {
+      "word": "캡션",
+      "heami": "kʰ ɛ p s jʌ n",
+      "model": "kʰ ɛ p s* jʌ n"
+    },
+    {
+      "word": "출혈",
+      "heami": "tɕʰ u l h jʌ l",
+      "model": "tɕʰ u ɾ jʌ l"
+    },
+    {
+      "word": "품속",
+      "heami": "pʰ u m s* o k",
+      "model": "pʰ u m s o k"
+    },
+    {
+      "word": "진한",
+      "heami": "tɕ i n h a n",
+      "model": "tɕ i n a n"
+    }
+  ]
+}

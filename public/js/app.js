@@ -1,24 +1,7 @@
-let dictionary = [];
-let loanwordOverrides = {};
-let compoundPronunciationsKo = {};
-let semanticVectorStores = { ko: {}, en: {} };
-let bigramStores = { ko: null, en: null };
-let surfaceBigramStoreKo = null;
-let auxiliarySurfaceBigramStoresKo = { spoken: null, hiphop: null };
-let topicTranslations = {};
-let semanticResourcesLoaded = false;
-let semanticResourcesLoadingPromise = null;
-let bigramResourcesLoadingPromises = {};
-let surfaceBigramResourceLoadingPromise = null;
-let auxiliarySurfaceBigramResourceLoadingPromise = null;
 let isReady = false;
 
-if (typeof window !== 'undefined') {
-    window.compoundPronunciationsKo = compoundPronunciationsKo;
-}
 
 const statusEl = document.getElementById('status');
-const appLayout = document.querySelector('.app-layout');
 const searchInput = document.getElementById('searchInput');
 const topicInput = document.getElementById('topicInput');
 const searchBtn = document.getElementById('searchBtn');
@@ -30,15 +13,6 @@ const loadMoreBtn = document.getElementById('loadMoreBtn');
 const linkedSurfaceOptions = document.getElementById('linkedSurfaceOptions');
 const firstParticleOption = document.getElementById('firstParticleOption');
 const allowFirstParticleKo = document.getElementById('allowFirstParticleKo');
-const searchBox = document.querySelector('.search-box');
-const topicBox = document.querySelector('.topic-box');
-const resultsContainer = document.querySelector('.results-container');
-const lyricsAnalysisPanel = document.getElementById('lyricsAnalysisPanel');
-const lyricsSections = document.getElementById('lyricsSections');
-const addLyricsSectionBtn = document.getElementById('addLyricsSectionBtn');
-const lyricsSectionTypeMenu = document.getElementById('lyricsSectionTypeMenu');
-const lyricsAnalyzeBtn = document.getElementById('lyricsAnalyzeBtn');
-const lyricsAnalysisResults = document.getElementById('lyricsAnalysisResults');
 const principleInfoBtn = document.getElementById('principleInfoBtn');
 const principleInfoDialog = document.getElementById('principleInfoDialog');
 const principleInfoCloseBtn = document.getElementById('principleInfoCloseBtn');
@@ -48,6 +22,7 @@ const consoWeightInput = document.getElementById('consoWeight');
 const vowelWeightInput = document.getElementById('vowelWeight');
 const freqWeightInput = document.getElementById('freqWeight');
 const topicWeightInput = document.getElementById('topicWeight');
+const pronunciationFilterGroup = document.getElementById('pronunciationFilterGroup');
 
 const consoVal = document.getElementById('consoVal');
 const vowelVal = document.getElementById('vowelVal');
@@ -58,16 +33,80 @@ const globalPhonemeWeightContainers = document.querySelectorAll('.global-phoneme
 const excludeInput = document.getElementById('excludeInput');
 
 const useDetailWeights = document.getElementById('useDetailWeights');
+const vowelOnlySearch = document.getElementById('vowelOnlySearch');
 const detailGroup = document.getElementById('detailGroup');
 const detailSlidersContainer = document.getElementById('detailSlidersContainer');
+const searchProgress = document.getElementById('searchProgress');
+const searchProgressBar = document.getElementById('searchProgressBar');
+const searchProgressLabel = document.getElementById('searchProgressLabel');
+const searchProgressTitle = document.getElementById('searchProgressTitle');
+const searchProgressPercent = document.getElementById('searchProgressPercent');
+const cancelSearchBtn = document.getElementById('cancelSearchBtn');
 
 let currentQueryPhonemeData = { phonemes: [], charMap: [] };
 let lastQueryWord = '';
 let currentSearchMode = 'word';
-const surfacePronunciationCache = new Map();
+// Shared UI operation token for word and linked searches; stale replies cannot render.
+let activeWordSearch = null;
 
 const reSearchBtn = document.getElementById('reSearchBtn');
 reSearchBtn.addEventListener('click', handleSearch);
+
+function setWordSearchBusy(isBusy) {
+    searchBtn.disabled = isBusy || !isReady;
+    reSearchBtn.disabled = isBusy || !isReady;
+    cancelSearchBtn.disabled = !isBusy;
+    if (!isBusy) searchProgress.hidden = true;
+}
+
+function renderSearchLoading(label, completed, total, title = '검색기 로딩중...') {
+    searchProgress.hidden = false;
+    searchProgressTitle.textContent = title;
+    searchProgressLabel.textContent = label;
+    if (Number.isFinite(completed) && Number.isFinite(total) && total > 0) {
+        const done = Math.max(0,Math.min(completed,total));
+        searchProgressBar.value = done / total * 100;
+        searchProgressBar.setAttribute('aria-valuetext',`${total}개 중 ${done}개 완료`);
+        searchProgressPercent.textContent = `${done.toLocaleString()} / ${total.toLocaleString()}`;
+    } else {
+        searchProgressBar.removeAttribute('value');
+        searchProgressBar.removeAttribute('aria-valuetext');
+        searchProgressPercent.textContent = '';
+    }
+}
+
+function renderWordSearchProgress(progress) {
+    if (['lexicon', 'topic', 'linked', 'model'].includes(progress.phase) && progress.total) {
+        // Byte progress, shown in MB.
+        const mb = bytes => Math.round(bytes / 1e5) / 10;
+        const label = {lexicon:'검색 사전 내려받는 중 (MB)', topic:'주제 자료 내려받는 중 (MB)',
+            linked:'연결 검색 자료 내려받는 중 (MB)', model:'발음 모델 내려받는 중 (MB)'}[progress.phase];
+        renderSearchLoading(label, mb(progress.completed), mb(progress.total), '검색기 로딩중...');
+        return;
+    }
+    const labels = {resolve:'검색어 발음 확인 중', topic:'주제 자료 불러오는 중', compute:'라임 점수 계산 중'};
+    renderSearchLoading(labels[progress.phase] || '검색 준비 중', undefined, undefined,
+        progress.phase === 'compute' ? '라임 검색중...' : '검색기 로딩중...');
+}
+
+function abandonActiveWordSearch() {
+    if (!activeWordSearch) return;
+    const operation = activeWordSearch;
+    activeWordSearch = null;
+    operation.controller.abort();
+    setWordSearchBusy(false);
+}
+
+function cancelActiveWordSearch() {
+    if (!activeWordSearch) return;
+    activeWordSearch.cancelledByUser = true;
+    activeWordSearch.controller.abort();
+    cancelSearchBtn.disabled = true;
+    statusEl.textContent = '검색을 취소하는 중입니다...';
+}
+
+cancelSearchBtn.addEventListener('click', cancelActiveWordSearch);
+setWordSearchBusy(false);
 
 function openPrincipleInfoDialog() {
     if (!principleInfoDialog) return;
@@ -126,37 +165,44 @@ syncDetailWeightControls();
 
 function syncSearchModeControls() {
     const isLinkedMode = currentSearchMode === 'linked';
-    const isLyricsMode = currentSearchMode === 'lyrics';
     const selectedLang = getSelectedLang();
     const isKoreanLinkedSurfaceMode = isLinkedMode && selectedLang !== 'en';
-    appLayout?.classList.toggle('lyrics-mode', isLyricsMode);
-    if (!isLyricsMode) {
-        appLayout?.classList.remove('lyrics-results');
-        lyricsAnalysisPanel?.classList.remove('has-results');
-    }
-    if (searchBox) searchBox.hidden = isLyricsMode;
-    if (topicBox) topicBox.hidden = isLyricsMode;
-    if (resultsContainer) resultsContainer.hidden = isLyricsMode;
-    if (lyricsAnalysisPanel) lyricsAnalysisPanel.hidden = !isLyricsMode;
-    if (detailGroup) detailGroup.hidden = isLyricsMode;
+    // Pronunciation mode applies to both searches; vowel-only to word search.
+    const pronunciationOptions = document.getElementById('pronunciationModeOptions');
+    if (pronunciationOptions) pronunciationOptions.hidden = false;
+    vowelOnlySearch.disabled = isLinkedMode;
+    const pronunciationNotice = '영어 단어를 실제 영어 발음, 한국식 발음, 또는 둘 다(혼합)로 비교합니다.';
+    pronunciationFilterGroup?.setAttribute('title', pronunciationNotice);
+    const pronunciationNoticeEl = document.getElementById('pronunciationModeNotice');
+    if (pronunciationNoticeEl) pronunciationNoticeEl.textContent = pronunciationNotice;
     if (linkedSurfaceOptions) {
-        linkedSurfaceOptions.hidden = !isKoreanLinkedSurfaceMode || isLyricsMode;
+        linkedSurfaceOptions.hidden = !isKoreanLinkedSurfaceMode;
     }
     if (firstParticleOption) {
-        firstParticleOption.hidden = !isKoreanLinkedSurfaceMode || isLyricsMode;
-        if ((!isKoreanLinkedSurfaceMode || isLyricsMode) && allowFirstParticleKo) {
+        firstParticleOption.hidden = !isKoreanLinkedSurfaceMode;
+        if (!isKoreanLinkedSurfaceMode && allowFirstParticleKo) {
             allowFirstParticleKo.checked = false;
         }
     }
 }
 
 Array.from(langRadios).forEach(radio => {
-    radio.addEventListener('change', syncSearchModeControls);
+    radio.addEventListener('change', () => {
+        abandonActiveWordSearch();
+        clearSearchResults();
+        syncSearchModeControls();
+        statusEl.textContent = '검색 조건이 변경되었습니다. 다시 검색하세요.';
+    });
 });
 
 searchModeButtons.forEach(button => {
     button.addEventListener('click', () => {
-        currentSearchMode = button.dataset.searchMode || 'word';
+        const nextMode = button.dataset.searchMode || 'word';
+        if (nextMode !== currentSearchMode) {
+            abandonActiveWordSearch();
+            clearSearchResults();
+        }
+        currentSearchMode = nextMode;
         searchModeButtons.forEach(item => {
             const isActive = item === button;
             item.classList.toggle('active', isActive);
@@ -165,11 +211,9 @@ searchModeButtons.forEach(button => {
         syncSearchModeControls();
         if (currentSearchMode === 'linked') {
             statusEl.textContent = '연결 라임 검색은 두 단어 조합을 계산하므로 검색이 느릴 수 있습니다.';
-        } else if (currentSearchMode === 'lyrics') {
-            statusEl.textContent = '섹션별 가사를 입력한 뒤 세부 분석을 실행하세요.';
-        } else if (isReady) {
-            lyricsAnalysisPanel?.classList.remove('has-results');
-            statusEl.textContent = `사전 로드 완료! (총 ${dictionary.length.toLocaleString()} 단어, 외래어 ${Object.keys(loanwordOverrides).length.toLocaleString()}개, 의미 벡터는 주제 입력 시 로드)`;
+        } else {
+            statusEl.textContent = '단어 라임 검색: 사전 전체를 설정한 가중치로 비교합니다.';
+            prefetchWordSearch();
         }
     });
 });
@@ -179,7 +223,14 @@ let currentFilteredResults = [];
 let resultsShown = 0;
 const PAGE_SIZE = 99;
 
-// Intersection Observer for lazy loading meanings
+function renderExternalDictionaryLink(element, word, lang) {
+    const baseUrl = lang === 'en'
+        ? 'https://en.dict.naver.com/#/search?query='
+        : 'https://ko.dict.naver.com/#/search?query=';
+    element.innerHTML = `<a href="${baseUrl}${encodeURIComponent(word)}" target="_blank" rel="noopener noreferrer" class="dict-link">사용자가 직접 사전 검색 ↗</a>`;
+}
+
+// Do not send search words to third-party APIs. Offer a user-initiated link instead.
 const meaningObserver = new IntersectionObserver((entries, observer) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -190,58 +241,7 @@ const meaningObserver = new IntersectionObserver((entries, observer) => {
             
             if (meaningEl && !meaningEl.dataset.loaded) {
                 meaningEl.dataset.loaded = 'true';
-                
-                if (lang === 'en') {
-                    fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&dt=t&dt=bd&q=${encodeURIComponent(word)}`)
-                        .then(res => res.json())
-                        .then(data => {
-                            let meaningText = '';
-                            if (data && data[1]) {
-                                // Extract all dictionary meanings across different parts of speech
-                                let meanings = [];
-                                data[1].forEach(pos => {
-                                    if (pos[1] && Array.isArray(pos[1])) {
-                                        meanings = meanings.concat(pos[1]);
-                                    }
-                                });
-                                // Remove duplicates and limit to top 8 meanings
-                                meanings = [...new Set(meanings)];
-                                meaningText = meanings.slice(0, 8).join(', ');
-                            } else if (data && data[0] && data[0][0]) {
-                                // Fallback to simple translation if no dictionary data
-                                meaningText = data[0][0][0];
-                            } else {
-                                meaningText = '뜻 정보 없음';
-                            }
-                            meaningEl.textContent = meaningText;
-                        })
-                        .catch(() => {
-                            meaningEl.textContent = '뜻을 불러올 수 없음';
-                        });
-                } else {
-                    // Korean: Try Wikipedia
-                    fetch(`https://ko.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&exsentences=1&titles=${encodeURIComponent(word)}&format=json&origin=*`)
-                        .then(res => res.json())
-                        .then(data => {
-                            const pages = data.query.pages;
-                            const pageId = Object.keys(pages)[0];
-                            if (pageId !== '-1' && pages[pageId].extract) {
-                                const extract = pages[pageId].extract;
-                                // 동음이의어 문서(Disambiguation page)인지 판별
-                                if (extract.includes('다음을 가리') || extract.includes('뜻으로 쓰인') || extract.includes('다음을 의미') || extract.includes('동음이의') || extract.includes('다른 뜻') || extract.includes('다음과 같')) {
-                                    meaningEl.innerHTML = `<a href="https://ko.dict.naver.com/#/search?query=${encodeURIComponent(word)}" target="_blank" class="dict-link">사전 검색 ↗</a>`;
-                                } else {
-                                    meaningEl.textContent = extract;
-                                }
-                            } else {
-                                // Fallback for Korean words: link to dict
-                                meaningEl.innerHTML = `<a href="https://ko.dict.naver.com/#/search?query=${encodeURIComponent(word)}" target="_blank" class="dict-link">사전 검색 ↗</a>`;
-                            }
-                        })
-                        .catch(() => {
-                            meaningEl.innerHTML = `<a href="https://ko.dict.naver.com/#/search?query=${encodeURIComponent(word)}" target="_blank" class="dict-link">사전 검색 ↗</a>`;
-                        });
-                }
+                renderExternalDictionaryLink(meaningEl, word, lang);
             }
             observer.unobserve(el);
         }
@@ -249,176 +249,20 @@ const meaningObserver = new IntersectionObserver((entries, observer) => {
 }, { rootMargin: '100px' });
 
 
-function setSemanticStore(lang, data) {
-    const store = extractSemanticVectorStore(data);
-    if (Object.keys(store).length > 0) {
-        semanticVectorStores[lang] = store;
-    }
-}
-
-async function ensureSemanticResourcesLoaded() {
-    if (semanticResourcesLoaded) return getSemanticVectorCount();
-    if (semanticResourcesLoadingPromise) return semanticResourcesLoadingPromise;
-
-    semanticResourcesLoadingPromise = (async () => {
-        const [koVectors, enVectors] = await Promise.all([
-            loadOptionalJson(dataPath('semantic_vectors_ko.json')),
-            loadOptionalJson(dataPath('semantic_vectors_en.json'))
-        ]);
-
-        if (koVectors) setSemanticStore('ko', koVectors);
-        if (enVectors) setSemanticStore('en', enVectors);
-
-        if (getSemanticVectorCount() === 0) {
-            const legacyVectors = await loadOptionalJson(dataPath('semantic_vectors.json'));
-            setSemanticStore('ko', legacyVectors);
-            setSemanticStore('en', legacyVectors);
-        }
-
-        semanticResourcesLoaded = true;
-        return getSemanticVectorCount();
-    })();
-
-    return semanticResourcesLoadingPromise;
-}
-
-
-async function ensureBigramResourceLoaded(lang) {
-    if (bigramStores[lang]) return bigramStores[lang];
-    if (bigramResourcesLoadingPromises[lang]) return bigramResourcesLoadingPromises[lang];
-
-    bigramResourcesLoadingPromises[lang] = (async () => {
-        const data = await loadOptionalJson(dataPath(`bigram_next_${lang}.json`));
-        const entries = extractBigramEntries(data);
-        bigramStores[lang] = entries;
-        return entries;
-    })();
-
-    return bigramResourcesLoadingPromises[lang];
-}
-
-async function ensureSurfaceBigramKoLoaded() {
-    if (surfaceBigramStoreKo) return surfaceBigramStoreKo;
-    if (surfaceBigramResourceLoadingPromise) return surfaceBigramResourceLoadingPromise;
-
-    surfaceBigramResourceLoadingPromise = (async () => {
-        const data = await loadOptionalJson(dataPath('bigram_surface_ko.json'));
-        surfaceBigramStoreKo = extractBigramEntries(data);
-        return surfaceBigramStoreKo;
-    })();
-
-    return surfaceBigramResourceLoadingPromise;
-}
-
-async function ensureAuxiliarySurfaceBigramKoLoaded() {
-    if (auxiliarySurfaceBigramStoresKo.spoken || auxiliarySurfaceBigramStoresKo.hiphop) {
-        return auxiliarySurfaceBigramStoresKo;
-    }
-    if (auxiliarySurfaceBigramResourceLoadingPromise) return auxiliarySurfaceBigramResourceLoadingPromise;
-
-    auxiliarySurfaceBigramResourceLoadingPromise = (async () => {
-        const [spoken, hiphop] = await Promise.all([
-            loadOptionalJson(dataPath('spoken_korean_surface_bigram_ko.json')),
-            loadOptionalJson(dataPath('hiphop_surface_bigram_ko.json'))
-        ]);
-        auxiliarySurfaceBigramStoresKo = {
-            spoken: extractBigramEntries(spoken),
-            hiphop: extractBigramEntries(hiphop)
-        };
-        return auxiliarySurfaceBigramStoresKo;
-    })();
-
-    return auxiliarySurfaceBigramResourceLoadingPromise;
-}
-
-function getSurfacePronunciationCandidates(surface) {
-    const key = String(surface || '');
-    if (surfacePronunciationCache.has(key)) return surfacePronunciationCache.get(key);
-
-    const compoundCandidates = typeof getKoreanCompoundPronunciationCandidates === 'function'
-        ? getKoreanCompoundPronunciationCandidates(key)
-        : [];
-    const standardCandidates = typeof getKoreanStandardPronunciationCandidates === 'function'
-        ? getKoreanStandardPronunciationCandidates(key)
-        : [];
-    let candidates = [...compoundCandidates, ...standardCandidates];
-    if (typeof dedupeKoreanPronunciationCandidates === 'function') {
-        candidates = dedupeKoreanPronunciationCandidates(candidates);
-    }
-    if (!Array.isArray(candidates) || candidates.length === 0) {
-        candidates = [{ phonemes: getKoreanIpaPhonemes(key).phonemes || [], label: '표기' }];
-    }
-    const phonemeCandidates = candidates
-        .map(candidate => candidate.phonemes || [])
-        .filter(phonemes => phonemes.length > 0);
-    surfacePronunciationCache.set(key, phonemeCandidates);
-    return phonemeCandidates;
-}
-
-function getSurfaceFollowerRows(store, head) {
-    if (!store || typeof store !== 'object') return [];
-    const payload = store[head] || store[String(head || '').toLowerCase()];
-    if (!Array.isArray(payload)) return [];
-    if (Array.isArray(payload[1])) return payload[1];
-    return payload;
-}
-
-function normalizeSurfaceCountScore(count) {
-    const numeric = Number(count) || 0;
-    return Math.max(0, Math.min(100, Math.log1p(Math.max(0, numeric)) / Math.log1p(200000) * 100));
-}
-
-function getAuxiliarySurfacePairScores(firstSurface, secondSurface) {
-    const stores = auxiliarySurfaceBigramStoresKo || {};
-    const spokenRow = getSurfaceFollowerRows(stores.spoken, firstSurface)
-        .find(row => String(row?.[0] || '') === secondSurface);
-    const hiphopRow = getSurfaceFollowerRows(stores.hiphop, firstSurface)
-        .find(row => String(row?.[0] || '') === secondSurface);
-    const spokenScore = spokenRow ? normalizeSurfaceCountScore(spokenRow[1]) : 0;
-    const hiphopScore = hiphopRow ? normalizeSurfaceCountScore(hiphopRow[1]) : 0;
-    return {
-        spokenScore,
-        hiphopScore,
-        combinedScore: spokenScore * 0.55 + hiphopScore * 0.45
-    };
-}
-
-// Load dictionary
+// Everything the search needs lives in the Worker and loads on demand, so the page is
+// ready at once; the lexicon (used by both modes) starts downloading in the background.
 async function loadDictionary() {
-    try {
-        const response = await fetch(dataPath('rhyme_dict_practical.json'));
-        if (!response.ok) throw new Error('Network response was not ok');
-        dictionary = await response.json();
+    window.RhymePreloader?.update(1,1);
+    if (await window.RhymePreloader?.finish() === false) return;
+    isReady = true;
+    setWordSearchBusy(false);
+    statusEl.textContent = '검색 준비 완료. 찾고 싶은 라임을 입력해 주세요.';
+    prefetchWordSearch();
+}
 
-        try {
-            const loanwordResponse = await fetch(dataPath('loanword_overrides.json'));
-            if (loanwordResponse.ok) {
-                loanwordOverrides = await loanwordResponse.json();
-            }
-        } catch (error) {
-            console.warn('Loanword overrides are not available:', error);
-        }
-
-        const compoundData = await loadOptionalJson(dataPath('compound_pronunciations_ko.json'));
-        compoundPronunciationsKo = compoundData && typeof compoundData === 'object' && !Array.isArray(compoundData)
-            ? compoundData
-            : {};
-        if (typeof window !== 'undefined') {
-            window.compoundPronunciationsKo = compoundPronunciationsKo;
-        }
-
-        isReady = true;
-        const loanwordCount = Object.keys(loanwordOverrides).length;
-        if (currentSearchMode === 'lyrics') {
-            statusEl.textContent = '섹션별 가사를 입력한 뒤 세부 분석을 실행하세요.';
-        } else {
-            statusEl.textContent = `사전 로드 완료! (총 ${dictionary.length.toLocaleString()} 단어, 외래어 ${loanwordCount.toLocaleString()}개, 의미 벡터는 주제 입력 시 로드)`;
-        }
-    } catch (error) {
-        console.error('Failed to load dictionary:', error);
-        statusEl.textContent = '사전 데이터를 불러오는데 실패했습니다.';
-        statusEl.style.color = 'red';
-    }
+// Start downloading the lexicon in the background; a search joins the same load.
+function prefetchWordSearch() {
+    window.wordSearchRuntime?.init().catch(error => console.warn('Lexicon prefetch failed:', error));
 }
 
 function getSelectedPronunciationMode() {
@@ -443,448 +287,134 @@ function getSelectedLang() {
     return selectedLang;
 }
 
+function getTargetLanguages() {
+    const selected = getSelectedLang();
+    return selected === 'all' ? ['ko', 'en'] : [selected];
+}
+
+// Per-phoneme multipliers from the detail sliders (1.0 each when detail weights are off).
+function getDetailMultipliers(length) {
+    const multipliers = new Array(length).fill(1.0);
+    if (useDetailWeights.checked && currentQueryPhonemeData.charMap.length > 0) {
+        currentQueryPhonemeData.charMap.forEach((item, index) => {
+            const slider = document.getElementById(`detailWeight_${index}`);
+            const mult = slider ? parseFloat(slider.value) : 1.0;
+            for (let i = item.startIndex; i < item.endIndex; i++) multipliers[i] = mult;
+        });
+    }
+    return multipliers;
+}
+
 function getExcludeWords() {
     const excludeStr = excludeInput.value.trim();
     if (!excludeStr) return [];
     return excludeStr.split(',').map(w => w.trim().toLowerCase()).filter(Boolean);
 }
 
-function isExcludedWord(word, excludeWords) {
-    if (excludeWords.length === 0) return false;
-    const lowerWord = String(word || '').toLowerCase();
-    return excludeWords.some(exWord => lowerWord.includes(exWord));
-}
-
-function compareSearchResults(a, b) {
-    const scoreDiff = (b.score || 0) - (a.score || 0);
-    if (Math.abs(scoreDiff) > 0.001) return scoreDiff;
-
-    const rimeDiff = (b.rimeScore || 0) - (a.rimeScore || 0);
-    if (Math.abs(rimeDiff) > 0.001) return rimeDiff;
-
-    const stressDiff = (b.stressRimeScore || 0) - (a.stressRimeScore || 0);
-    if (Math.abs(stressDiff) > 0.001) return stressDiff;
-
-    const syllableDiff = (b.koreanSyllableScore || 0) - (a.koreanSyllableScore || 0);
-    if (Math.abs(syllableDiff) > 0.001) return syllableDiff;
-
-    const rawDiff = (b.rawPhoneticScore || 0) - (a.rawPhoneticScore || 0);
-    if (Math.abs(rawDiff) > 0.001) return rawDiff;
-
-    const aLengthDelta = Number.isFinite(a.queryLengthDelta) ? a.queryLengthDelta : 0;
-    const bLengthDelta = Number.isFinite(b.queryLengthDelta) ? b.queryLengthDelta : 0;
-    if (aLengthDelta !== bLengthDelta) return aLengthDelta - bLengthDelta;
-
-    return String(a.word || '').localeCompare(String(b.word || ''));
-}
-
-
-function dedupeResultsByWordLang(results) {
-    const bestByKey = new Map();
-
-    results.forEach(result => {
-        const key = `${result.lang}:${result.word}`;
-        const current = bestByKey.get(key);
-        if (!current || compareSearchResults(result, current) < 0) {
-            bestByKey.set(key, result);
-        }
-    });
-
-    return Array.from(bestByKey.values());
-}
-
-
-loadMoreBtn.addEventListener('click', renderMoreResults);
+loadMoreBtn.addEventListener('click', showMoreResults);
 
 async function handleSearch() {
-    if (currentSearchMode === 'lyrics') {
-        await handleLyricsAnalysis();
-        return;
+    if (!isReady) return;
+    if (currentSearchMode === 'linked') await handleLinkedRhymeSearch();
+    else await handleWordSearch();
+}
+
+const PRONUNCIATION_SOURCE_NOTES = {
+    model: '사전에 없는 말이라 발음을 추정했습니다',
+    jamo: '자모 입력은 낱소리로 비교합니다',
+};
+
+// Numbers outside the lexicon are left out rather than read one of several ways.
+function skippedNumbersNote(skipped) {
+    return skipped?.length ? `숫자(${skipped.join(', ')})는 읽는 법이 여러 가지라 뺐습니다` : '';
+}
+
+function noPronunciationMessage() {
+    const note = skippedNumbersNote(currentQueryPhonemeData?.skipped);
+    return note ? `검색어의 발음을 분석할 수 없습니다. ${note}. 한글이나 영어로 입력해 주세요.` : '검색어의 발음을 분석할 수 없습니다.';
+}
+
+function wordCompletionMessage(response, request) {
+    const parts = [`결과 ${response.total.toLocaleString()}개`, `${Math.round(response.timings.total_ms).toLocaleString()}ms`];
+    if (request.vowelsOnly) parts.push('모음만');
+    if (getTargetLanguages().includes('en')) parts.push(getPronunciationModeLabel(request.mode));
+    const notes = [...new Set(response.resolved.sources)].map(source => PRONUNCIATION_SOURCE_NOTES[source]).filter(Boolean);
+    parts.push(...notes);
+    const skipped = skippedNumbersNote(response.resolved.skipped);
+    if (skipped) parts.push(skipped);
+    if (response.topic.requested) {
+        parts.push(response.topic.active
+            ? `주제: ${response.topic.word}`
+            : `주제어가 사전에 없어 주제 없이 검색: ${request.topicWord}`);
     }
-    if (currentSearchMode === 'linked') {
-        await handleLinkedRhymeSearch();
-        return;
-    }
-    await handleWordSearch();
-}
-
-function getNextLyricsSectionLabel() {
-    const count = document.querySelectorAll('.lyrics-section').length + 1;
-    if (count === 1) return 'Verse 1';
-    if (count === 2) return 'Hook';
-    return `Verse ${count}`;
-}
-
-function addLyricsSection(type = getNextLyricsSectionLabel(), text = '') {
-    if (!lyricsSections) return;
-    const id = String(Date.now() + Math.floor(Math.random() * 1000));
-    const section = document.createElement('div');
-    section.className = 'lyrics-section';
-    section.dataset.sectionId = id;
-    const options = ['Intro', 'Verse 1', 'Hook', 'Verse 2', 'Bridge', 'Outro', 'Free'];
-    const selectedType = options.includes(type) ? type : 'Free';
-    section.innerHTML = `
-        <div class="lyrics-section-header">
-            <select class="lyrics-section-type" aria-label="섹션 종류">
-                ${options.map(option => `<option value="${option}" ${option === selectedType ? 'selected' : ''}>${option}</option>`).join('')}
-            </select>
-            <button type="button" class="lyrics-section-remove" aria-label="섹션 삭제">×</button>
-        </div>
-        <textarea class="lyrics-section-text" rows="8" placeholder="가사를 입력하세요"></textarea>
-    `;
-    section.querySelector('.lyrics-section-text').value = text;
-    lyricsSections.appendChild(section);
-}
-
-function removeLyricsSection(section) {
-    if (!section || !lyricsSections) return;
-    if (lyricsSections.querySelectorAll('.lyrics-section').length <= 1) {
-        const textarea = section.querySelector('.lyrics-section-text');
-        if (textarea) textarea.value = '';
-        return;
-    }
-    section.remove();
-}
-
-function setLyricsSectionTypeMenuOpen(open) {
-    if (!lyricsSectionTypeMenu || !addLyricsSectionBtn) return;
-    lyricsSectionTypeMenu.hidden = !open;
-    addLyricsSectionBtn.setAttribute('aria-expanded', String(open));
-}
-
-addLyricsSectionBtn?.addEventListener('click', event => {
-    event.stopPropagation();
-    setLyricsSectionTypeMenuOpen(lyricsSectionTypeMenu?.hidden !== false);
-});
-
-lyricsSectionTypeMenu?.addEventListener('click', event => {
-    const button = event.target.closest('[data-section-type]');
-    if (!button) return;
-    addLyricsSection(button.dataset.sectionType || getNextLyricsSectionLabel());
-    setLyricsSectionTypeMenuOpen(false);
-});
-
-document.addEventListener('click', event => {
-    if (lyricsSectionTypeMenu?.hidden !== false) return;
-    if (event.target.closest('.lyrics-section-add')) return;
-    setLyricsSectionTypeMenuOpen(false);
-});
-
-document.addEventListener('keydown', event => {
-    if (event.key === 'Escape') setLyricsSectionTypeMenuOpen(false);
-});
-
-lyricsAnalyzeBtn?.addEventListener('click', handleLyricsAnalysis);
-lyricsSections?.addEventListener('click', event => {
-    const button = event.target.closest('.lyrics-section-remove');
-    if (button) removeLyricsSection(button.closest('.lyrics-section'));
-});
-
-function renderLyricsAnalysisLoading() {
-    if (!lyricsAnalysisResults) return;
-    lyricsAnalysisResults.innerHTML = `
-        <section class="lyrics-report-section lyrics-loading-panel">
-            <div class="lyrics-loading-spinner" aria-hidden="true"></div>
-            <h3>가사를 분석하는 중</h3>
-            <p id="lyricsResultLoadingLabel">입력한 라인을 정리하는 중</p>
-            <strong id="lyricsResultLoadingValue">0%</strong>
-        </section>
-    `;
-}
-
-async function handleLyricsAnalysis() {
-    const sections = collectLyricsSections();
-    if (sections.length === 0) {
-        statusEl.textContent = '분석할 가사를 한 줄 이상 입력하세요.';
-        if (lyricsAnalysisResults) {
-            lyricsAnalysisResults.innerHTML = '<section class="lyrics-report-section"><div class="lyrics-note">분석할 가사를 한 줄 이상 입력하세요.</div></section>';
-        }
-        return;
-    }
-
-    lyricsAnalyzeBtn.disabled = true;
-    appLayout?.classList.add('lyrics-results');
-    lyricsAnalysisPanel?.classList.add('has-results');
-    statusEl.textContent = '가사 세부 분석을 실행 중입니다.';
-    renderLyricsAnalysisLoading();
-    if (lyricsAnalysisResults) lyricsAnalysisResults.scrollTop = 0;
-    try {
-        const report = await analyzeLyricsSections(sections, updateLyricsProgress);
-        renderLyricsAnalysisReport(report, lyricsAnalysisResults);
-        if (lyricsAnalysisResults) lyricsAnalysisResults.scrollTop = 0;
-        statusEl.textContent = `가사 세부 분석 완료: ${report.overview.lineCount.toLocaleString()}라인`;
-    } catch (error) {
-        console.error('Lyrics analysis failed:', error);
-        statusEl.textContent = '가사 분석 중 오류가 발생했습니다.';
-        if (lyricsAnalysisResults) {
-            lyricsAnalysisResults.innerHTML = '<section class="lyrics-report-section"><div class="lyrics-note">가사 분석 중 오류가 발생했습니다. 콘솔 로그를 확인하세요.</div></section>';
-        }
-    } finally {
-        lyricsAnalyzeBtn.disabled = false;
-    }
+    if (response.rerankOnly) parts.push('발음 점수 재사용');
+    return `"${request.query}" ${parts.join(' · ')}`;
 }
 
 async function handleWordSearch() {
-    if (!isReady) return;
     const query = searchInput.value.trim();
     if (!query) return;
-
-    const selectedLang = getSelectedLang();
-    const pronunciationMode = getSelectedPronunciationMode();
-    const topicWord = topicInput.value.trim();
-    const topicWeight = parseFloat(topicWeightInput.value);
-    let semanticContext = buildSemanticContext('', 0);
-
-    if (query !== lastQueryWord) {
-        currentQueryPhonemeData = getQueryPhonemes(query);
-        lastQueryWord = query;
-        renderDetailSliders(); // Generate sliders for the new word
-    }
-    
-    const queryPhonemes = currentQueryPhonemeData.phonemes;
-    
-    if (queryPhonemes.length === 0) {
-        statusEl.textContent = '해당 단어의 발음을 분석할 수 없습니다.';
-        return;
-    }
-
-    if (topicWord && topicWeight > 0) {
-        statusEl.textContent = '주제 의미 벡터를 불러오는 중입니다...';
-        await ensureSemanticResourcesLoaded();
-        await translateTopicToEnglish(topicWord);
-        semanticContext = buildSemanticContext(topicWord, topicWeight);
-    }
-
-    const useKoCorpusBoost = selectedLang !== 'en';
-    if (useKoCorpusBoost) {
-        await ensureCorpusAffinityResourcesLoaded();
-    }
-
-    const topicLabels = [topicWord, ...(semanticContext.translatedTopics || []).slice(0, 2)].filter(Boolean);
-    const topicText = topicWord
-        ? semanticContext.active
-            ? ` / 주제 : ${topicLabels.join(', ')}`
-            : ` / 주제 벡터 없음: ${topicWord}`
-        : '';
-    statusEl.textContent = `"${query}"의 발음 [${queryPhonemes.join(', ')}]와 비슷한 단어를 찾습니다... (${getPronunciationModeLabel(pronunciationMode)}${topicText})`;
-
-    let freqWeight = parseFloat(freqWeightInput.value);
-
-    // Build detail multipliers array
-    let detailMultipliers = new Array(queryPhonemes.length).fill(1.0);
-    if (useDetailWeights.checked && currentQueryPhonemeData.charMap.length > 0) {
-        currentQueryPhonemeData.charMap.forEach((item, index) => {
-            const slider = document.getElementById(`detailWeight_${index}`);
-            let mult = slider ? parseFloat(slider.value) : 1.0;
-            for (let i = item.startIndex; i < item.endIndex; i++) {
-                detailMultipliers[i] = mult;
-            }
+    abandonActiveWordSearch();
+    const operation = {controller: new AbortController(), cancelledByUser: false, kind: 'word'};
+    activeWordSearch = operation;
+    setWordSearchBusy(true);
+    statusEl.style.color = '';
+    statusEl.textContent = `"${query}" 라임을 찾는 중...`;
+    renderSearchLoading('검색 준비 중', undefined, undefined, '라임 검색중...');
+    const options = {
+        signal: operation.controller.signal,
+        onProgress(progress) {
+            if (activeWordSearch === operation) renderWordSearchProgress(progress);
+        }
+    };
+    try {
+        // Detail sliders follow the query pronunciation the Worker uses (lexicon or model).
+        const queryKey = `word\u0000${query}`;
+        if (queryKey !== lastQueryWord) {
+            const resolved = await window.wordSearchRuntime.resolve(query, options);
+            if (activeWordSearch !== operation) return;
+            currentQueryPhonemeData = resolved;
+            lastQueryWord = queryKey;
+            renderDetailSliders();
+        }
+        const phonemes = currentQueryPhonemeData.phonemes || [];
+        if (!phonemes.length) {
+            displayResults([]);
+            statusEl.textContent = noPronunciationMessage();
+            return;
+        }
+        const request = {
+            query, languages: getTargetLanguages(), mode: getSelectedPronunciationMode(),
+            vowelWeight: Number(vowelWeightInput.value), consonantWeight: Number(consoWeightInput.value),
+            useDetailWeights: useDetailWeights.checked, detail: getDetailMultipliers(phonemes.length),
+            vowelsOnly: vowelOnlySearch.checked, frequencyWeight: Number(freqWeightInput.value),
+            topicWord: topicInput.value.trim(), topicWeight: Number(topicWeightInput.value),
+            excludeWords: getExcludeWords()
+        };
+        const response = await window.wordSearchRuntime.search(request, options);
+        if (activeWordSearch !== operation) return;
+        displayResults(response.items, {
+            total: response.total,
+            loadPage: offset => window.wordSearchRuntime.page(response.searchId, offset, PAGE_SIZE)
         });
-    }
-
-    const excludeWords = getExcludeWords();
-
-    // Filter and score
-    let results = [];
-    for (const item of dictionary) {
-        if (selectedLang !== 'all' && item.lang !== selectedLang) continue;
-        
-        // Skip exact same word
-        if (item.word.toLowerCase() === query.toLowerCase()) continue;
-
-        // Skip excluded words
-        if (isExcludedWord(item.word, excludeWords)) continue;
-
-        const result = calculatePronunciationScore(item, currentQueryPhonemeData, detailMultipliers, pronunciationMode);
-        if (!result || typeof result.score !== 'number' || !Number.isFinite(result.score)) continue;
-        
-        // Base score threshold to filter out completely irrelevant words
-        if (result.score > 40) { 
-            let zipf = item.zipf !== undefined ? item.zipf : 1.0; // Default 1.0 if not found
-            let totalScore = applyFrequencyWeight(result.score, zipf, freqWeight);
-            let semanticResult = { score: totalScore, similarity: null, matched: true };
-            if (semanticContext.active) {
-                semanticResult = applySemanticWeight(totalScore, item, semanticContext);
-                if (!semanticResult.matched) continue;
-                totalScore = semanticResult.score;
-            }
-            let corpusAffinity = { score: 0 };
-            if (useKoCorpusBoost && item.lang === 'ko') {
-                const corpusResult = applyCorpusAffinityWeight(totalScore, item);
-                totalScore = corpusResult.score;
-                corpusAffinity = corpusResult.affinity;
-            }
-
-            results.push({
-                ...item,
-                score: totalScore,
-                matchIndices: result.matchIndices,
-                matchPhonemes: result.matchPhonemes,
-                matchLayer: result.matchLayer,
-                matchLayerLabel: result.matchLayerLabel,
-                rawPhoneticScore: result.rawScore ?? result.score,
-                rimeScore: result.rimeScore ?? 0,
-                stressRimeScore: result.stressRimeScore ?? 0,
-                koreanSyllableScore: result.koreanSyllableScore ?? 0,
-                queryLengthDelta: Math.abs(String(item.word || '').length - query.length),
-                semanticSimilarity: semanticResult.similarity,
-                corpusAffinity: corpusAffinity.score
-            });
+        statusEl.textContent = wordCompletionMessage(response, request);
+    } catch (error) {
+        if (activeWordSearch !== operation) return;
+        if (error?.code === 'search_cancelled') {
+            statusEl.textContent = operation.cancelledByUser ? '검색을 취소했습니다.' : '이전 검색을 중단했습니다.';
+        } else if (error?.code === 'no_pronunciation') {
+            displayResults([]);
+            statusEl.textContent = noPronunciationMessage();
+        } else {
+            console.error('Word search failed:', error);
+            statusEl.textContent = '단어 검색 자료를 준비하거나 계산하는 데 실패했습니다. 다시 검색해 주세요.';
+            statusEl.style.color = 'red';
         }
-    }
-
-    results = dedupeResultsByWordLang(results);
-    results.sort(compareSearchResults);
-
-    displayResults(results);
-}
-
-function appendSurfaceLinkedResults({
-    results,
-    surfaceEntries,
-    splits,
-    dictByWord,
-    detailMultipliers,
-    semanticContext,
-    freqRatio,
-    excludeWords,
-    maxFirstCandidates,
-    allowFirstParticle
-}) {
-    if (!surfaceEntries || Object.keys(surfaceEntries).length === 0) return;
-
-    for (const split of splits) {
-        const leftDetailMultipliers = getSplitDetailMultipliers(
-            detailMultipliers,
-            split.leftSourceStart,
-            split.leftSourceEnd,
-            split.leftPhonemes.length
-        );
-        const rightDetailMultipliers = getSplitDetailMultipliers(
-            detailMultipliers,
-            split.rightSourceStart,
-            split.rightSourceEnd,
-            split.rightPhonemes.length
-        );
-
-        const firstCandidates = [];
-        for (const [surfaceHead, payload] of Object.entries(surfaceEntries)) {
-            if (isExcludedWord(surfaceHead, excludeWords)) continue;
-            const normalizedHead = Array.isArray(payload) ? String(payload[0] || '') : '';
-            if (normalizedHead && isExcludedWord(normalizedHead, excludeWords)) continue;
-            if (!allowFirstParticle && normalizedHead && normalizedHead !== surfaceHead) continue;
-
-            const leftSurfaceMatch = getBoundarySurfaceMatch(surfaceHead, split.leftText, 'end');
-            let leftResult = null;
-            if (leftSurfaceMatch.score <= 0) {
-                leftResult = getBestBoundaryScore(getSurfacePronunciationCandidates(surfaceHead), split.leftPhonemes, 'end', leftDetailMultipliers);
-            }
-            if (leftSurfaceMatch.score > 0 || leftResult?.score > 40) {
-                firstCandidates.push({ surfaceHead, normalizedHead, payload, leftSurfaceMatch, leftResult });
-            }
+    } finally {
+        if (activeWordSearch === operation) {
+            activeWordSearch = null;
+            setWordSearchBusy(false);
         }
-
-        const exactFirstCandidates = firstCandidates.filter(candidate => candidate.leftSurfaceMatch.exact);
-        const fallbackFirstCandidates = firstCandidates
-            .filter(candidate => !candidate.leftSurfaceMatch.exact)
-            .sort((a, b) => {
-                const aScore = Math.max(a.leftSurfaceMatch.score, a.leftResult?.score || 0);
-                const bScore = Math.max(b.leftSurfaceMatch.score, b.leftResult?.score || 0);
-                return bScore - aScore;
-            })
-            .slice(0, maxFirstCandidates);
-
-        [...exactFirstCandidates, ...fallbackFirstCandidates]
-            .forEach(firstCandidate => {
-                const followers = Array.isArray(firstCandidate.payload) ? firstCandidate.payload[1] : [];
-                if (!Array.isArray(followers)) return;
-
-                followers.forEach(row => {
-                    const follower = parseSurfaceFollowerRow(row);
-                    if (!follower || !follower.surface) return;
-                    if (isExcludedWord(follower.surface, excludeWords)) return;
-                    if (follower.normalized && isExcludedWord(follower.normalized, excludeWords)) return;
-
-                    const rightSurfaceMatch = getBoundarySurfaceMatch(follower.surface, split.rightText, 'start');
-                    let rightResult = null;
-                    if (rightSurfaceMatch.score <= 0) {
-                        rightResult = getBestBoundaryScore(getSurfacePronunciationCandidates(follower.surface), split.rightPhonemes, 'start', rightDetailMultipliers);
-                        if (rightResult.score <= 40) return;
-                    } else {
-                        rightResult = getBestBoundaryScore(getSurfacePronunciationCandidates(follower.surface), split.rightPhonemes, 'start', rightDetailMultipliers);
-                    }
-                    if (!firstCandidate.leftResult) {
-                        firstCandidate.leftResult = getBestBoundaryScore(getSurfacePronunciationCandidates(firstCandidate.surfaceHead), split.leftPhonemes, 'end', leftDetailMultipliers);
-                    }
-
-                    const headDict = dictByWord.get(firstCandidate.normalizedHead) || dictByWord.get(firstCandidate.surfaceHead);
-                    const nextDict = dictByWord.get(follower.normalized) || dictByWord.get(follower.surface);
-                    const first = {
-                        word: firstCandidate.surfaceHead,
-                        display: firstCandidate.surfaceHead,
-                        semanticWord: firstCandidate.normalizedHead || firstCandidate.surfaceHead,
-                        zipf: headDict?.zipf
-                    };
-                    const second = {
-                        word: follower.surface,
-                        display: follower.surface,
-                        semanticWord: follower.normalized || follower.surface,
-                        zipf: nextDict?.zipf
-                    };
-
-                    const topicResult = getPhraseTopicSimilarity(first, second, 'ko', semanticContext);
-                    if (!topicResult.matched) return;
-
-                    const boundary = getWeightedLinkedBoundaryScore({
-                        leftSurfaceMatch: firstCandidate.leftSurfaceMatch,
-                        rightSurfaceMatch,
-                        leftPhoneticScore: firstCandidate.leftResult.score,
-                        rightPhoneticScore: rightResult.score,
-                        leftDetailMultipliers,
-                        rightDetailMultipliers
-                    });
-                    const boundaryScore = boundary.score;
-                    const auxiliarySurfaceScores = getAuxiliarySurfacePairScores(firstCandidate.surfaceHead, follower.surface);
-                    const baseBigramScore = getCountAwareBigramScore(follower.score, follower.count);
-                    const bigramScore = Math.max(baseBigramScore, auxiliarySurfaceScores.combinedScore);
-                    const frequencyScore = getPairFrequencyScore(first, second);
-                    const topicScore = topicResult.topicScore ?? 0;
-                    const corpusScore = getLinkedCorpusScore(first, second, 'ko');
-                    const rawScore = semanticContext.active
-                        ? boundaryScore * (0.57 - freqRatio * 0.08) + bigramScore * 0.20 + frequencyScore * (0.08 + freqRatio * 0.08) + topicScore * 0.15
-                        : boundaryScore * (0.65 - freqRatio * 0.10) + bigramScore * 0.25 + frequencyScore * (0.10 + freqRatio * 0.10);
-                    const balanceMultiplier = 0.85 + split.balance * 0.15;
-                    const finalScore = Math.max(0, Math.min(100, blendLinkedCorpusScore(rawScore, corpusScore) * balanceMultiplier));
-                    const surfaceDisplay = formatSurfaceLinkedDisplay(firstCandidate.surfaceHead, follower.surface, split.leftText, split.rightText);
-                    const matchType = getSurfaceMatchType(firstCandidate.leftSurfaceMatch, rightSurfaceMatch);
-
-                    results.push({
-                        resultType: 'linked',
-                        surfaceMode: true,
-                        lang: 'ko',
-                        first,
-                        second,
-                        word: `${firstCandidate.surfaceHead} ${follower.surface}`,
-                        display: surfaceDisplay,
-                        surfaceDisplay,
-                        score: finalScore,
-                        splitLabel: split.label,
-                        leftScore: firstCandidate.leftResult.score,
-                        rightScore: rightResult.score,
-                        surfaceExactScore: boundary.exactBoundaryScore,
-                        phoneticBoundaryScore: boundary.phoneticBoundaryScore,
-                        bigramScore,
-                        baseBigramScore,
-                        spokenSurfaceScore: auxiliarySurfaceScores.spokenScore,
-                        hiphopSurfaceScore: auxiliarySurfaceScores.hiphopScore,
-                        corpusScore,
-                        frequencyScore,
-                        topicSimilarity: topicResult.similarity,
-                        matchType: matchType.type,
-                        matchTypeLabel: matchType.label
-                    });
-                });
-            });
     }
 }
 
@@ -892,189 +422,71 @@ async function handleLinkedRhymeSearch() {
     if (!isReady) return;
     const query = searchInput.value.trim();
     if (!query) return;
-
-    const selectedLang = getSelectedLang();
-    if (query !== lastQueryWord) {
-        currentQueryPhonemeData = getQueryPhonemes(query);
-        lastQueryWord = query;
-        renderDetailSliders();
-    }
-
-    const queryPhonemes = currentQueryPhonemeData.phonemes || [];
-    if (queryPhonemes.length === 0) {
-        statusEl.textContent = '검색어의 발음을 분석할 수 없습니다.';
-        displayResults([]);
-        return;
-    }
-
-    let detailMultipliers = new Array(queryPhonemes.length).fill(1.0);
-    if (useDetailWeights.checked && currentQueryPhonemeData.charMap.length > 0) {
-        currentQueryPhonemeData.charMap.forEach((item, index) => {
-            const slider = document.getElementById(`detailWeight_${index}`);
-            const mult = slider ? parseFloat(slider.value) : 1.0;
-            for (let i = item.startIndex; i < item.endIndex; i++) {
-                detailMultipliers[i] = mult;
-            }
+    abandonActiveWordSearch();
+    const operation = {controller: new AbortController(), cancelledByUser: false, kind: 'linked'};
+    activeWordSearch = operation;
+    setWordSearchBusy(true);
+    statusEl.style.color = '';
+    statusEl.textContent = `"${query}" 연결 라임을 찾는 중...`;
+    renderSearchLoading('검색 준비 중', undefined, undefined, '라임 검색중...');
+    const options = {
+        signal: operation.controller.signal,
+        onProgress(progress) {
+            if (activeWordSearch === operation) renderWordSearchProgress(progress);
+        }
+    };
+    try {
+        // Same query pronunciation and detail sliders as word search.
+        const queryKey = `word\u0000${query}`;
+        if (queryKey !== lastQueryWord) {
+            const resolved = await window.wordSearchRuntime.resolve(query, options);
+            if (activeWordSearch !== operation) return;
+            currentQueryPhonemeData = resolved;
+            lastQueryWord = queryKey;
+            renderDetailSliders();
+        }
+        const phonemes = currentQueryPhonemeData.phonemes || [];
+        if (!phonemes.length) {
+            displayResults([]);
+            statusEl.textContent = noPronunciationMessage();
+            return;
+        }
+        const request = {
+            query, languages: getTargetLanguages(), mode: getSelectedPronunciationMode(),
+            vowelWeight: Number(vowelWeightInput.value), consonantWeight: Number(consoWeightInput.value),
+            useDetailWeights: useDetailWeights.checked, detail: getDetailMultipliers(phonemes.length),
+            frequencyWeight: Number(freqWeightInput.value),
+            topicWord: topicInput.value.trim(), topicWeight: Number(topicWeightInput.value),
+            excludeWords: getExcludeWords(), allowFirstParticle: Boolean(allowFirstParticleKo.checked)
+        };
+        const response = await window.wordSearchRuntime.linked(request, options);
+        if (activeWordSearch !== operation) return;
+        displayResults(response.items, {
+            total: response.total,
+            loadPage: offset => window.wordSearchRuntime.page(response.searchId, offset, PAGE_SIZE)
         });
-    }
-
-    const targetLangs = getLinkedSearchLangs(selectedLang);
-    const useSurfaceKo = targetLangs.includes('ko');
-    const allowFirstParticle = Boolean(useSurfaceKo && allowFirstParticleKo?.checked);
-    const splitsByLang = targetLangs.map(lang => ({ lang, splits: buildLinkedSplits(query, lang) }));
-    const allSplits = splitsByLang.flatMap(entry => entry.splits);
-    if (allSplits.length === 0) {
-        statusEl.textContent = '연결 라임 검색을 위한 분할 후보를 만들 수 없습니다.';
-        displayResults([]);
-        return;
-    }
-
-    statusEl.textContent = '연결 라임 검색은 두 단어 조합을 계산하므로 검색이 느릴 수 있습니다. 문맥 조정 중...';
-    const bigramStoresByLang = {};
-    let surfaceEntriesKo = null;
-    await Promise.all(targetLangs.map(async lang => {
-        if (lang === 'ko' && useSurfaceKo) {
-            const [surfaceEntries] = await Promise.all([
-                ensureSurfaceBigramKoLoaded(),
-                ensureAuxiliarySurfaceBigramKoLoaded()
-            ]);
-            surfaceEntriesKo = surfaceEntries;
+        statusEl.textContent = wordCompletionMessage(response, request).replace(/^"[^"]*"/, `"${query}" 연결 라임`);
+    } catch (error) {
+        if (activeWordSearch !== operation) return;
+        if (error?.code === 'search_cancelled') {
+            statusEl.textContent = operation.cancelledByUser ? '검색을 취소했습니다.' : '이전 검색을 중단했습니다.';
+        } else if (error?.code === 'no_pronunciation') {
+            displayResults([]);
+            statusEl.textContent = noPronunciationMessage();
+        } else if (error?.code === 'no_splits') {
+            displayResults([]);
+            statusEl.textContent = '검색어를 두 부분으로 나눌 수 없습니다. 두 음절 이상 입력해 주세요.';
         } else {
-            bigramStoresByLang[lang] = await ensureBigramResourceLoaded(lang);
+            console.error('Linked search failed:', error);
+            statusEl.textContent = '연결 검색 자료를 준비하거나 계산하는 데 실패했습니다. 다시 검색해 주세요.';
+            statusEl.style.color = 'red';
         }
-    }));
-    if (targetLangs.includes('ko')) {
-        await ensureLinkedCorpusResourcesLoaded();
-    }
-    const availableLangs = targetLangs.filter(lang => {
-        if (lang === 'ko' && useSurfaceKo) return surfaceEntriesKo && Object.keys(surfaceEntriesKo).length > 0;
-        return bigramStoresByLang[lang] && Object.keys(bigramStoresByLang[lang]).length > 0;
-    });
-    if (availableLangs.length === 0) {
-        statusEl.textContent = '연결 라임 문맥 데이터를 불러올 수 없습니다.';
-        displayResults([]);
-        return;
-    }
-
-    const topicWord = topicInput.value.trim();
-    const topicWeight = parseFloat(topicWeightInput.value);
-    let semanticContext = buildSemanticContext('', 0);
-    if (topicWord && topicWeight > 0) {
-        statusEl.textContent = '연결 라임 검색은 두 단어 조합을 계산하므로 검색이 느릴 수 있습니다. 주제 점수 추가 중...';
-        await ensureSemanticResourcesLoaded();
-        await translateTopicToEnglish(topicWord);
-        semanticContext = buildSemanticContext(topicWord, topicWeight);
-    }
-
-    const surfaceModeText = useSurfaceKo && targetLangs.includes('ko')
-        ? `${allowFirstParticle ? ' / 첫 단어 조사 허용' : ''}`
-        : '';
-    statusEl.textContent = `"${query}"의 연결 라임을 찾습니다... (${allSplits.map(split => `${split.lang}:${split.label}`).join(', ')}${surfaceModeText})`;
-
-    const freqWeight = parseFloat(freqWeightInput.value);
-    const freqRatio = Math.max(0, Math.min(1, freqWeight / 10));
-    const excludeWords = getExcludeWords();
-    const results = [];
-    const maxFirstCandidates = 200;
-
-    for (const { lang, splits } of splitsByLang) {
-        const dictByLang = dictionary.filter(item => item.lang === lang);
-        const dictByWord = new Map(dictByLang.map(item => [item.word.toLowerCase(), item]));
-
-        if (lang === 'ko' && useSurfaceKo) {
-            appendSurfaceLinkedResults({
-                results,
-                surfaceEntries: surfaceEntriesKo,
-                splits,
-                dictByWord,
-                detailMultipliers,
-                semanticContext,
-                freqRatio,
-                excludeWords,
-                maxFirstCandidates,
-                allowFirstParticle
-            });
-            continue;
-        }
-
-        const bigramEntries = bigramStoresByLang[lang];
-        if (!bigramEntries || Object.keys(bigramEntries).length === 0) continue;
-
-        for (const split of splits) {
-            const leftDetailMultipliers = getSplitDetailMultipliers(
-                detailMultipliers,
-                split.leftSourceStart,
-                split.leftSourceEnd,
-                split.leftPhonemes.length
-            );
-            const rightDetailMultipliers = getSplitDetailMultipliers(
-                detailMultipliers,
-                split.rightSourceStart,
-                split.rightSourceEnd,
-                split.rightPhonemes.length
-            );
-            const firstCandidates = [];
-            for (const item of dictByLang) {
-                if (isExcludedWord(item.word, excludeWords)) continue;
-                const leftResult = getBestBoundaryScore(getItemPhonemeCandidates(item), split.leftPhonemes, 'end', leftDetailMultipliers);
-                if (leftResult.score > 40) {
-                    firstCandidates.push({ item, leftResult });
-                }
-            }
-
-            firstCandidates
-                .sort((a, b) => b.leftResult.score - a.leftResult.score)
-                .slice(0, maxFirstCandidates)
-                .forEach(firstCandidate => {
-                    const followers = bigramEntries[firstCandidate.item.word.toLowerCase()];
-                    if (!Array.isArray(followers)) return;
-
-                    followers.forEach(row => {
-                        const secondWord = String(row[0] || '').toLowerCase();
-                        if (isExcludedWord(secondWord, excludeWords)) return;
-                        const second = dictByWord.get(secondWord);
-                        if (!second) return;
-
-                        const rightResult = getBestBoundaryScore(getItemPhonemeCandidates(second), split.rightPhonemes, 'start', rightDetailMultipliers);
-                        if (rightResult.score <= 40) return;
-
-                        const topicResult = getPhraseTopicSimilarity(firstCandidate.item, second, lang, semanticContext);
-                        if (!topicResult.matched) return;
-
-                        const boundaryScore = (firstCandidate.leftResult.score + rightResult.score) / 2;
-                        const bigramScore = normalizeBigramScore(row[2]);
-                        const frequencyScore = getPairFrequencyScore(firstCandidate.item, second);
-                        const topicScore = topicResult.topicScore ?? 0;
-                        const corpusScore = getLinkedCorpusScore(firstCandidate.item, second, lang);
-                        const rawScore = semanticContext.active
-                            ? boundaryScore * (0.57 - freqRatio * 0.08) + bigramScore * 0.20 + frequencyScore * (0.08 + freqRatio * 0.08) + topicScore * 0.15
-                            : boundaryScore * (0.65 - freqRatio * 0.10) + bigramScore * 0.25 + frequencyScore * (0.10 + freqRatio * 0.10);
-                        const balanceMultiplier = 0.85 + split.balance * 0.15;
-                        const finalScore = Math.max(0, Math.min(100, blendLinkedCorpusScore(rawScore, corpusScore) * balanceMultiplier));
-
-                        results.push({
-                            resultType: 'linked',
-                            lang,
-                            first: firstCandidate.item,
-                            second,
-                            word: `${firstCandidate.item.word} ${second.word}`,
-                            display: `${firstCandidate.item.display} + ${second.display}`,
-                            score: finalScore,
-                            splitLabel: split.label,
-                            leftScore: firstCandidate.leftResult.score,
-                            rightScore: rightResult.score,
-                            bigramScore,
-                            corpusScore,
-                            frequencyScore,
-                            topicSimilarity: topicResult.similarity
-                        });
-                    });
-                });
+    } finally {
+        if (activeWordSearch === operation) {
+            activeWordSearch = null;
+            setWordSearchBusy(false);
         }
     }
-
-    const deduped = dedupeLinkedResults(results).sort((a, b) => b.score - a.score);
-    displayResults(deduped);
 }
 
 searchBtn.addEventListener('click', handleSearch);

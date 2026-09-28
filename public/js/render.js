@@ -1,5 +1,5 @@
 function escapeHtml(value) {
-    return String(value || '').replace(/[&<>"']/g, char => ({
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
         '&': '&amp;',
         '<': '&lt;',
         '>': '&gt;',
@@ -8,10 +8,26 @@ function escapeHtml(value) {
     }[char]));
 }
 
-function displayResults(results) {
-    currentFilteredResults = results;
+// Results may arrive in pages: resultTotal is the full count and resultPageLoader(offset)
+// fetches the next page (word search keeps its result list in the Worker).
+let resultTotal = 0;
+let resultPageLoader = null;
+
+function clearSearchResults() {
+    meaningObserver.disconnect();
+    currentFilteredResults = [];
     resultsShown = 0;
-    resultsList.innerHTML = '';
+    resultTotal = 0;
+    resultPageLoader = null;
+    resultsList.replaceChildren();
+    loadMoreBtn.style.display = 'none';
+}
+
+function displayResults(results, { total = results.length, loadPage = null } = {}) {
+    clearSearchResults();
+    currentFilteredResults = results;
+    resultTotal = total;
+    resultPageLoader = loadPage;
     
     if (results.length === 0) {
         resultsList.innerHTML = '<li>검색 결과가 없습니다.</li>';
@@ -39,20 +55,15 @@ function renderMoreResults() {
                 <div class="result-meta linked-result-meta">
                     <span>분할: ${escapeHtml(res.splitLabel)}</span>
                     <div class="badge-container">
-                        <span class="lang-badge ${res.lang}">${res.lang === 'ko' ? '한국어' : '영어'}</span>
+                        <span class="lang-badge ${escapeHtml(res.lang)}">${res.lang === 'ko' ? '한국어' : '영어'}</span>
                         <span class="layer-badge">연결</span>
-                        ${res.matchTypeLabel ? `<span class="layer-badge">${escapeHtml(res.matchTypeLabel)}</span>` : ''}
                     </div>
                 </div>
                 <div class="linked-score-breakdown">
                     <span>앞끝 ${res.leftScore.toFixed(1)}</span>
                     <span>뒤앞 ${res.rightScore.toFixed(1)}</span>
-                    ${res.surfaceExactScore !== undefined ? `<span>표면 ${res.surfaceExactScore.toFixed(1)}</span>` : ''}
-                    <span>bigram ${res.bigramScore.toFixed(1)}</span>
-                    ${res.spokenSurfaceScore ? `<span>구어 ${res.spokenSurfaceScore.toFixed(1)}</span>` : ''}
-                    ${res.hiphopSurfaceScore ? `<span>힙합 ${res.hiphopSurfaceScore.toFixed(1)}</span>` : ''}
-                    ${res.corpusScore ? `<span>corpus ${res.corpusScore.toFixed(1)}</span>` : ''}
-                    <span>빈도 ${res.frequencyScore.toFixed(1)}</span>
+                    <span>발음 ${res.pronunciationScore.toFixed(1)}</span>
+                    <span>빈도(zipf) ${res.zipf.toFixed(1)}</span>
                 </div>
             `;
             resultsList.appendChild(li);
@@ -66,11 +77,11 @@ function renderMoreResults() {
         const displayPhonemes = res.matchPhonemes || res.phonemes || res.vowels || [];
         const phonemesHtml = displayPhonemes.map((p, idx) => {
             if (res.matchIndices && res.matchIndices.includes(idx)) {
-                return `<span style="color: #3498db; font-weight: bold;">${p}</span>`;
+                return `<span style="color: #3498db; font-weight: bold;">${escapeHtml(p)}</span>`;
             }
-            return p;
+            return escapeHtml(p);
         }).join(', ');
-        const matchLayerBadge = res.matchLayerLabel ? `<span class="layer-badge">${res.matchLayerLabel}</span>` : '';
+        const matchLayerBadge = res.matchLayerLabel ? `<span class="layer-badge">${escapeHtml(res.matchLayerLabel)}</span>` : '';
         const semanticHtml = res.semanticSimilarity !== null && res.semanticSimilarity !== undefined
             ? `<div class="semantic-score">주제 유사도: ${(((res.semanticSimilarity + 1) / 2) * 100).toFixed(1)}%</div>`
             : '';
@@ -84,13 +95,13 @@ function renderMoreResults() {
             ${semanticHtml}
             ${corpusHtml}
             <div class="result-word">
-                <span>${res.display}</span>
-                <img src="assets/sound_icon.png" class="tts-icon" onclick="playTTS('${res.word.replace(/'/g, "\\'")}', '${res.lang}')" alt="Listen" title="발음 듣기"/>
+                <span>${escapeHtml(res.display)}</span>
+                <img src="assets/sound_icon.png" class="tts-icon" alt="Listen" title="발음 듣기"/>
             </div>
             <div class="result-meta">
                 <span>[${phonemesHtml}]</span>
                 <div class="badge-container">
-                    <span class="lang-badge ${res.lang}">${res.lang === 'ko' ? '한국어' : '영어'}</span>
+                    <span class="lang-badge ${escapeHtml(res.lang)}">${res.lang === 'ko' ? '한국어' : '영어'}</span>
                     ${matchLayerBadge}
                 </div>
             </div>
@@ -98,15 +109,30 @@ function renderMoreResults() {
                 <div class="meaning-spinner"></div>
             </div>
         `;
+        li.querySelector('.tts-icon').addEventListener('click', () => playTTS(res.word, res.lang));
         resultsList.appendChild(li);
         meaningObserver.observe(li);
     });
 
     resultsShown += chunk.length;
+    loadMoreBtn.style.display = resultsShown >= resultTotal ? 'none' : 'block';
+}
 
-    if (resultsShown >= currentFilteredResults.length) {
-        loadMoreBtn.style.display = 'none';
-    } else {
-        loadMoreBtn.style.display = 'block';
+async function showMoreResults() {
+    const loader = resultPageLoader;
+    if (loader && resultsShown >= currentFilteredResults.length && currentFilteredResults.length < resultTotal) {
+        loadMoreBtn.disabled = true;
+        try {
+            const items = await loader(currentFilteredResults.length);
+            if (resultPageLoader !== loader) return;
+            currentFilteredResults.push(...items);
+        } catch (error) {
+            if (resultPageLoader === loader) statusEl.textContent = '다음 결과를 불러오지 못했습니다. 다시 검색해 주세요.';
+            console.error('Result page failed:', error);
+            return;
+        } finally {
+            loadMoreBtn.disabled = false;
+        }
     }
+    renderMoreResults();
 }

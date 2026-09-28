@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "config_version": "phoneme-similarity-v0",
+  "description": "음소 유사도 공식의 단일 원천. Python scorer, 브라우저 search-core, V1 phonetics가 모두 이 값을 사용한다. 값을 바꾸면 scripts/build_phoneme_similarity_config.js로 public/js/v2/phoneme-similarity-config.js를 다시 생성해야 하며, npm run check 의 4-way 동등성 검사가 이를 강제한다.",
+  "vowel": {
+    "feature_weights": {
+      "height": 0.42,
+      "backness": 0.36,
+      "rounding": 0.22
+    },
+    "blend": {
+      "strict": 0.55,
+      "features": 0.45
+    }
+  },
+  "consonant": {
+    "feature_weights": {
+      "place": 0.4,
+      "manner": 0.34,
+      "strength": 0.16,
+      "voice": 0.1
+    },
+    "place_caps": [
+      { "max_difference": 0.25, "cap": 0.72 },
+      { "max_difference": 0.5, "cap": 0.58 }
+    ],
+    "place_cap_default": 0.42,
+    "manner_caps": [
+      { "max_difference": 0.25, "cap": 0.68 },
+      { "max_difference": 0.5, "cap": 0.52 }
+    ],
+    "manner_cap_default": 0.35,
+    "place_and_manner_cap": 0.46
+  }
+}

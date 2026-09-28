@@ -1,0 +1,10 @@
+# Preserve byte-level reference hashes across Windows/Linux checkouts.
+tests/reference/v1/** -text
+tests/reference/local-v2/** -text
+tests/reference/worker-v1/** -text
+tests/reference/opt1/** -text
+tests/reference/opt2/** -text
+tests/reference/opt3/** -text
+tests/reference/opt4/** -text
+public/vendor/hangul-js-0.2.6/** -text
+tests/fixtures/search_product_v1.json -text

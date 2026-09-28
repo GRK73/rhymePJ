@@ -1,0 +1,28 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "rhyme-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/search/preview.mjs"
+      ],
+      "port": 4173,
+      "url": "http://127.0.0.1:4173"
+    },
+    {
+      "name": "pages-dryrun",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/search/preview.mjs",
+        "--serve",
+        "build/pages-dryrun"
+      ],
+      "port": 4174,
+      "url": "http://127.0.0.1:4174",
+      "env": {
+        "RHYME_APP_PORT": "4174"
+      }
+    }
+  ]
+}

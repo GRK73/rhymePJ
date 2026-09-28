@@ -6,11 +6,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rhyme Finder (한/영 통합 검색)</title>
     <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="style.css?v=20260607-principle-info">
+    <link rel="stylesheet" href="style.css?v=20260928-footer1">
 </head>
 
 <body>
-    <button type="button" id="principleInfoBtn" class="principle-info-btn" aria-haspopup="dialog" aria-controls="principleInfoDialog" aria-expanded="false">
+    <div id="appPreloader" class="app-preloader" role="dialog" aria-modal="true" aria-labelledby="preloaderTitle" aria-describedby="preloaderDescription">
+        <section id="preloaderPanel" class="preloader-panel" tabindex="-1">
+            <div class="preloader-brand"><span class="preloader-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>RHYME FINDER</div>
+            <h1 id="preloaderTitle">검색기 로딩중...</h1>
+            <p id="preloaderDescription">좋은 라임을 찾을 준비를 하고 있어요.</p>
+            <div class="preloader-progress-copy" aria-live="polite">
+                <span id="preloaderStep">검색 화면 준비 중</span><span id="preloaderCount"></span>
+            </div>
+            <progress id="preloaderBar" max="100" aria-label="검색기 준비 진행률"></progress>
+            <p class="preloader-hint" id="preloaderHint">처음에는 잠시 시간이 걸릴 수 있어요.</p>
+            <button type="button" id="preloaderRetry" class="preloader-retry" hidden>다시 불러오기</button>
+            <noscript><p class="preloader-noscript">검색기를 사용하려면 브라우저의 JavaScript를 켜주세요.</p></noscript>
+        </section>
+    </div>
+    <script src="js/search/preloader.js?v=20260928-final1"></script>
+    <button type="button" id="principleInfoBtn" class="principle-info-btn" inert data-preload-inert aria-haspopup="dialog" aria-controls="principleInfoDialog" aria-expanded="false">
         지루하고 현학적인 원리 설명
     </button>
 
@@ -28,53 +43,53 @@
             <div class="principle-info-content">
                 <section>
                     <h3>1. 글자가 아니라 발음을 검색합니다</h3>
-                    <p>검색어와 사전 단어를 먼저 발음 단위로 바꾼 뒤 비교합니다. 한국어는 표기 그대로의 발음뿐 아니라 표준발음 후보, 복합어/문맥형 후보, 조사나 어미가 붙은 형태의 어간 후보를 함께 봅니다. 영어는 실제 영어 발음과 한국어 화자가 외래어처럼 읽는 한국식 발음 후보를 같이 만듭니다.</p>
+                    <p>사전에 있는 약 38만 7천 단어를 미리 발음기호로 바꿔 두고, 검색할 때는 이 발음끼리 비교합니다. 한국어 단어는 Windows 한국어 음성(Heami)이 실제로 읽을 때 쓰는 발음을 씁니다. 그래서 연음, 경음화, ㄴ첨가 같은 발음 변화가 들어가고, 받침은 음절 구조가 보이도록 살려 둡니다(<span class="principle-inline">국가</span> → k u k k* a). 영어 단어는 사전의 실제 영어 발음과 한국식 발음을 함께 가집니다. 한국식 발음은 같은 음성이 한국어처럼 읽은 발음이고, 외래어 표기가 있으면 그 표기를 읽은 발음입니다(<span class="principle-inline">time</span> → 타임).</p>
                 </section>
 
                 <section>
-                    <h3>2. 소리 하나하나를 조음 특징으로 비교합니다</h3>
+                    <h3>2. 검색어도 같은 방식으로 발음을 정합니다</h3>
+                    <p>검색어가 사전에 있으면 저장된 발음을 그대로 씁니다. 사전에 없는 말(신조어, 활용형, 오타 등)은 Heami의 발음을 학습한 발음 모델로 추정하고, 추정했다는 사실을 상태 표시줄에 알려 줍니다. ㅋㅋ나 ㅏㅏ 같은 자모 입력은 낱소리 그대로 비교합니다. 띄어쓰기, 문장부호, 악센트는 정리해서 읽고(<span class="principle-inline">사랑!</span> → 사랑, <span class="principle-inline">café</span> → cafe), 한글과 영어가 섞이면 나눠 읽은 뒤 이어 붙입니다. 숫자는 읽는 법이 여러 가지(일이삼, 백이십삼, one two three)라 사전에 있는 말(y2k, 3d 등)이 아니면 빼고 읽으며, 뺐다는 사실을 알려 줍니다. 숫자는 한글이나 영어로 적어 주세요.</p>
+                </section>
+
+                <section>
+                    <h3>3. 소리 하나하나를 조음 특징으로 비교합니다</h3>
                     <p>각 음소는 단순히 같고 다름으로 처리하지 않습니다. 자음은 조음 위치, 조음 방법, 기식/경음 강도, 유성성을 기준으로 점수를 냅니다. 모음은 혀의 높이, 전후 위치, 입술 모양을 기준으로 계산합니다. 그래서 <span class="principle-inline">p</span>와 <span class="principle-inline">b</span>처럼 비슷한 소리는 부분 점수를 받고, 멀리 떨어진 소리는 낮은 점수를 받습니다.</p>
                 </section>
 
                 <section>
-                    <h3>3. 전체 발음 배열은 두 방식으로 맞춰봅니다</h3>
-                    <p>첫째, 동적 계획법 편집거리로 전체 발음 배열이 얼마나 자연스럽게 대응되는지 봅니다. 둘째, 검색어 발음이 대상 단어 안의 어느 구간과 가장 잘 맞는지 sliding window 방식으로 훑습니다. 둘 중 더 높은 점수를 기본 발음 점수로 씁니다.</p>
+                    <h3>4. 발음 배열은 두 방식으로 맞춰보고, 위치는 따지지 않습니다</h3>
+                    <p>첫째, 동적 계획법 편집거리로 두 발음 배열 전체가 얼마나 자연스럽게 대응되는지 봅니다. 둘째, 검색어 발음이 후보 단어 안의 어느 구간과 가장 잘 맞는지 sliding window 방식으로 훑습니다. 둘 중 높은 점수가 발음 점수입니다. 소리가 단어의 앞, 가운데, 끝 중 어디에서 맞든 똑같이 봅니다. 그래서 <span class="principle-inline">사랑</span>으로 검색하면 <span class="principle-inline">짝사랑</span>과 <span class="principle-inline">사랑방</span>이 모두 100점입니다. 끝소리나 특정 음절을 더 중요하게 보고 싶다면 세부 가중치로 직접 정합니다.</p>
                 </section>
 
                 <section>
-                    <h3>4. 라임에서는 끝소리를 더 중요하게 봅니다</h3>
-                    <p>마지막 모음부터 끝까지를 rime core로 잡아 별도 점수를 냅니다. 예를 들어 <span class="principle-inline">skill</span>과 <span class="principle-inline">kill</span>은 앞소리가 달라도 끝 라임이 강하게 맞습니다. 반대로 <span class="principle-inline">skills</span>나 <span class="principle-inline">skilled</span>처럼 단어 안에 검색어가 들어 있어도 실제 끝소리가 달라지면 100점을 유지하지 못하게 낮춥니다.</p>
+                    <h3>5. 가중치는 사용자가 정합니다</h3>
+                    <p>모음 가중치와 자음 가중치는 모음과 자음이 점수에 얼마나 크게 반영될지를 정합니다. 세부 가중치를 켜면 음절(영어는 음소)마다 가중치를 따로 줄 수 있습니다. 이때 모음·자음 가중치는 1로 두고 세부 가중치만 씁니다. 가중치를 0으로 두면 그 소리는 무시됩니다. "모음만 검색"을 켜면 검색어와 후보 모두에서 자음을 빼고 모음열만 비교합니다. 검색기는 이 설정 말고 다른 보정을 따로 넣지 않습니다. 끝 라임 가산, 음절 구조 보정, 강세 보정 같은 숨은 규칙은 없습니다.</p>
                 </section>
 
                 <section>
-                    <h3>5. 한국어는 음절 구조도 따로 봅니다</h3>
-                    <p>한국어 단어는 초성, 중성, 종성으로 다시 나누어 뒤쪽 음절부터 비교합니다. 중성은 라임의 중심이라 가장 크게 보고, 종성은 끝맛을 결정하므로 그다음으로 크게 봅니다. 초성도 보지만 라임 검색에서는 상대적으로 낮게 반영합니다.</p>
+                    <h3>6. 영어 단어는 고른 발음 기준으로 비교합니다</h3>
+                    <p>"실제 영어"는 영어 단어의 실제 발음만, "한국식 영어"는 한국식 발음만 비교합니다. "혼합 추천"은 실제 발음끼리, 한국식 발음끼리, 그리고 둘을 서로 건너 비교한 점수 중 가장 높은 것을 씁니다. 한국어 단어는 언제나 한국어 발음으로 비교합니다. 결과 카드의 표시는 어떤 발음으로 맞았는지 알려 주고(한국어 발음, 실제 영어, 한국식, 교차), 파란 음소는 검색어와 맞은 소리입니다.</p>
                 </section>
 
                 <section>
-                    <h3>6. 영어는 강세와 한국식 발음을 같이 고려합니다</h3>
-                    <p>영어 사전에 강세 정보가 있으면 강세가 있는 모음부터 끝까지를 핵심 라임으로 봅니다. 강세 정보가 없으면 마지막 모음부터 끝까지를 fallback rime으로 씁니다. 혼합 검색에서는 영어 native 발음, 한국식 영어 발음, native와 한국식 발음을 서로 건너 비교하는 bridge 후보까지 계산합니다.</p>
+                    <h3>7. 빈도, 주제, 제외어는 발음 점수 다음에 적용합니다</h3>
+                    <p>발음 점수가 40점을 넘는 단어만 결과에 들어갑니다. 빈도 가중치는 자주 쓰는 단어(zipf 3.5 이상)의 점수를 100점 쪽으로 끌어올리고, 드문 단어일수록 점수를 깎습니다. 슬라이더 값이 클수록 효과가 커집니다. 빈도는 한국어는 위키백과에 나온 횟수로, 영어는 wordfreq로 셉니다. 여기에 없는 단어는 드문 단어로 봅니다. 주제 가중치는 주제 단어와 뜻이 먼 단어의 점수를 깎습니다. 가중치 10에서 최대 70%까지 깎입니다. 뜻은 다국어 문장 모델(LaBSE)로 사전의 모든 단어를 한국어와 영어가 같은 공간에 놓이도록 미리 계산해 두었습니다. 그래서 번역 없이 <span class="principle-inline">사랑</span>으로 love를, <span class="principle-inline">money</span>로 돈을 바로 비교합니다. 주제 단어는 사전에 있는 한국어나 영어 단어여야 하고, 사전에 없으면 주제 없이 검색한 뒤 알려 줍니다. 제외어를 포함한 단어는 결과에서 빠집니다.</p>
                 </section>
 
                 <section>
-                    <h3>7. 최종 점수는 여러 보조 점수를 섞어 정합니다</h3>
-                    <p>기본 발음 점수에 rime 점수, 한국어 음절 점수, 영어 stress-rime 점수, native/한국식 이중층 보완 점수를 더합니다. 보조 점수가 기본 점수보다 좋으면 소폭 올리고, 기본 점수는 높지만 끝소리나 음절 구조가 어긋나면 점수를 낮춥니다.</p>
+                    <h3>8. 결과는 점수 순, 동점이면 가나다·abc순입니다</h3>
+                    <p>최종 점수가 높은 순서로 보여 줍니다. 소수점 셋째 자리까지 같은 점수는 동점으로 보고 단어의 가나다·abc순으로 놓습니다. 40점을 넘은 결과는 모두 계산하고, 화면에는 99개씩 불러옵니다. 발음 설정이 그대로이고 빈도나 주제만 바꾸면 발음 점수는 다시 계산하지 않고 순위만 새로 매깁니다.</p>
                 </section>
 
                 <section>
-                    <h3>8. 연결 라임 검색은 단어 경계를 쪼개서 봅니다</h3>
-                    <p>연결 라임 모드는 검색어를 가능한 모든 분할로 나눈 뒤, 앞 단어의 끝과 뒤 단어의 시작이 각각 맞는지 계산합니다. 한국어 표면 문자열이 정확히 이어지는 경우를 우선하고, 발음 점수, 실제 말뭉치에서 같이 나오는 정도, 빈도, 주제 유사도 등을 함께 반영합니다.</p>
-                </section>
-
-                <section>
-                    <h3>9. 결과 정렬은 점수 동률까지 다시 풉니다</h3>
-                    <p>최종 점수가 같으면 rime 점수, stress-rime 점수, 한국어 음절 점수, 원 발음 점수, 검색어와 후보 단어의 길이 차이를 순서대로 비교합니다. 그래서 단순히 검색어가 포함된 긴 단어보다 실제 라임이 잘 맞는 단어가 위로 올라오도록 조정합니다.</p>
+                    <h3>9. 연결 라임은 검색어를 둘로 나눠 두 단어의 경계를 봅니다</h3>
+                    <p>연결 라임 모드는 검색어를 둘로 나눈 뒤, 앞 단어의 끝소리가 앞부분과, 뒤 단어의 첫소리가 뒷부분과 얼마나 맞는지 봅니다. 한국어 검색어는 음절 사이에서만 나누고(<span class="principle-inline">사랑해</span> → 사 / 랑해, 사랑 / 해), 영어 검색어는 모음 옆에서 나눕니다. 두 단어 후보는 실제 문장에서 이어 나온 단어 쌍(한국어 약 126만, 영어 약 57만 쌍)이고, 발음은 단어 검색과 같은 Heami 발음과 발음 기준을 씁니다. 양쪽 발음 점수가 모두 40점을 넘는 쌍만 결과에 들어가며, 발음 점수는 양쪽 점수를 소리 수(세부 가중치 합)대로 평균합니다. 그다음은 단어 검색과 같습니다. 빈도 가중치는 두 단어 빈도의 평균으로 V1 빈도식을 적용하고(0이면 발음만), 주제 가중치는 두 단어 뜻의 평균이 주제와 먼 만큼 최대 70%까지 깎습니다. 두 단어가 함께 나온 횟수(연결 빈도)는 후보를 고르는 데만 쓰고 점수에는 넣지 않습니다. 글자 일치 우대, 힙합·구어 말뭉치 가산, 분할 균형 보정도 없습니다. "첫 단어 조사 허용"을 켜면 조사가 붙은 앞 단어(<span class="principle-inline">사랑을</span>)도 봅니다.</p>
                 </section>
             </div>
         </section>
     </div>
 
-    <div class="app-layout">
+    <div class="app-layout" inert data-preload-inert>
         <aside class="sidebar">
             <div class="filter-group">
                 <h3>가중치 조절</h3>
@@ -95,7 +110,7 @@
                     </div>
                 </div>
 
-                <div class="slider-container">
+                <div class="slider-container" id="freqWeightContainer">
                     <label for="freqWeight">빈도수 가중치</label>
                     <div class="slider-row">
                         <input type="range" id="freqWeight" min="0" max="10" step="0.5" value="1.0">
@@ -113,13 +128,14 @@
                 </div>
             </div>
 
-            <div class="filter-group">
+            <div class="filter-group" id="pronunciationFilterGroup">
                 <h3>발음 기준</h3>
-                <div class="filters">
+                <div class="filters" id="pronunciationModeOptions" hidden>
                     <label><input type="radio" name="pronunciationMode" value="hybrid" checked> 혼합 추천</label>
                     <label><input type="radio" name="pronunciationMode" value="native"> 실제 영어</label>
                     <label><input type="radio" name="pronunciationMode" value="koreanized"> 한국식 영어</label>
                 </div>
+                <p id="pronunciationModeNotice" class="detail-desc"></p>
             </div>
 
             <div class="filter-group">
@@ -135,7 +151,6 @@
                 <div class="mode-toggle" role="tablist" aria-label="검색 모드">
                     <button type="button" class="mode-toggle-btn active" data-search-mode="word" aria-selected="true">단어 검색기</button>
                     <button type="button" class="mode-toggle-btn" data-search-mode="linked" aria-selected="false">연결 라임 검색기 (Beta)</button>
-                    <button type="button" class="mode-toggle-btn" data-search-mode="lyrics" aria-selected="false">가사 세부 분석 (Beta)</button>
                 </div>
             </header>
 
@@ -160,44 +175,15 @@
                     </div>
                 </div>
 
-                <section class="lyrics-analysis-panel" id="lyricsAnalysisPanel" hidden>
-                    <div class="lyrics-toolbar">
-                        <button type="button" id="lyricsAnalyzeBtn" class="primary-btn">세부 분석</button>
+                <div id="status" class="status" aria-live="polite">데이터를 불러오는 중입니다...</div>
+                <div id="searchProgress" class="search-progress" role="status" aria-live="polite" hidden>
+                    <div class="search-progress-copy">
+                        <div><strong id="searchProgressTitle">검색기 로딩중...</strong><span id="searchProgressLabel">검색 준비</span></div>
+                        <span id="searchProgressPercent">0%</span>
                     </div>
-
-                    <div id="lyricsSections" class="lyrics-sections">
-                        <div class="lyrics-section" data-section-id="1">
-                            <div class="lyrics-section-header">
-                                <select class="lyrics-section-type" aria-label="섹션 종류">
-                                    <option value="Intro">Intro</option>
-                                    <option value="Verse 1" selected>Verse 1</option>
-                                    <option value="Hook">Hook</option>
-                                    <option value="Verse 2">Verse 2</option>
-                                    <option value="Bridge">Bridge</option>
-                                    <option value="Outro">Outro</option>
-                                    <option value="Free">Free</option>
-                                </select>
-                                <button type="button" class="lyrics-section-remove" aria-label="섹션 삭제">×</button>
-                            </div>
-                            <textarea class="lyrics-section-text" rows="8" placeholder="가사를 입력하세요"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="lyrics-section-add">
-                        <button type="button" id="addLyricsSectionBtn" class="secondary-btn" aria-haspopup="menu" aria-expanded="false">섹션 추가</button>
-                        <div id="lyricsSectionTypeMenu" class="lyrics-section-type-menu" role="menu" hidden>
-                            <button type="button" data-section-type="Intro" role="menuitem">Intro</button>
-                            <button type="button" data-section-type="Verse 1" role="menuitem">Verse 1</button>
-                            <button type="button" data-section-type="Hook" role="menuitem">Hook</button>
-                            <button type="button" data-section-type="Verse 2" role="menuitem">Verse 2</button>
-                            <button type="button" data-section-type="Bridge" role="menuitem">Bridge</button>
-                            <button type="button" data-section-type="Outro" role="menuitem">Outro</button>
-                            <button type="button" data-section-type="Free" role="menuitem">Free</button>
-                        </div>
-                    </div>
-                </section>
-
-                <div id="status" class="status">데이터를 불러오는 중입니다...</div>
+                    <progress id="searchProgressBar" max="100" value="0" aria-labelledby="searchProgressLabel">0%</progress>
+                    <button type="button" id="cancelSearchBtn" class="cancel-search-btn">검색 취소</button>
+                </div>
 
                 <div class="results-container">
                     <ul id="resultsList" class="results-list"></ul>
@@ -206,7 +192,6 @@
             </main>
         </div>
 
-        <aside id="lyricsAnalysisResults" class="lyrics-analysis-results" aria-live="polite"></aside>
 
         <aside class="sidebar right-sidebar" id="rightSidebar">
             <div class="filter-group detail-group" id="detailGroup">
@@ -215,6 +200,11 @@
                     세부 가중치 적용
                 </label>
                 <p class="detail-desc">적용 시 기존 자음/모음 가중치는 무시됩니다.</p>
+                <label class="toggle-label vowel-only-toggle">
+                    <input type="checkbox" id="vowelOnlySearch">
+                    모음만 검색
+                </label>
+                <p class="detail-desc">검색어와 후보에서 자음을 제외하고 모음열만 비교합니다.</p>
                 <div id="detailSlidersContainer">
                     <div class="empty-detail-msg"
                         style="color: #64748b; font-size: 0.9rem; text-align: center; margin-top: 2rem;">검색을 하면 음소
@@ -226,19 +216,25 @@
         </aside>
     </div>
 
-    <!-- hangul-js for client-side processing -->
-    <script src="https://unpkg.com/hangul-js" type="text/javascript"></script>
-    <script src="js/data.js?v=20260518-corpus-boost"></script>
-    <script src="js/corpusModels.js?v=20260518-corpus-boost"></script>
-    <script src="js/phonetics.js?v=20260516-compound-pronunciation"></script>
-    <script src="js/koreanPronunciation.js?v=20260516-compound-pronunciation"></script>
-    <script src="js/semantic.js?v=20260516-compound-pronunciation"></script>
-    <script src="js/linkedRhyme.js?v=20260516-compound-pronunciation"></script>
-    <script src="js/lyricsAnalysis.js?v=20260519-english-rime-span-fix"></script>
-    <script src="js/lyricsAnalysisMetrics.js?v=20260519-section-template"></script>
-    <script src="js/render.js?v=20260518-corpus-boost"></script>
+    <footer class="site-footer" inert data-preload-inert>
+        <h2>자료 출처</h2>
+        <ul>
+            <li><strong>한국어 발음, 영어 단어의 한국식 발음:</strong> Microsoft Windows 한국어 음성(Heami)이 읽은 발음으로 만들었고, 사전에 없는 말은 이 발음을 학습한 모델로 추정합니다.</li>
+            <li><strong>영어 발음:</strong> <a href="http://www.speech.cs.cmu.edu/cgi-bin/cmudict" target="_blank" rel="noopener">CMU Pronouncing Dictionary</a> (Carnegie Mellon University, BSD 라이선스)</li>
+            <li><strong>한국어 단어 목록, 외래어 표기:</strong> 국립국어원 <a href="https://stdict.korean.go.kr" target="_blank" rel="noopener">표준국어대사전</a>, 외래어 표기 용례</li>
+            <li><strong>한국어 빈도, 한국어 단어 쌍:</strong> <a href="https://ko.wikipedia.org" target="_blank" rel="noopener">한국어 위키백과</a> (kowikitext 2020-09-20, <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.ko" target="_blank" rel="noopener">CC BY-SA 3.0</a>)</li>
+            <li><strong>영어 빈도:</strong> <a href="https://github.com/rspeer/wordfreq" target="_blank" rel="noopener">wordfreq</a> (Robyn Speer, 데이터 <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ko" target="_blank" rel="noopener">CC BY-SA 4.0</a>)</li>
+            <li><strong>영어 단어 쌍:</strong> 공개 라이선스 영어 말뭉치</li>
+            <li><strong>주제(뜻) 비교:</strong> <a href="https://huggingface.co/sentence-transformers/LaBSE" target="_blank" rel="noopener">LaBSE</a> (Google, sentence-transformers, <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache-2.0</a>)</li>
+        </ul>
+        <p>위키백과와 wordfreq에서 만든 빈도·단어 쌍 자료는 원 자료와 같은 CC BY-SA 라이선스를 따릅니다.</p>
+    </footer>
+
+    <!-- Search runs in workers/word-worker.js; the page only renders and controls it. -->
+    <script src="js/render.js?v=20260928-freq1"></script>
     <script src="js/tts.js?v=20260516-compound-pronunciation"></script>
-    <script src="js/app.js?v=20260607-principle-info"></script>
+    <script src="js/search/word-runtime.js?v=20260928-final3"></script>
+    <script src="js/app.js?v=20260928-final2"></script>
 </body>
 
 </html>

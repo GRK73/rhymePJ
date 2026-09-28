@@ -1,9 +1,21 @@
-name: Deploy to GitHub Pages
+name: Manual GitHub Pages Deploy (gated)
+
+# The V2 search assets are generated and not kept in Git. A person reviews them with
+# `npm run prepare:pages-review`, bundles them with a reviewed allowlist
+# (`npm run bundle:pages-assets -- --policy <reviewed allowlist>`), uploads the zip to a
+# Release of this repository and runs this workflow with the Release tag and zip SHA-256.
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      assets_release:
+        description: 'Release tag containing rhyme-search-assets.zip with a reviewed allowlist'
+        required: true
+        type: string
+      assets_sha256:
+        description: 'SHA-256 of rhyme-search-assets.zip'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -23,12 +35,50 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Use Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download pinned search assets from this repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ASSETS_RELEASE: ${{ inputs.assets_release }}
+        run: gh release download --pattern rhyme-search-assets.zip --dir build/downloads -- "$ASSETS_RELEASE"
+      - name: Restore search assets and reviewed allowlist
+        env:
+          ASSETS_SHA256: ${{ inputs.assets_sha256 }}
+        run: python scripts/search/pages_asset_bundle.py restore --archive build/downloads/rhyme-search-assets.zip --sha256 "$ASSETS_SHA256"
+      - name: Require deployment review
+        shell: bash
+        run: |
+          if [[ ! -f public/data/deployment-allowlist.json ]]; then
+            echo "Reviewed deployment allowlist is missing." >&2
+            exit 1
+          fi
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify search assets against the reviewed pins
+        run: npm run check:search-assets -- --allowlist public/data/deployment-allowlist.json
+      - name: Run release checks
+        run: npm test
+      - name: Stage reviewed Pages artifact and search assets
+        run: npm run stage:pages
+      - name: Block restricted corpus and build inputs in the actual artifact
+        run: test ! -e build/pages/data/corpus && test ! -e build/pages/data/source
+      - name: Validate Pages artifact allowlist and size budgets
+        run: npm run check:deploy-artifact
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './public'
+          path: './build/pages'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

@@ -1,0 +1,1479 @@
+{
+  "format": "rhyme-pj-v1-asset-audit-v1",
+  "git": {
+    "head": "5df2ae874c74fa94ae77ca497ca7a1ed3a7f6306",
+    "status": [
+      "M .gitignore",
+      " M README.md",
+      " M package.json",
+      " M public/index.html",
+      " M public/js/app.js",
+      " D public/js/lyricsAnalysis.js",
+      " D public/js/lyricsAnalysisMetrics.js",
+      " M public/style.css",
+      " M scripts/check_project.js",
+      "?? \"V2\\353\\252\\205\\354\\204\\270\\354\\204\\234.md\"",
+      "?? configs/",
+      "?? data/",
+      "?? legacy/",
+      "?? pyproject.toml",
+      "?? reports/",
+      "?? scripts/v2/",
+      "?? src/",
+      "?? tests/"
+    ]
+  },
+  "summary": {
+    "source_files": 31,
+    "corpus_files": 1,
+    "model_files": 36,
+    "corpus_bytes": 14382755,
+    "model_bytes": 356506032
+  },
+  "known_limitations": [
+    "The legacy corpus contains only title and lyrics fields.",
+    "Legacy derived assets were produced from several source corpora with different row counts.",
+    "Absolute paths found inside legacy metadata are historical build metadata, not portable inputs.",
+    "The retired lyric analysis source is preserved for history only and is not a V2 dependency."
+  ],
+  "assets": {
+    "source": [
+      {
+        "path": "public/js/app.js",
+        "role": "runtime_source",
+        "bytes": 50027,
+        "sha256": "2fe3b2cb78b6e902506493f6aac1c1c26024a2470498c79ce2b0c42f1e159802",
+        "metadata": {}
+      },
+      {
+        "path": "public/js/corpusModels.js",
+        "role": "runtime_source",
+        "bytes": 6739,
+        "sha256": "9799ae30c47b3e16632379c33473489256d78e75c2f49ea2c4147a1d1469cdcb",
+        "metadata": {}
+      },
+      {
+        "path": "public/js/data.js",
+        "role": "runtime_source",
+        "bytes": 1274,
+        "sha256": "30289ca17e09364ed01b3cbe375e0b4d34b89ba03ae2227a6ba878defe658ef9",
+        "metadata": {}
+      },
+      {
+        "path": "public/js/koreanPronunciation.js",
+        "role": "runtime_source",
+        "bytes": 12489,
+        "sha256": "a0cc03de3bf95e61acf683d6022225f9c9a862081ad08d59770b341f7425f2fb",
+        "metadata": {}
+      },
+      {
+        "path": "public/js/linkedRhyme.js",
+        "role": "runtime_source",
+        "bytes": 12337,
+        "sha256": "40738cf171956a39d22d12108842956f8339d83c92b195466eae75c120f60169",
+        "metadata": {}
+      },
+      {
+        "path": "public/js/phonetics.js",
+        "role": "runtime_source",
+        "bytes": 38510,
+        "sha256": "5a4bbd5a81eea91939c1840b3067f431cde8e06b785ac656926748fa13fc721c",
+        "metadata": {}
+      },
+      {
+        "path": "public/js/render.js",
+        "role": "runtime_source",
+        "bytes": 5051,
+        "sha256": "0c2c1d0cdb2e6360aaf6e0330ada54292cfa3309cc77b5cfa008659bf372a4e4",
+        "metadata": {}
+      },
+      {
+        "path": "public/js/semantic.js",
+        "role": "runtime_source",
+        "bytes": 5201,
+        "sha256": "5b71be6b547864fe63088e854ab28cab979518e0bdd1b2106da2d433cc6c61cb",
+        "metadata": {}
+      },
+      {
+        "path": "public/js/tts.js",
+        "role": "runtime_source",
+        "bytes": 1583,
+        "sha256": "2e714af2f94c3db348d54208723edddf243f5287afae9427c48816d62b4654c5",
+        "metadata": {}
+      },
+      {
+        "path": "legacy/v1/public/js/lyricsAnalysis.js",
+        "role": "retired_runtime_source",
+        "bytes": 150756,
+        "sha256": "288bd51e5e313693407220267f89cdbb19ce8fe4a3ec20ba0d5c1e8c8af8d180",
+        "metadata": {}
+      },
+      {
+        "path": "legacy/v1/public/js/lyricsAnalysisMetrics.js",
+        "role": "retired_runtime_source",
+        "bytes": 8381,
+        "sha256": "ee4de50fc3c110a62646dfc7112170c4019255b8efcb50a42e696046bb7c1652",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/build_bigram_index.py",
+        "role": "build_or_validation_source",
+        "bytes": 11145,
+        "sha256": "7764da60043d0cdb33f82d4338057e4341cc179d8022d91c5353ad4ada8f56ac",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/build_compound_pronunciations.js",
+        "role": "build_or_validation_source",
+        "bytes": 9708,
+        "sha256": "9310e352e9557428834002f1d98cde513938c9c66727edd5bbcd9f2b8ac74a6a",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/build_dict.js",
+        "role": "build_or_validation_source",
+        "bytes": 10521,
+        "sha256": "72af8e99e60bbbcc7ebc8b4f4c91429ef60066c98bc90c23d74b190295d149d9",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/build_english_hiphop_phonetic_patterns.py",
+        "role": "build_or_validation_source",
+        "bytes": 11278,
+        "sha256": "13d6d45bb020bdd97d5a114b34bce40848af58c8f540e12018dfbdc81aebdb21",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/build_hiphop_rhyme_model.py",
+        "role": "build_or_validation_source",
+        "bytes": 17831,
+        "sha256": "a6c88abf8eea61b71a71a163872f40640cbda57a1517098cd9c054ce5fe79aa3",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/build_hiphop_stats.py",
+        "role": "build_or_validation_source",
+        "bytes": 8468,
+        "sha256": "f97c034bd65b4f52d68f63a6925226359908de9d396a4bacaa14c02b0e449754",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/build_spoken_korean_aux.py",
+        "role": "build_or_validation_source",
+        "bytes": 16780,
+        "sha256": "648d4488f56d4ff0ab15cf511f6a15075acccd80c094198bad4f5491eb120784",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/build_structural_rhyme_rules.py",
+        "role": "build_or_validation_source",
+        "bytes": 8886,
+        "sha256": "2767c42e436f0b5fb493f698bd442eda854d9d25833f929416e2fc2ccd80d3d4",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/build_surface_bigram_index.py",
+        "role": "build_or_validation_source",
+        "bytes": 9800,
+        "sha256": "f6b0f0948d1bd52ef4bf010c194d4dfdb90a5961aa600c926145b30ab378be74",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/build_translated_hiphop_semantics.py",
+        "role": "build_or_validation_source",
+        "bytes": 16649,
+        "sha256": "adf56a191349b5148ea69356e842c21284c21dbf643d21e23db47300dc3d3aa5",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/check_project.js",
+        "role": "build_or_validation_source",
+        "bytes": 16000,
+        "sha256": "e415a60ff89c83108391e4fb35301a4adab31fd416a61e6a479249915599477a",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/collect_hf_hiphop_dataset.py",
+        "role": "build_or_validation_source",
+        "bytes": 4859,
+        "sha256": "bc60d21752a5baebf3b7688850b30d9a574d817f633b0d6e2ed80d670072705d",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/convert_word2vec_to_json.py",
+        "role": "build_or_validation_source",
+        "bytes": 7329,
+        "sha256": "273f5e3a2efdfe526bedccdabeb97317375cd715f9952e1f99139c944080d778",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/enrich_korean_pronunciations.js",
+        "role": "build_or_validation_source",
+        "bytes": 2861,
+        "sha256": "e330a414fbb391966c22f952ae7aa6caa11497194a3fdedace4b0db97055efd2",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/extract_korean_morph_cache.py",
+        "role": "build_or_validation_source",
+        "bytes": 1997,
+        "sha256": "4176aedb257aba156429485a51a6e462914d6c3e38243911fc194b87f9e724fe",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/extract_loanword_overrides.py",
+        "role": "build_or_validation_source",
+        "bytes": 3485,
+        "sha256": "23ab31db28979459a71d92875214bd303a545d2d9fad218956610a5424726093",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/filter_corpus.py",
+        "role": "build_or_validation_source",
+        "bytes": 3642,
+        "sha256": "7f0c0d108ad88060dc350ebf7412abbd1c38674e6807bacdf56f209785e39b0f",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/scrape_nikl.js",
+        "role": "build_or_validation_source",
+        "bytes": 4486,
+        "sha256": "6d21bc6e73a7a738641fdcbcb22ab7cb94fe77997877d3f46fdd2d76af6a4851",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/validate_linked_search_pipeline.js",
+        "role": "build_or_validation_source",
+        "bytes": 11251,
+        "sha256": "e71b3bccb245e36d5a9c3f962d7e76d6cb49e385e8961bc578c7ae5ff523a253",
+        "metadata": {}
+      },
+      {
+        "path": "scripts/validate_phonetic_search_pipeline.js",
+        "role": "build_or_validation_source",
+        "bytes": 8187,
+        "sha256": "d1b6df5298cfc4bea5957b7d72418dc95958e3c54ebe33f1d62b9affa17898cc",
+        "metadata": {}
+      }
+    ],
+    "corpus": [
+      {
+        "path": "public/data/corpus/hiphop_corpus.jsonl",
+        "role": "legacy_corpus",
+        "bytes": 14382755,
+        "sha256": "98b6c963d95bb3813f38a284c3fc69348e628be1ac4f67161e117932fe718885",
+        "metadata": {}
+      }
+    ],
+    "model": [
+      {
+        "path": "public/data/model/bigram_next_en.json",
+        "role": "legacy_derived_asset",
+        "bytes": 12616215,
+        "sha256": "96d14193600a26266103e8231e374b79b8659144cdacd7d204db04a5e4e42182",
+        "metadata": {}
+      },
+      {
+        "path": "public/data/model/bigram_next_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 25294501,
+        "sha256": "e2c25dae69d2bbfeede8f514597f1bbf3670f0c9ac3c065f9cf983a1af437933",
+        "metadata": {}
+      },
+      {
+        "path": "public/data/model/bigram_surface_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 38185224,
+        "sha256": "c700a20d01aaa62f30ecad7f9b72058743e890b86d028a5ace82ecb60e2674e4",
+        "metadata": {}
+      },
+      {
+        "path": "public/data/model/compound_pronunciations_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 210316,
+        "sha256": "087212a325445f8894d1a5c305b73a8d2c0311ea98230bf94392ce11720e4fa4",
+        "metadata": {}
+      },
+      {
+        "path": "public/data/model/english_hiphop_ending_phoneme_patterns.json",
+        "role": "legacy_derived_asset",
+        "bytes": 682352,
+        "sha256": "a39d0d28991073344cbc9cda08f74a2f032a6f0e3491956e00b1159f11cd6b10",
+        "metadata": {
+          "dataset": "juliensimon/autonlp-data-song-lyrics",
+          "genre": "Hip Hop",
+          "rawTextIncluded": false,
+          "dict": "C:\\Users\\ggori\\OneDrive\\Desktop\\Projects모음\\rhymePJ\\public\\data\\rhyme_dict_practical.json",
+          "songCount": 8898,
+          "lineCount": 604849,
+          "usableLineCount": 603295,
+          "wordCount": 4374553,
+          "matchedWordCount": 4341993,
+          "matchRate": 0.992557,
+          "phonemeCount": 13495244,
+          "vowelPhonemeCount": 5328825,
+          "internalRhymeLineCount": 422770,
+          "internalRhymeLineRate": 0.700768,
+          "minCount": 3,
+          "topN": 50000,
+          "maxN": 5,
+          "maxSuffix": 6
+        }
+      },
+      {
+        "path": "public/data/model/english_hiphop_flow_shape_stats.json",
+        "role": "legacy_derived_asset",
+        "bytes": 8661,
+        "sha256": "76561a37681f9be904ad64ed4150c63fabc6cc565d2108d56a04abaaf8e3ad43",
+        "metadata": {
+          "dataset": "juliensimon/autonlp-data-song-lyrics",
+          "genre": "Hip Hop",
+          "rawTextIncluded": false,
+          "dict": "C:\\Users\\ggori\\OneDrive\\Desktop\\Projects모음\\rhymePJ\\public\\data\\rhyme_dict_practical.json",
+          "songCount": 8898,
+          "lineCount": 604849,
+          "usableLineCount": 603295,
+          "wordCount": 4374553,
+          "matchedWordCount": 4341993,
+          "matchRate": 0.992557,
+          "phonemeCount": 13495244,
+          "vowelPhonemeCount": 5328825,
+          "internalRhymeLineCount": 422770,
+          "internalRhymeLineRate": 0.700768,
+          "minCount": 3,
+          "topN": 50000,
+          "maxN": 5,
+          "maxSuffix": 6
+        }
+      },
+      {
+        "path": "public/data/model/english_hiphop_internal_rhyme_patterns.json",
+        "role": "legacy_derived_asset",
+        "bytes": 343910,
+        "sha256": "0c91d2bb0df6f4bc49a81472d6e2ff4ea38e2ce3bf202fc9b4d72f3f273c3b1f",
+        "metadata": {
+          "dataset": "juliensimon/autonlp-data-song-lyrics",
+          "genre": "Hip Hop",
+          "rawTextIncluded": false,
+          "dict": "C:\\Users\\ggori\\OneDrive\\Desktop\\Projects모음\\rhymePJ\\public\\data\\rhyme_dict_practical.json",
+          "songCount": 8898,
+          "lineCount": 604849,
+          "usableLineCount": 603295,
+          "wordCount": 4374553,
+          "matchedWordCount": 4341993,
+          "matchRate": 0.992557,
+          "phonemeCount": 13495244,
+          "vowelPhonemeCount": 5328825,
+          "internalRhymeLineCount": 422770,
+          "internalRhymeLineRate": 0.700768,
+          "minCount": 3,
+          "topN": 50000,
+          "maxN": 5,
+          "maxSuffix": 6
+        }
+      },
+      {
+        "path": "public/data/model/english_hiphop_ipa_ngram.json",
+        "role": "legacy_derived_asset",
+        "bytes": 2271833,
+        "sha256": "51d25e9ca4b4680d71f1724d80bde4c69075ef85959484a3b8d1c1cfce88b9df",
+        "metadata": {
+          "dataset": "juliensimon/autonlp-data-song-lyrics",
+          "genre": "Hip Hop",
+          "rawTextIncluded": false,
+          "dict": "C:\\Users\\ggori\\OneDrive\\Desktop\\Projects모음\\rhymePJ\\public\\data\\rhyme_dict_practical.json",
+          "songCount": 8898,
+          "lineCount": 604849,
+          "usableLineCount": 603295,
+          "wordCount": 4374553,
+          "matchedWordCount": 4341993,
+          "matchRate": 0.992557,
+          "phonemeCount": 13495244,
+          "vowelPhonemeCount": 5328825,
+          "internalRhymeLineCount": 422770,
+          "internalRhymeLineRate": 0.700768,
+          "minCount": 3,
+          "topN": 50000,
+          "maxN": 5,
+          "maxSuffix": 6
+        }
+      },
+      {
+        "path": "public/data/model/hiphop_2gram_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 157687,
+        "sha256": "4c05670c14efff1aedc179daa8485a70697d5640fc5237738a40cbf5758553ea",
+        "metadata": {
+          "source": "local raw_lyrics text files",
+          "rawTextIncluded": false,
+          "fileCount": 1,
+          "lineCount": 46158,
+          "nonemptyLineCount": 46145,
+          "tokenCount": 262651,
+          "minCount": 3,
+          "topN": 50000,
+          "maxN": 3
+        }
+      },
+      {
+        "path": "public/data/model/hiphop_3gram_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 71932,
+        "sha256": "c6b0599d0d261bd02168cad9be6cf95d12f121d7e8d8f6464669bed6b26a0004",
+        "metadata": {
+          "source": "local raw_lyrics text files",
+          "rawTextIncluded": false,
+          "fileCount": 1,
+          "lineCount": 46158,
+          "nonemptyLineCount": 46145,
+          "tokenCount": 262651,
+          "minCount": 3,
+          "topN": 50000,
+          "maxN": 3
+        }
+      },
+      {
+        "path": "public/data/model/hiphop_internal_rhyme_patterns_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 159633,
+        "sha256": "543a4c52fd6c48ee767318e5a8e047ac1e2349396265e6282c4e2d48a8ec91f8",
+        "metadata": {
+          "source": "public\\data\\corpus\\hiphop_corpus.jsonl",
+          "rawTextIncluded": false,
+          "documentCount": 7027,
+          "lineCount": 388476,
+          "usableLineCount": 387884,
+          "tokenCount": 1605486,
+          "internalRhymeLineCount": 180845,
+          "internalRhymeLineRate": 0.466235,
+          "languageTokenCounts": {
+            "ko": 1166853,
+            "en": 438633
+          },
+          "convertedTokenCount": 1605486,
+          "fallbackTokenCount": 864825,
+          "skippedTokenCount": 0,
+          "conversionRate": 1.0,
+          "minCount": 3,
+          "topN": 50000,
+          "maxWidth": 3,
+          "maxN": 5
+        }
+      },
+      {
+        "path": "public/data/model/hiphop_phoneme_ngram_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 2412848,
+        "sha256": "ad4646f6e7a588e959f265bafe52b448c1d82c99bee03a2ffdce33d18c611042",
+        "metadata": {
+          "source": "public\\data\\corpus\\hiphop_corpus.jsonl",
+          "rawTextIncluded": false,
+          "documentCount": 7027,
+          "lineCount": 388476,
+          "usableLineCount": 387884,
+          "tokenCount": 1605486,
+          "internalRhymeLineCount": 180845,
+          "internalRhymeLineRate": 0.466235,
+          "languageTokenCounts": {
+            "ko": 1166853,
+            "en": 438633
+          },
+          "convertedTokenCount": 1605486,
+          "fallbackTokenCount": 864825,
+          "skippedTokenCount": 0,
+          "conversionRate": 1.0,
+          "minCount": 3,
+          "topN": 50000,
+          "maxWidth": 3,
+          "maxN": 5
+        }
+      },
+      {
+        "path": "public/data/model/hiphop_rhyme_patterns_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 2136357,
+        "sha256": "af7d5dbe1eb4d7f68d11b0d54898f711bff0d14c6cab2af4447ec959ed96e9ac",
+        "metadata": {
+          "source": "public\\data\\corpus\\hiphop_corpus.jsonl",
+          "rawTextIncluded": false,
+          "documentCount": 7027,
+          "lineCount": 388476,
+          "usableLineCount": 387884,
+          "tokenCount": 1605486,
+          "internalRhymeLineCount": 180845,
+          "internalRhymeLineRate": 0.466235,
+          "languageTokenCounts": {
+            "ko": 1166853,
+            "en": 438633
+          },
+          "convertedTokenCount": 1605486,
+          "fallbackTokenCount": 864825,
+          "skippedTokenCount": 0,
+          "conversionRate": 1.0,
+          "minCount": 3,
+          "topN": 50000,
+          "maxWidth": 3,
+          "maxN": 5
+        }
+      },
+      {
+        "path": "public/data/model/hiphop_surface_bigram_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 144171,
+        "sha256": "ef6304082cc25b1f0311392cba12741e9f6ab22361a02277a0a2a980629c1c32",
+        "metadata": {
+          "source": "local raw_lyrics text files",
+          "rawTextIncluded": false,
+          "fileCount": 1,
+          "lineCount": 46158,
+          "nonemptyLineCount": 46145,
+          "tokenCount": 262651,
+          "minCount": 3,
+          "topN": 50000,
+          "maxN": 3
+        }
+      },
+      {
+        "path": "public/data/model/hiphop_vocab_stats_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 915635,
+        "sha256": "6cd0ec6f4fcd2d19b07236217f24c665c00720bad30ac9eeb40aa957203e6341",
+        "metadata": {
+          "source": "local raw_lyrics text files",
+          "rawTextIncluded": false,
+          "fileCount": 1,
+          "lineCount": 46158,
+          "nonemptyLineCount": 46145,
+          "tokenCount": 262651,
+          "minCount": 3,
+          "topN": 50000,
+          "maxN": 3
+        }
+      },
+      {
+        "path": "public/data/model/loanword_overrides.json",
+        "role": "legacy_derived_asset",
+        "bytes": 171373,
+        "sha256": "baf45fe70d0bee3b34a8b0d0c3bd236ac911fd1d55f394398282cee49675e138",
+        "metadata": {}
+      },
+      {
+        "path": "public/data/model/nikl_words.json",
+        "role": "legacy_derived_asset",
+        "bytes": 3921692,
+        "sha256": "843154d854078d35d7b8ba59186c6bb38e6000333d2ee99ae9874cb43289738a",
+        "metadata": {}
+      },
+      {
+        "path": "public/data/model/rhyme_dict.json",
+        "role": "legacy_derived_asset",
+        "bytes": 73290568,
+        "sha256": "3c5a946e0e5715425d81b3ee7afcce6349aae8af818652d035a6a3ac359de2a0",
+        "metadata": {}
+      },
+      {
+        "path": "public/data/model/rhyme_dict_practical.json",
+        "role": "legacy_derived_asset",
+        "bytes": 33140751,
+        "sha256": "8fd43974aa384870f59e8353100234525a701454b894b18ed390cd95e8be4dcd",
+        "metadata": {}
+      },
+      {
+        "path": "public/data/model/semantic_vectors_en.example.json",
+        "role": "legacy_derived_asset",
+        "bytes": 137,
+        "sha256": "c1a694a8552050654a297b58e66c3b2241530d2e34a47b33220e39c04925ff8b",
+        "metadata": {}
+      },
+      {
+        "path": "public/data/model/semantic_vectors_en.json",
+        "role": "legacy_derived_asset",
+        "bytes": 45683084,
+        "sha256": "5e6f693ec51b1774025d2cde6285fa7da6fa1825f35a8df02cdefc70c121a907",
+        "metadata": {}
+      },
+      {
+        "path": "public/data/model/semantic_vectors_ko.example.json",
+        "role": "legacy_derived_asset",
+        "bytes": 137,
+        "sha256": "d926ad3858f1c514d82dfe2bdf89ba26598b27d3e963e35c5ecbe7fdaaecbef6",
+        "metadata": {}
+      },
+      {
+        "path": "public/data/model/semantic_vectors_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 53611321,
+        "sha256": "2951cfb7ad1d13545de670164df17c7ab71db3b6d39c565187b2c2aa4fdf5177",
+        "metadata": {}
+      },
+      {
+        "path": "public/data/model/spoken_korean_2gram_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 1290756,
+        "sha256": "289b74b5a1006dfd44e86dc83fc046f4e5973cc39b98345c2c34a7d8b0c67008",
+        "metadata": {
+          "source": [
+            "121_spoken",
+            "045_dialogue"
+          ],
+          "rawTextIncluded": false,
+          "documentCount": 848539,
+          "textUnitCount": 10049802,
+          "tokenCount": 138022085,
+          "minCount": 5,
+          "topN": 50000,
+          "maxN": 3,
+          "includeValidation": false,
+          "maxCharsPerDocument": 2000,
+          "sources": {
+            "121_spoken": {
+              "documents": 546580,
+              "units": 9429225,
+              "tokens": 132736741,
+              "chars": 596499523,
+              "categories": {
+                "121:구어체": {
+                  "documents": 546580,
+                  "units": 9429225,
+                  "tokens": 132736741
+                }
+              }
+            },
+            "045_dialogue": {
+              "documents": 301959,
+              "units": 620577,
+              "tokens": 5285344,
+              "chars": 23407602,
+              "categories": {
+                "045:가족과 주거": {
+                  "documents": 34700,
+                  "units": 74127,
+                  "tokens": 649899
+                },
+                "045:경제 활동": {
+                  "documents": 28283,
+                  "units": 55756,
+                  "tokens": 500574
+                },
+                "045:미용과 건강": {
+                  "documents": 32865,
+                  "units": 65067,
+                  "tokens": 533861
+                },
+                "045:배움과 학문": {
+                  "documents": 28602,
+                  "units": 59888,
+                  "tokens": 520422
+                },
+                "045:사회와 생활": {
+                  "documents": 28980,
+                  "units": 57392,
+                  "tokens": 495962
+                },
+                "045:쇼핑과 상품": {
+                  "documents": 29597,
+                  "units": 60386,
+                  "tokens": 537898
+                },
+                "045:스포츠": {
+                  "documents": 28313,
+                  "units": 57908,
+                  "tokens": 497186
+                },
+                "045:식음료": {
+                  "documents": 31287,
+                  "units": 64939,
+                  "tokens": 515060
+                },
+                "045:엔터테인먼트와 예술": {
+                  "documents": 29750,
+                  "units": 60883,
+                  "tokens": 504063
+                },
+                "045:여가 활동": {
+                  "documents": 29582,
+                  "units": 64231,
+                  "tokens": 530419
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "path": "public/data/model/spoken_korean_3gram_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 1702222,
+        "sha256": "b7af8477543f0ceccf4144198c0022c4e39de7322e76f64f8a8ec96e9279b40b",
+        "metadata": {
+          "source": [
+            "121_spoken",
+            "045_dialogue"
+          ],
+          "rawTextIncluded": false,
+          "documentCount": 848539,
+          "textUnitCount": 10049802,
+          "tokenCount": 138022085,
+          "minCount": 5,
+          "topN": 50000,
+          "maxN": 3,
+          "includeValidation": false,
+          "maxCharsPerDocument": 2000,
+          "sources": {
+            "121_spoken": {
+              "documents": 546580,
+              "units": 9429225,
+              "tokens": 132736741,
+              "chars": 596499523,
+              "categories": {
+                "121:구어체": {
+                  "documents": 546580,
+                  "units": 9429225,
+                  "tokens": 132736741
+                }
+              }
+            },
+            "045_dialogue": {
+              "documents": 301959,
+              "units": 620577,
+              "tokens": 5285344,
+              "chars": 23407602,
+              "categories": {
+                "045:가족과 주거": {
+                  "documents": 34700,
+                  "units": 74127,
+                  "tokens": 649899
+                },
+                "045:경제 활동": {
+                  "documents": 28283,
+                  "units": 55756,
+                  "tokens": 500574
+                },
+                "045:미용과 건강": {
+                  "documents": 32865,
+                  "units": 65067,
+                  "tokens": 533861
+                },
+                "045:배움과 학문": {
+                  "documents": 28602,
+                  "units": 59888,
+                  "tokens": 520422
+                },
+                "045:사회와 생활": {
+                  "documents": 28980,
+                  "units": 57392,
+                  "tokens": 495962
+                },
+                "045:쇼핑과 상품": {
+                  "documents": 29597,
+                  "units": 60386,
+                  "tokens": 537898
+                },
+                "045:스포츠": {
+                  "documents": 28313,
+                  "units": 57908,
+                  "tokens": 497186
+                },
+                "045:식음료": {
+                  "documents": 31287,
+                  "units": 64939,
+                  "tokens": 515060
+                },
+                "045:엔터테인먼트와 예술": {
+                  "documents": 29750,
+                  "units": 60883,
+                  "tokens": 504063
+                },
+                "045:여가 활동": {
+                  "documents": 29582,
+                  "units": 64231,
+                  "tokens": 530419
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "path": "public/data/model/spoken_korean_line_endings_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 1833507,
+        "sha256": "8f2881f70d50e9af3ce37e0f1fe2471b0ef965b6969eca5a9e4a731e36a27edb",
+        "metadata": {
+          "source": [
+            "121_spoken",
+            "045_dialogue"
+          ],
+          "rawTextIncluded": false,
+          "documentCount": 848539,
+          "textUnitCount": 10049802,
+          "tokenCount": 138022085,
+          "minCount": 5,
+          "topN": 50000,
+          "maxN": 3,
+          "includeValidation": false,
+          "maxCharsPerDocument": 2000,
+          "sources": {
+            "121_spoken": {
+              "documents": 546580,
+              "units": 9429225,
+              "tokens": 132736741,
+              "chars": 596499523,
+              "categories": {
+                "121:구어체": {
+                  "documents": 546580,
+                  "units": 9429225,
+                  "tokens": 132736741
+                }
+              }
+            },
+            "045_dialogue": {
+              "documents": 301959,
+              "units": 620577,
+              "tokens": 5285344,
+              "chars": 23407602,
+              "categories": {
+                "045:가족과 주거": {
+                  "documents": 34700,
+                  "units": 74127,
+                  "tokens": 649899
+                },
+                "045:경제 활동": {
+                  "documents": 28283,
+                  "units": 55756,
+                  "tokens": 500574
+                },
+                "045:미용과 건강": {
+                  "documents": 32865,
+                  "units": 65067,
+                  "tokens": 533861
+                },
+                "045:배움과 학문": {
+                  "documents": 28602,
+                  "units": 59888,
+                  "tokens": 520422
+                },
+                "045:사회와 생활": {
+                  "documents": 28980,
+                  "units": 57392,
+                  "tokens": 495962
+                },
+                "045:쇼핑과 상품": {
+                  "documents": 29597,
+                  "units": 60386,
+                  "tokens": 537898
+                },
+                "045:스포츠": {
+                  "documents": 28313,
+                  "units": 57908,
+                  "tokens": 497186
+                },
+                "045:식음료": {
+                  "documents": 31287,
+                  "units": 64939,
+                  "tokens": 515060
+                },
+                "045:엔터테인먼트와 예술": {
+                  "documents": 29750,
+                  "units": 60883,
+                  "tokens": 504063
+                },
+                "045:여가 활동": {
+                  "documents": 29582,
+                  "units": 64231,
+                  "tokens": 530419
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "path": "public/data/model/spoken_korean_source_clusters_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 19940,
+        "sha256": "f5bdf9d2d8b1f4f94d8fa57e9baca6f06b581f5c78b99dd9073157b10e9b778a",
+        "metadata": {
+          "source": [
+            "121_spoken",
+            "045_dialogue"
+          ],
+          "rawTextIncluded": false,
+          "documentCount": 848539,
+          "textUnitCount": 10049802,
+          "tokenCount": 138022085,
+          "minCount": 5,
+          "topN": 50000,
+          "maxN": 3,
+          "includeValidation": false,
+          "maxCharsPerDocument": 2000,
+          "sources": {
+            "121_spoken": {
+              "documents": 546580,
+              "units": 9429225,
+              "tokens": 132736741,
+              "chars": 596499523,
+              "categories": {
+                "121:구어체": {
+                  "documents": 546580,
+                  "units": 9429225,
+                  "tokens": 132736741
+                }
+              }
+            },
+            "045_dialogue": {
+              "documents": 301959,
+              "units": 620577,
+              "tokens": 5285344,
+              "chars": 23407602,
+              "categories": {
+                "045:가족과 주거": {
+                  "documents": 34700,
+                  "units": 74127,
+                  "tokens": 649899
+                },
+                "045:경제 활동": {
+                  "documents": 28283,
+                  "units": 55756,
+                  "tokens": 500574
+                },
+                "045:미용과 건강": {
+                  "documents": 32865,
+                  "units": 65067,
+                  "tokens": 533861
+                },
+                "045:배움과 학문": {
+                  "documents": 28602,
+                  "units": 59888,
+                  "tokens": 520422
+                },
+                "045:사회와 생활": {
+                  "documents": 28980,
+                  "units": 57392,
+                  "tokens": 495962
+                },
+                "045:쇼핑과 상품": {
+                  "documents": 29597,
+                  "units": 60386,
+                  "tokens": 537898
+                },
+                "045:스포츠": {
+                  "documents": 28313,
+                  "units": 57908,
+                  "tokens": 497186
+                },
+                "045:식음료": {
+                  "documents": 31287,
+                  "units": 64939,
+                  "tokens": 515060
+                },
+                "045:엔터테인먼트와 예술": {
+                  "documents": 29750,
+                  "units": 60883,
+                  "tokens": 504063
+                },
+                "045:여가 활동": {
+                  "documents": 29582,
+                  "units": 64231,
+                  "tokens": 530419
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "path": "public/data/model/spoken_korean_surface_bigram_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 34197414,
+        "sha256": "fe512a4acac8c854493134a9c569bae61249322a30d57f0e04f446baa359b05b",
+        "metadata": {
+          "source": [
+            "121_spoken",
+            "045_dialogue"
+          ],
+          "rawTextIncluded": false,
+          "documentCount": 848539,
+          "textUnitCount": 10049802,
+          "tokenCount": 138022085,
+          "minCount": 5,
+          "topN": 50000,
+          "maxN": 3,
+          "includeValidation": false,
+          "maxCharsPerDocument": 2000,
+          "sources": {
+            "121_spoken": {
+              "documents": 546580,
+              "units": 9429225,
+              "tokens": 132736741,
+              "chars": 596499523,
+              "categories": {
+                "121:구어체": {
+                  "documents": 546580,
+                  "units": 9429225,
+                  "tokens": 132736741
+                }
+              }
+            },
+            "045_dialogue": {
+              "documents": 301959,
+              "units": 620577,
+              "tokens": 5285344,
+              "chars": 23407602,
+              "categories": {
+                "045:가족과 주거": {
+                  "documents": 34700,
+                  "units": 74127,
+                  "tokens": 649899
+                },
+                "045:경제 활동": {
+                  "documents": 28283,
+                  "units": 55756,
+                  "tokens": 500574
+                },
+                "045:미용과 건강": {
+                  "documents": 32865,
+                  "units": 65067,
+                  "tokens": 533861
+                },
+                "045:배움과 학문": {
+                  "documents": 28602,
+                  "units": 59888,
+                  "tokens": 520422
+                },
+                "045:사회와 생활": {
+                  "documents": 28980,
+                  "units": 57392,
+                  "tokens": 495962
+                },
+                "045:쇼핑과 상품": {
+                  "documents": 29597,
+                  "units": 60386,
+                  "tokens": 537898
+                },
+                "045:스포츠": {
+                  "documents": 28313,
+                  "units": 57908,
+                  "tokens": 497186
+                },
+                "045:식음료": {
+                  "documents": 31287,
+                  "units": 64939,
+                  "tokens": 515060
+                },
+                "045:엔터테인먼트와 예술": {
+                  "documents": 29750,
+                  "units": 60883,
+                  "tokens": 504063
+                },
+                "045:여가 활동": {
+                  "documents": 29582,
+                  "units": 64231,
+                  "tokens": 530419
+                }
+              }
+            }
+          },
+          "surfaceTopHeads": 150000
+        }
+      },
+      {
+        "path": "public/data/model/spoken_korean_topic_terms_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 3634920,
+        "sha256": "a82789a286ad7d13d4c56bbdafcf94ac1e36c8ecb171203866a498b408c39c84",
+        "metadata": {
+          "source": [
+            "121_spoken",
+            "045_dialogue"
+          ],
+          "rawTextIncluded": false,
+          "documentCount": 848539,
+          "textUnitCount": 10049802,
+          "tokenCount": 138022085,
+          "minCount": 5,
+          "topN": 50000,
+          "maxN": 3,
+          "includeValidation": false,
+          "maxCharsPerDocument": 2000,
+          "sources": {
+            "121_spoken": {
+              "documents": 546580,
+              "units": 9429225,
+              "tokens": 132736741,
+              "chars": 596499523,
+              "categories": {
+                "121:구어체": {
+                  "documents": 546580,
+                  "units": 9429225,
+                  "tokens": 132736741
+                }
+              }
+            },
+            "045_dialogue": {
+              "documents": 301959,
+              "units": 620577,
+              "tokens": 5285344,
+              "chars": 23407602,
+              "categories": {
+                "045:가족과 주거": {
+                  "documents": 34700,
+                  "units": 74127,
+                  "tokens": 649899
+                },
+                "045:경제 활동": {
+                  "documents": 28283,
+                  "units": 55756,
+                  "tokens": 500574
+                },
+                "045:미용과 건강": {
+                  "documents": 32865,
+                  "units": 65067,
+                  "tokens": 533861
+                },
+                "045:배움과 학문": {
+                  "documents": 28602,
+                  "units": 59888,
+                  "tokens": 520422
+                },
+                "045:사회와 생활": {
+                  "documents": 28980,
+                  "units": 57392,
+                  "tokens": 495962
+                },
+                "045:쇼핑과 상품": {
+                  "documents": 29597,
+                  "units": 60386,
+                  "tokens": 537898
+                },
+                "045:스포츠": {
+                  "documents": 28313,
+                  "units": 57908,
+                  "tokens": 497186
+                },
+                "045:식음료": {
+                  "documents": 31287,
+                  "units": 64939,
+                  "tokens": 515060
+                },
+                "045:엔터테인먼트와 예술": {
+                  "documents": 29750,
+                  "units": 60883,
+                  "tokens": 504063
+                },
+                "045:여가 활동": {
+                  "documents": 29582,
+                  "units": 64231,
+                  "tokens": 530419
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "path": "public/data/model/spoken_korean_vocab_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 3533052,
+        "sha256": "9a8da3370794a389d4844fc17be1e8a2fa7d5aa2c8246e8c25ace34fb4d108bb",
+        "metadata": {
+          "source": [
+            "121_spoken",
+            "045_dialogue"
+          ],
+          "rawTextIncluded": false,
+          "documentCount": 848539,
+          "textUnitCount": 10049802,
+          "tokenCount": 138022085,
+          "minCount": 5,
+          "topN": 50000,
+          "maxN": 3,
+          "includeValidation": false,
+          "maxCharsPerDocument": 2000,
+          "sources": {
+            "121_spoken": {
+              "documents": 546580,
+              "units": 9429225,
+              "tokens": 132736741,
+              "chars": 596499523,
+              "categories": {
+                "121:구어체": {
+                  "documents": 546580,
+                  "units": 9429225,
+                  "tokens": 132736741
+                }
+              }
+            },
+            "045_dialogue": {
+              "documents": 301959,
+              "units": 620577,
+              "tokens": 5285344,
+              "chars": 23407602,
+              "categories": {
+                "045:가족과 주거": {
+                  "documents": 34700,
+                  "units": 74127,
+                  "tokens": 649899
+                },
+                "045:경제 활동": {
+                  "documents": 28283,
+                  "units": 55756,
+                  "tokens": 500574
+                },
+                "045:미용과 건강": {
+                  "documents": 32865,
+                  "units": 65067,
+                  "tokens": 533861
+                },
+                "045:배움과 학문": {
+                  "documents": 28602,
+                  "units": 59888,
+                  "tokens": 520422
+                },
+                "045:사회와 생활": {
+                  "documents": 28980,
+                  "units": 57392,
+                  "tokens": 495962
+                },
+                "045:쇼핑과 상품": {
+                  "documents": 29597,
+                  "units": 60386,
+                  "tokens": 537898
+                },
+                "045:스포츠": {
+                  "documents": 28313,
+                  "units": 57908,
+                  "tokens": 497186
+                },
+                "045:식음료": {
+                  "documents": 31287,
+                  "units": 64939,
+                  "tokens": 515060
+                },
+                "045:엔터테인먼트와 예술": {
+                  "documents": 29750,
+                  "units": 60883,
+                  "tokens": 504063
+                },
+                "045:여가 활동": {
+                  "documents": 29582,
+                  "units": 64231,
+                  "tokens": 530419
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "path": "public/data/model/structural_rhyme_rules_en.json",
+        "role": "legacy_derived_asset",
+        "bytes": 4678008,
+        "sha256": "c1a041034f06fc51383aaed37c1d361a97e65a6eed1c8eb75968062ea334c991",
+        "metadata": {
+          "language": "en",
+          "rawTextIncluded": false,
+          "sourceModels": {
+            "ending": {
+              "dataset": "juliensimon/autonlp-data-song-lyrics",
+              "genre": "Hip Hop",
+              "rawTextIncluded": false,
+              "dict": "C:\\Users\\ggori\\OneDrive\\Desktop\\Projects모음\\rhymePJ\\public\\data\\rhyme_dict_practical.json",
+              "songCount": 8898,
+              "lineCount": 604849,
+              "usableLineCount": 603295,
+              "wordCount": 4374553,
+              "matchedWordCount": 4341993,
+              "matchRate": 0.992557,
+              "phonemeCount": 13495244,
+              "vowelPhonemeCount": 5328825,
+              "internalRhymeLineCount": 422770,
+              "internalRhymeLineRate": 0.700768,
+              "minCount": 3,
+              "topN": 50000,
+              "maxN": 5,
+              "maxSuffix": 6
+            },
+            "internal": {
+              "dataset": "juliensimon/autonlp-data-song-lyrics",
+              "genre": "Hip Hop",
+              "rawTextIncluded": false,
+              "dict": "C:\\Users\\ggori\\OneDrive\\Desktop\\Projects모음\\rhymePJ\\public\\data\\rhyme_dict_practical.json",
+              "songCount": 8898,
+              "lineCount": 604849,
+              "usableLineCount": 603295,
+              "wordCount": 4374553,
+              "matchedWordCount": 4341993,
+              "matchRate": 0.992557,
+              "phonemeCount": 13495244,
+              "vowelPhonemeCount": 5328825,
+              "internalRhymeLineCount": 422770,
+              "internalRhymeLineRate": 0.700768,
+              "minCount": 3,
+              "topN": 50000,
+              "maxN": 5,
+              "maxSuffix": 6
+            }
+          },
+          "minCount": 3,
+          "topN": 50000,
+          "widths": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6"
+          ]
+        }
+      },
+      {
+        "path": "public/data/model/structural_rhyme_rules_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 1242794,
+        "sha256": "370336cf5c793bb557287fbe740f94ef9144539698db7c27f2791c6e74bac88e",
+        "metadata": {
+          "language": "ko",
+          "rawTextIncluded": false,
+          "sourceModels": {
+            "ending": {
+              "source": "public\\data\\corpus\\hiphop_corpus.jsonl",
+              "rawTextIncluded": false,
+              "documentCount": 7027,
+              "lineCount": 388476,
+              "usableLineCount": 387884,
+              "tokenCount": 1605486,
+              "internalRhymeLineCount": 180845,
+              "internalRhymeLineRate": 0.466235,
+              "languageTokenCounts": {
+                "ko": 1166853,
+                "en": 438633
+              },
+              "convertedTokenCount": 1605486,
+              "fallbackTokenCount": 864825,
+              "skippedTokenCount": 0,
+              "conversionRate": 1.0,
+              "minCount": 3,
+              "topN": 50000,
+              "maxWidth": 3,
+              "maxN": 5
+            },
+            "internal": {
+              "source": "public\\data\\corpus\\hiphop_corpus.jsonl",
+              "rawTextIncluded": false,
+              "documentCount": 7027,
+              "lineCount": 388476,
+              "usableLineCount": 387884,
+              "tokenCount": 1605486,
+              "internalRhymeLineCount": 180845,
+              "internalRhymeLineRate": 0.466235,
+              "languageTokenCounts": {
+                "ko": 1166853,
+                "en": 438633
+              },
+              "convertedTokenCount": 1605486,
+              "fallbackTokenCount": 864825,
+              "skippedTokenCount": 0,
+              "conversionRate": 1.0,
+              "minCount": 3,
+              "topN": 50000,
+              "maxWidth": 3,
+              "maxN": 5
+            }
+          },
+          "minCount": 3,
+          "topN": 50000,
+          "widths": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      },
+      {
+        "path": "public/data/model/translated_hiphop_bigram_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 1196626,
+        "sha256": "b8668b231064303ccd942687bfbb25f96346696f7d8d028a570dbd1de0d13df7",
+        "metadata": {
+          "dataset": "juliensimon/autonlp-data-song-lyrics",
+          "genre": "Hip Hop",
+          "translator": "google",
+          "translationModel": "translate.googleapis.com",
+          "rawTextIncluded": false,
+          "cacheStoresSourceText": false,
+          "cachePath": "C:\\Users\\ggori\\OneDrive\\Desktop\\Projects모음\\rhymePJ\\scripts\\cache\\translated_hiphop_google_lines.jsonl",
+          "songCount": 8898,
+          "translatedSongCount": 8898,
+          "sourceLineCount": 604849,
+          "translatedLineCount": 604849,
+          "minCount": 3,
+          "topN": 50000
+        }
+      },
+      {
+        "path": "public/data/model/translated_hiphop_theme_clusters_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 7919,
+        "sha256": "5385177eaeb3fb4c7421ccf28b41d40d1c00d5fd6347b462f82f93fbb9fb789e",
+        "metadata": {
+          "dataset": "juliensimon/autonlp-data-song-lyrics",
+          "genre": "Hip Hop",
+          "translator": "google",
+          "translationModel": "translate.googleapis.com",
+          "rawTextIncluded": false,
+          "cacheStoresSourceText": false,
+          "cachePath": "C:\\Users\\ggori\\OneDrive\\Desktop\\Projects모음\\rhymePJ\\scripts\\cache\\translated_hiphop_google_lines.jsonl",
+          "songCount": 8898,
+          "translatedSongCount": 8898,
+          "sourceLineCount": 604849,
+          "translatedLineCount": 604849,
+          "minCount": 3,
+          "topN": 50000
+        }
+      },
+      {
+        "path": "public/data/model/translated_hiphop_topic_terms_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 4289927,
+        "sha256": "8b28b3b2ae7f7f6963e44cab0df30f01b94f50d25f1c92c3f25dbcff1ab7fb8b",
+        "metadata": {
+          "dataset": "juliensimon/autonlp-data-song-lyrics",
+          "genre": "Hip Hop",
+          "translator": "google",
+          "translationModel": "translate.googleapis.com",
+          "rawTextIncluded": false,
+          "cacheStoresSourceText": false,
+          "cachePath": "C:\\Users\\ggori\\OneDrive\\Desktop\\Projects모음\\rhymePJ\\scripts\\cache\\translated_hiphop_google_lines.jsonl",
+          "songCount": 8898,
+          "translatedSongCount": 8898,
+          "sourceLineCount": 604849,
+          "translatedLineCount": 604849,
+          "minCount": 3,
+          "topN": 50000
+        }
+      },
+      {
+        "path": "public/data/model/translated_hiphop_vocab_ko.json",
+        "role": "legacy_derived_asset",
+        "bytes": 3448609,
+        "sha256": "142472fae1b41a4697a2b4d8cb090fc1a92ea9222e09271e4b720948db694905",
+        "metadata": {
+          "dataset": "juliensimon/autonlp-data-song-lyrics",
+          "genre": "Hip Hop",
+          "translator": "google",
+          "translationModel": "translate.googleapis.com",
+          "rawTextIncluded": false,
+          "cacheStoresSourceText": false,
+          "cachePath": "C:\\Users\\ggori\\OneDrive\\Desktop\\Projects모음\\rhymePJ\\scripts\\cache\\translated_hiphop_google_lines.jsonl",
+          "songCount": 8898,
+          "translatedSongCount": 8898,
+          "sourceLineCount": 604849,
+          "translatedLineCount": 604849,
+          "minCount": 3,
+          "topN": 50000
+        }
+      }
+    ]
+  }
+}

@@ -1,3 +1,10 @@
+// Phoneme model shared by the V2 engines (loaded by workers/word-worker.js and the
+// lexicon build): V1 articulatory features and similarity (get_score_1d, constants from
+// js/v2/phoneme-similarity-config.js), V1 calculateScore with matched indices (result
+// highlighting), and jamo input (ㅋㅋ, ㅏㅏ) read letter by letter.
+// The V1 candidate rules, rime/stress/syllable boosts and query helpers were retired on
+// 2026-09-28 (Git history at 5df2ae8 and the archive keep them).
+
 const ipaFeatures = {
     'i':  [1, 0, -0.5], 'ɯ':  [1, 1, -0.5], 'u':  [1, 1, 0.5],
     'ɛ':  [0.5, 0, -0.5], 'ʌ':  [0.5, 1, -0.5], 'o':  [0.5, 1, 0.5],
@@ -32,189 +39,18 @@ const ipaConsoFeatures = {
 };
 
 const KOREAN_CHO = ['k', 'k*', 'n', 't', 't*', 'ɾ', 'm', 'p', 'p*', 's', 's*', '', 'tɕ', 'tɕ*', 'tɕʰ', 'kʰ', 'tʰ', 'pʰ', 'h'];
+
 const KOREAN_JUNG = ['a', 'ɛ', 'ja', 'jɛ', 'ʌ', 'e', 'jʌ', 'je', 'o', 'wa', 'wɛ', 'we', 'jo', 'u', 'wʌ', 'we', 'wi', 'ju', 'ɯ', 'ɰi', 'i'];
+
 const KOREAN_JONG_MAPPED = ['', 'k', 'k', 'k', 'n', 'n', 'n', 't', 'l', 'k', 'm', 'l', 'l', 'l', 'p', 'l', 'm', 'p', 'p', 't', 't', 'ŋ', 't', 't', 'k', 't', 'p', 't'];
 
 const KOREAN_CHO_JAMO = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', '', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+
 const KOREAN_JUNG_JAMO = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'];
+
 const KOREAN_JONG_JAMO = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+
 const KOREAN_PHONETIC_INPUT_RE = /^[가-힣ㄱ-ㅎㅏ-ㅣ]+$/;
-
-const KOREANIZED_CHUNKS = [
-    ['tion', ['s', 'ʌ', 'n']],
-    ['sion', ['s', 'ʌ', 'n']],
-    ['ture', ['tɕ', 'ʌ']],
-    ['sure', ['s', 'ʌ']],
-    ['ch', ['tɕʰ']],
-    ['sh', ['s']],
-    ['th', ['s']],
-    ['ph', ['p']],
-    ['ck', ['k']],
-    ['qu', ['k', 'w']],
-    ['x', ['k', 's']]
-];
-
-const KOREANIZED_SINGLE = {
-    a: ['a'], b: ['p'], c: ['k'], d: ['t'], e: ['e'], f: ['p'], g: ['k'],
-    h: ['h'], i: ['i'], j: ['tɕ'], k: ['k'], l: ['ɾ'], m: ['m'], n: ['n'],
-    o: ['o'], p: ['p'], q: ['k'], r: ['ɾ'], s: ['s'], t: ['t'], u: ['u'],
-    v: ['p'], w: ['w'], y: ['i'], z: ['tɕ']
-};
-
-const KOREANIZED_VOWELS = new Set(['a', 'e', 'i', 'o', 'u', 'y']);
-const KOREANIZED_STOPS = new Set(['p', 't', 'k', 'm', 'n', 'l', 'tɕ', 'tɕʰ', 's']);
-const KOREAN_CONTEXT_PARTICLES = [
-    '\uC740', '\uB294', '\uC774', '\uAC00', '\uC744', '\uB97C', '\uACFC', '\uC640',
-    '\uC73C\uB85C', '\uB85C', '\uC5D0\uC11C', '\uC5D0\uAC8C', '\uC5D0', '\uAED8',
-    '\uB3C4', '\uB9CC', '\uAE4C\uC9C0', '\uBD80\uD130', '\uCC98\uB7FC', '\uBCF4\uB2E4',
-    '\uB77C\uACE0', '\uC774\uB77C', '\uD558\uACE0'
-].sort((a, b) => b.length - a.length);
-
-const PHONETIC_ENGINE_WEIGHTS = {
-    koreanSyllableBoost: 0.10,
-    koreanSyllablePenalty: 0.18,
-    englishStressRimeBoost: 0.12,
-    englishStressRimePenalty: 0.16,
-    dualLayerComplement: 0.06
-};
-
-function isKoreanizedVowelLetter(char) {
-    return KOREANIZED_VOWELS.has(char);
-}
-
-function getKoreanizedEnglishPhonemes(word) {
-    const cleanWord = word.toLowerCase().replace(/[^a-z]/g, '');
-    const phonemes = [];
-
-    for (let i = 0; i < cleanWord.length; i++) {
-        const char = cleanWord[i];
-        const prev = cleanWord[i - 1] || '';
-        const next = cleanWord[i + 1] || '';
-
-        if (char === 'e' && i === cleanWord.length - 1 && cleanWord.length > 2) {
-            continue;
-        }
-
-        let matched = false;
-        for (const [chunk, mapped] of KOREANIZED_CHUNKS) {
-            if (cleanWord.startsWith(chunk, i)) {
-                phonemes.push(...mapped);
-                i += chunk.length - 1;
-                matched = true;
-                break;
-            }
-        }
-        if (matched) continue;
-
-        if (char === 'l' && isKoreanizedVowelLetter(prev) && isKoreanizedVowelLetter(next)) {
-            phonemes.push('l', 'ɾ');
-            continue;
-        }
-
-        if (char === 'r' && !isKoreanizedVowelLetter(next)) {
-            continue;
-        }
-
-        const mapped = KOREANIZED_SINGLE[char];
-        if (!mapped) continue;
-
-        phonemes.push(...mapped);
-
-        if (!isKoreanizedVowelLetter(char) && next && !isKoreanizedVowelLetter(next)) {
-            const last = mapped[mapped.length - 1];
-            if (KOREANIZED_STOPS.has(last)) phonemes.push('ɯ');
-        }
-    }
-
-    const last = phonemes[phonemes.length - 1];
-    if (KOREANIZED_STOPS.has(last)) phonemes.push('ɯ');
-
-    return phonemes;
-}
-
-function getLoanwordForms(word) {
-    const key = word.toLowerCase();
-    if (!Object.prototype.hasOwnProperty.call(loanwordOverrides, key)) return [];
-
-    const forms = loanwordOverrides[key];
-    return Array.isArray(forms) ? forms : [];
-}
-
-function uniquePhonemeCandidates(candidates) {
-    const seen = new Set();
-    return candidates.filter(candidate => {
-        if (!candidate.phonemes || candidate.phonemes.length === 0) return false;
-
-        const key = candidate.phonemes.join('|');
-        if (seen.has(key)) return false;
-
-        seen.add(key);
-        return true;
-    });
-}
-
-function getKoreanizedEnglishCandidates(word) {
-    const candidates = [];
-
-    getLoanwordForms(word).forEach(form => {
-        candidates.push({
-            phonemes: getKoreanIpaPhonemes(form).phonemes,
-            label: '외래어',
-            form
-        });
-    });
-
-    candidates.push({
-        phonemes: getKoreanizedEnglishPhonemes(word),
-        label: '한국식',
-        form: ''
-    });
-
-    return uniquePhonemeCandidates(candidates);
-}
-
-function isHangulSyllableChar(char) {
-    const code = String(char || '').charCodeAt(0);
-    return code >= 0xac00 && code <= 0xd7a3;
-}
-
-function isHangulText(value) {
-    const chars = Array.from(String(value || ''));
-    return chars.length > 0 && chars.every(isHangulSyllableChar);
-}
-
-function getKoreanContextualPronunciationCandidates(word) {
-    const text = String(word || '');
-    if (!isHangulText(text) || text.length < 2) return [];
-
-    const candidates = [];
-    KOREAN_CONTEXT_PARTICLES.forEach(particle => {
-        if (!text.endsWith(particle) || text.length <= particle.length) return;
-        const stem = text.slice(0, text.length - particle.length);
-        if (Array.from(stem).length < 2) return;
-        if (!isHangulText(stem)) return;
-
-        const stemCandidates = typeof getKoreanStandardPronunciationCandidates === 'function'
-            ? getKoreanStandardPronunciationCandidates(stem)
-            : [{
-                phonemes: getKoreanIpaPhonemes(stem).phonemes,
-                reading: stem,
-                label: 'context-stem',
-                layer: 'context'
-            }];
-
-        stemCandidates.forEach(candidate => {
-            candidates.push({
-                label: `context-stem:${particle}`,
-                reading: candidate.reading || stem,
-                phonemes: candidate.phonemes,
-                layer: 'context'
-            });
-        });
-    });
-
-    return dedupeKoreanPronunciationCandidates(candidates);
-}
 
 function getKoreanIpaPhonemes(word) {
     const phonemes = [];
@@ -287,42 +123,18 @@ function getKoreanPhoneticInputPhonemes(input) {
     return { phonemes, charMap };
 }
 
-function getQueryPhonemes(query) {
-    if (hasKoreanPhoneticInput(query)) {
-        const phoneticInput = getKoreanPhoneticInputPhonemes(query);
-        if (/[가-힣]/.test(query) && typeof getKoreanStandardPronunciationCandidates === 'function') {
-            const candidates = getKoreanStandardPronunciationCandidates(query);
-            const contextualCandidates = getKoreanContextualPronunciationCandidates(query);
-            const primary = candidates[0] || phoneticInput;
-            return {
-                phonemes: primary.phonemes || phoneticInput.phonemes,
-                charMap: primary.charMap || phoneticInput.charMap,
-                reading: primary.reading || query,
-                koreanPronunciationCandidates: dedupeKoreanPronunciationCandidates([
-                    ...(candidates.length > 0 ? candidates : [phoneticInput]),
-                    ...contextualCandidates
-                ])
-            };
-        }
-        return phoneticInput;
-    } else {
-        const lowerQuery = query.toLowerCase();
-        const found = dictionary.find(d => d.word === lowerQuery && d.lang === 'en');
-        const koreanizedCandidates = getKoreanizedEnglishCandidates(lowerQuery);
-        const koreanizedPhonemes = koreanizedCandidates[0]?.phonemes || [];
-        if (found) {
-            const phonemes = found.phonemes || found.vowels || [];
-            // Map each phoneme individually for English
-            const charMap = phonemes.map((p, idx) => ({ char: p, startIndex: idx, endIndex: idx + 1 }));
-            return { phonemes, stress: found.stress || [], koreanizedPhonemes, koreanizedCandidates, charMap, query: lowerQuery };
-        }
-        const charMap = koreanizedPhonemes.map((p, idx) => ({ char: p, startIndex: idx, endIndex: idx + 1 }));
-        return { phonemes: koreanizedPhonemes, koreanizedPhonemes, koreanizedCandidates, charMap, query: lowerQuery };
-    }
-}
-
 function clamp01(value) {
     return Math.max(0, Math.min(1, value));
+}
+
+// Missing config is a hard error: a silently different formula would change every
+// ranking without failing loudly.
+function getSharedSimilarityFormula() {
+    const shared = (typeof globalThis !== 'undefined' ? globalThis : this).PHONEME_SIMILARITY;
+    if (!shared || typeof shared.vowelSimilarity !== 'function') {
+        throw new Error('phoneme-similarity-config.js must be loaded before phonetics.js');
+    }
+    return shared;
 }
 
 function getVowelFeatureSimilarity(ipa1, ipa2) {
@@ -330,13 +142,11 @@ function getVowelFeatureSimilarity(ipa1, ipa2) {
     const v2 = ipaFeatures[ipa2];
     if (!v1 || !v2) return 0;
 
-    const height = clamp01(1 - Math.abs(v1[0] - v2[0]));
-    const backness = clamp01(1 - Math.abs(v1[1] - v2[1]));
-    const rounding = clamp01(1 - Math.abs(v1[2] - v2[2]));
-    const strictScore = height * backness * rounding;
-    const featureScore = height * 0.42 + backness * 0.36 + rounding * 0.22;
-
-    return clamp01(strictScore * 0.55 + featureScore * 0.45);
+    return getSharedSimilarityFormula().vowelSimilarity(
+        clamp01(1 - Math.abs(v1[0] - v2[0])),
+        clamp01(1 - Math.abs(v1[1] - v2[1])),
+        clamp01(1 - Math.abs(v1[2] - v2[2]))
+    );
 }
 
 function getConsonantFeatureSimilarity(ipa1, ipa2) {
@@ -344,26 +154,12 @@ function getConsonantFeatureSimilarity(ipa1, ipa2) {
     const c2 = ipaConsoFeatures[ipa2];
     if (!c1 || !c2) return 0;
 
-    const place = clamp01(1 - Math.abs(c1[0] - c2[0]));
-    const manner = clamp01(1 - Math.abs(c1[1] - c2[1]));
-    const strength = clamp01(1 - Math.abs(c1[2] - c2[2]));
-    const voice = clamp01(1 - Math.abs(c1[3] - c2[3]));
-    let score = place * 0.40 + manner * 0.34 + strength * 0.16 + voice * 0.10;
-
-    const placeDiff = Math.abs(c1[0] - c2[0]);
-    const mannerDiff = Math.abs(c1[1] - c2[1]);
-    let cap = 1.0;
-    if (placeDiff > 0) {
-        cap = Math.min(cap, placeDiff <= 0.25 ? 0.72 : placeDiff <= 0.5 ? 0.58 : 0.42);
-    }
-    if (mannerDiff > 0) {
-        cap = Math.min(cap, mannerDiff <= 0.25 ? 0.68 : mannerDiff <= 0.5 ? 0.52 : 0.35);
-    }
-    if (placeDiff > 0 && mannerDiff > 0) {
-        cap = Math.min(cap, 0.46);
-    }
-
-    return clamp01(Math.min(score, cap));
+    return getSharedSimilarityFormula().consonantSimilarity(
+        Math.abs(c1[0] - c2[0]),
+        Math.abs(c1[1] - c2[1]),
+        Math.abs(c1[2] - c2[2]),
+        Math.abs(c1[3] - c2[3])
+    );
 }
 
 function get_score_1d(ipa1, ipa2) {
@@ -378,187 +174,7 @@ function get_score_1d(ipa1, ipa2) {
     return 0;
 }
 
-function findLastVowelIndex(phonemes) {
-    for (let i = phonemes.length - 1; i >= 0; i--) {
-        if (ipaFeatures[phonemes[i]]) return i;
-    }
-    return -1;
-}
-
-function calculateEndingAlignedScore(targetTail, queryTail) {
-    const pairCount = Math.min(targetTail.length, queryTail.length);
-    if (pairCount === 0) return 0;
-
-    let weightedScore = 0;
-    let totalWeight = 0;
-    for (let offset = 1; offset <= pairCount; offset++) {
-        const targetPhoneme = targetTail[targetTail.length - offset];
-        const queryPhoneme = queryTail[queryTail.length - offset];
-        const isVowel = Boolean(ipaFeatures[queryPhoneme]);
-        const isFinal = offset === 1;
-        const weight = 1 + (isVowel ? 0.3 : 0) + (isFinal ? 0.25 : 0);
-        weightedScore += get_score_1d(targetPhoneme, queryPhoneme) * weight;
-        totalWeight += weight;
-    }
-
-    const missingCount = Math.abs(targetTail.length - queryTail.length);
-    totalWeight += missingCount * 0.85;
-
-    return totalWeight > 0 ? (weightedScore / totalWeight) * 100 : 0;
-}
-
-function getEndingRimeScore(targetPhonemes, queryPhonemes) {
-    const targetLastVowel = findLastVowelIndex(targetPhonemes);
-    const queryLastVowel = findLastVowelIndex(queryPhonemes);
-    if (targetLastVowel < 0 || queryLastVowel < 0) return 0;
-
-    const targetTail = targetPhonemes.slice(targetLastVowel);
-    const queryTail = queryPhonemes.slice(queryLastVowel);
-    return calculateEndingAlignedScore(targetTail, queryTail);
-}
-
-function decomposeHangulForScoring(text) {
-    return Array.from(String(text || ''))
-        .map(char => {
-            if (!isHangulSyllableChar(char)) return null;
-            const offset = char.charCodeAt(0) - 0xac00;
-            const jong = offset % 28;
-            const jung = Math.floor(offset / 28) % 21;
-            const cho = Math.floor(offset / (28 * 21));
-            return {
-                onset: KOREAN_CHO[cho] || '',
-                nucleus: KOREAN_JUNG[jung] || '',
-                coda: KOREAN_JONG_MAPPED[jong] || ''
-            };
-        })
-        .filter(Boolean);
-}
-
-function getKoreanSyllableScore(targetText, queryText) {
-    const targetSyllables = decomposeHangulForScoring(targetText);
-    const querySyllables = decomposeHangulForScoring(queryText);
-    const pairCount = Math.min(targetSyllables.length, querySyllables.length);
-    if (pairCount === 0) return 0;
-
-    let weightedScore = 0;
-    let totalWeight = 0;
-    for (let offset = 1; offset <= pairCount; offset++) {
-        const target = targetSyllables[targetSyllables.length - offset];
-        const query = querySyllables[querySyllables.length - offset];
-        const isFinal = offset === 1;
-        const onsetScore = target.onset || query.onset ? get_score_1d(target.onset, query.onset) : 1;
-        const nucleusScore = get_score_1d(target.nucleus, query.nucleus);
-        const codaScore = target.coda || query.coda ? get_score_1d(target.coda, query.coda) : 1;
-        const weight = isFinal ? 1.25 : 1;
-        weightedScore += (onsetScore * 0.22 + nucleusScore * 0.48 + codaScore * 0.30) * weight;
-        totalWeight += weight;
-    }
-
-    totalWeight += Math.abs(targetSyllables.length - querySyllables.length) * 0.7;
-    return totalWeight > 0 ? (weightedScore / totalWeight) * 100 : 0;
-}
-
-function getVowelPositions(phonemes) {
-    const positions = [];
-    (phonemes || []).forEach((phoneme, index) => {
-        if (ipaFeatures[phoneme]) positions.push(index);
-    });
-    return positions;
-}
-
-function getStressCoreStart(phonemes, stressPattern) {
-    const vowelPositions = getVowelPositions(phonemes);
-    if (vowelPositions.length === 0) return -1;
-    if (Array.isArray(stressPattern) && stressPattern.length > 0) {
-        const primary = stressPattern.lastIndexOf(1);
-        if (primary >= 0 && vowelPositions[primary] !== undefined) return vowelPositions[primary];
-        const secondary = stressPattern.lastIndexOf(2);
-        if (secondary >= 0 && vowelPositions[secondary] !== undefined) return vowelPositions[secondary];
-    }
-    return vowelPositions[vowelPositions.length - 1];
-}
-
-function getStressAwareRimeScore(targetPhonemes, queryPhonemes, targetStress, queryStress) {
-    const targetStart = getStressCoreStart(targetPhonemes, targetStress);
-    const queryStart = getStressCoreStart(queryPhonemes, queryStress);
-    if (targetStart < 0 || queryStart < 0) return 0;
-
-    const rimeScore = calculateEndingAlignedScore(targetPhonemes.slice(targetStart), queryPhonemes.slice(queryStart));
-    if (!Array.isArray(targetStress) || !Array.isArray(queryStress) || targetStress.length === 0 || queryStress.length === 0) {
-        return rimeScore;
-    }
-
-    const targetFinalStress = targetStress[Math.max(0, getVowelPositions(targetPhonemes).indexOf(targetStart))] || 0;
-    const queryFinalStress = queryStress[Math.max(0, getVowelPositions(queryPhonemes).indexOf(queryStart))] || 0;
-    const stressScore = targetFinalStress === queryFinalStress ? 100 : targetFinalStress > 0 && queryFinalStress > 0 ? 82 : 70;
-    return rimeScore * 0.82 + stressScore * 0.18;
-}
-
-function getCandidateAuxiliaryScores(targetPhonemes, queryPhonemes, metadata = {}) {
-    const rimeScore = getEndingRimeScore(targetPhonemes, queryPhonemes);
-    const koreanSyllableScore = metadata.lang === 'ko'
-        ? getKoreanSyllableScore(metadata.targetText || '', metadata.queryText || '')
-        : 0;
-    const stressRimeScore = metadata.lang === 'en'
-        ? getStressAwareRimeScore(targetPhonemes, queryPhonemes, metadata.targetStress, metadata.queryStress)
-        : 0;
-
-    return { rimeScore, koreanSyllableScore, stressRimeScore };
-}
-
-function blendAuxiliaryScore(baseScore, auxiliaryScore, boostWeight, penaltyWeight) {
-    if (!Number.isFinite(auxiliaryScore) || auxiliaryScore <= 0) return baseScore;
-    if (auxiliaryScore >= baseScore) {
-        return Math.min(100, baseScore + (auxiliaryScore - baseScore) * boostWeight);
-    }
-    if (baseScore >= 82) {
-        return Math.max(0, baseScore - (baseScore - auxiliaryScore) * penaltyWeight);
-    }
-    return baseScore;
-}
-
-function blendRimeAwareScore(baseScore, rimeScore, targetLength, queryLength) {
-    if (!Number.isFinite(rimeScore) || queryLength <= 1) return baseScore;
-
-    let adjustedScore = baseScore;
-    if (targetLength > queryLength && baseScore >= 95 && rimeScore < 85) {
-        const extraLength = Math.min(4, targetLength - queryLength);
-        const endingPenalty = Math.min(32, (85 - rimeScore) * 0.42 + extraLength * 1.5);
-        adjustedScore = Math.max(0, adjustedScore - endingPenalty);
-    }
-
-    if (rimeScore > adjustedScore) {
-        const boost = Math.min(6, (rimeScore - adjustedScore) * 0.14);
-        adjustedScore = Math.min(100, adjustedScore + boost);
-    }
-
-    return adjustedScore;
-}
-
-function blendCandidateScore(baseScore, targetPhonemes, queryPhonemes, auxiliaryScores, metadata = {}) {
-    let adjustedScore = blendRimeAwareScore(baseScore, auxiliaryScores.rimeScore, targetPhonemes.length, queryPhonemes.length);
-    adjustedScore = blendAuxiliaryScore(
-        adjustedScore,
-        auxiliaryScores.koreanSyllableScore,
-        PHONETIC_ENGINE_WEIGHTS.koreanSyllableBoost,
-        PHONETIC_ENGINE_WEIGHTS.koreanSyllablePenalty
-    );
-    adjustedScore = blendAuxiliaryScore(
-        adjustedScore,
-        auxiliaryScores.stressRimeScore,
-        PHONETIC_ENGINE_WEIGHTS.englishStressRimeBoost,
-        PHONETIC_ENGINE_WEIGHTS.englishStressRimePenalty
-    );
-    if (metadata.dualComplementScore > adjustedScore) {
-        adjustedScore = Math.min(
-            100,
-            adjustedScore + (metadata.dualComplementScore - adjustedScore) * PHONETIC_ENGINE_WEIGHTS.dualLayerComplement
-        );
-    }
-    return adjustedScore;
-}
-
-function calculateScore(targetPhonemes, queryPhonemes, detailMultipliers = []) {
+function calculateScore(targetPhonemes, queryPhonemes, detailMultipliers = [], options = {}) {
     if (queryPhonemes.length === 0 || targetPhonemes.length === 0) return { score: 0, matchIndices: [] };
     
     const targetStr = targetPhonemes.join('');
@@ -566,19 +182,15 @@ function calculateScore(targetPhonemes, queryPhonemes, detailMultipliers = []) {
 
     if (targetStr === queryStr) return { score: 100, matchIndices: targetPhonemes.map((_, i) => i) };
 
-    if (targetStr.includes(queryStr)) {
-        let startIndex = targetStr.indexOf(queryStr) / (targetStr.length / targetPhonemes.length); // Rough approx, better to recalculate
-        // Let sliding window handle substring exact matches perfectly with max score
-    }
 
     // Phonetic DP algorithm based on PronunciationEvaluator
     let dpMatrix = Array.from({length: targetPhonemes.length + 1}, () => Array(queryPhonemes.length + 1).fill(0));
     
-    let isDetailActive = document.getElementById('useDetailWeights').checked;
+    let isDetailActive = Boolean(options.useDetailWeights);
     
     // If detail is active, ignore global vowel/conso weights completely (use 1.0)
-    let baseVowelWeight = isDetailActive ? 1.0 : parseFloat(vowelWeightInput.value);
-    let baseConsoWeight = isDetailActive ? 1.0 : parseFloat(consoWeightInput.value);
+    let baseVowelWeight = isDetailActive ? 1.0 : (options.vowelWeight ?? 1.0);
+    let baseConsoWeight = isDetailActive ? 1.0 : (options.consonantWeight ?? 1.0);
 
     let targetWeights = targetPhonemes.map(p => ipaFeatures[p] ? baseVowelWeight : baseConsoWeight);
     let queryWeights = queryPhonemes.map((p, idx) => {
@@ -668,246 +280,5 @@ function calculateScore(targetPhonemes, queryPhonemes, detailMultipliers = []) {
     }
 }
 
-function scoreCandidate(targetPhonemes, queryPhonemes, detailMultipliers, matchLayer, matchLayerLabel, penalty = 1, metadata = {}) {
-    const result = calculateScore(targetPhonemes, queryPhonemes, detailMultipliers);
-    const auxiliaryScores = getCandidateAuxiliaryScores(targetPhonemes, queryPhonemes, metadata);
-    const blendedScore = blendCandidateScore(result.score, targetPhonemes, queryPhonemes, auxiliaryScores, metadata);
-    return {
-        ...result,
-        rawScore: result.score,
-        rimeScore: auxiliaryScores.rimeScore,
-        koreanSyllableScore: auxiliaryScores.koreanSyllableScore,
-        stressRimeScore: auxiliaryScores.stressRimeScore,
-        score: blendedScore * penalty,
-        matchPhonemes: targetPhonemes,
-        matchLayer,
-        matchLayerLabel
-    };
-}
-
-function comparePronunciationCandidates(a, b) {
-    if (!a) return b ? 1 : 0;
-    if (!b) return -1;
-    const scoreDiff = (b.score || 0) - (a.score || 0);
-    if (Math.abs(scoreDiff) > 0.001) return scoreDiff;
-    const stressDiff = (b.stressRimeScore || 0) - (a.stressRimeScore || 0);
-    if (Math.abs(stressDiff) > 0.001) return stressDiff;
-    const syllableDiff = (b.koreanSyllableScore || 0) - (a.koreanSyllableScore || 0);
-    if (Math.abs(syllableDiff) > 0.001) return syllableDiff;
-    const rimeDiff = (b.rimeScore || 0) - (a.rimeScore || 0);
-    if (Math.abs(rimeDiff) > 0.001) return rimeDiff;
-    return (b.rawScore || 0) - (a.rawScore || 0);
-}
-
-function getBestPronunciationCandidate(candidates) {
-    return candidates.reduce((best, current) => (
-        !best || comparePronunciationCandidates(current, best) < 0 ? current : best
-    ), null);
-}
-
-function remapDetailMultipliers(detailMultipliers, sourceLength, targetLength) {
-    if (!Array.isArray(detailMultipliers) || targetLength <= 0) return [];
-    if (sourceLength === targetLength) return detailMultipliers.slice();
-    if (sourceLength <= 0) return new Array(targetLength).fill(1.0);
-
-    return Array.from({ length: targetLength }, (_, index) => {
-        const sourceIndex = Math.min(sourceLength - 1, Math.floor(index * sourceLength / targetLength));
-        return detailMultipliers[sourceIndex] ?? 1.0;
-    });
-}
-
-function getKoreanCompoundPronunciationCandidates(word) {
-    const store = typeof window !== 'undefined' ? window.compoundPronunciationsKo : null;
-    if (!store || typeof store !== 'object') return [];
-
-    const key = String(word || '');
-    const rows = store[key] || store[key.toLowerCase()];
-    if (!Array.isArray(rows) || rows.length === 0) return [];
-
-    return rows
-        .map(row => {
-            if (!Array.isArray(row)) return null;
-            return {
-                label: row[0] || '합성어',
-                reading: row[1] || '',
-                phonemes: Array.isArray(row[2]) ? row[2] : [],
-                layer: row[3] || 'compound'
-            };
-        })
-        .filter(candidate => candidate.phonemes.length > 0);
-}
-
-function dedupeKoreanPronunciationCandidates(candidates) {
-    const seen = new Set();
-    return candidates.filter(candidate => {
-        const key = Array.isArray(candidate.phonemes) ? candidate.phonemes.join('|') : '';
-        if (!key || seen.has(key)) return false;
-        seen.add(key);
-        return true;
-    });
-}
-
-function getStoredKoreanPronunciationCandidates(item) {
-    const compoundCandidates = getKoreanCompoundPronunciationCandidates(item.word);
-    if (compoundCandidates.length > 0) {
-        const storedCandidates = Array.isArray(item.pronunciations)
-            ? item.pronunciations
-                .map(row => {
-                    if (!Array.isArray(row)) return null;
-                    return {
-                        label: row[0] || 'standard',
-                        reading: row[1] || '',
-                        phonemes: Array.isArray(row[2]) ? row[2] : [],
-                        layer: row[3] || 'standard'
-                    };
-                })
-                .filter(candidate => candidate && candidate.phonemes.length > 0)
-            : [];
-        const baseCandidate = Array.isArray(item.phonemes) && item.phonemes.length > 0
-            ? [{ label: item.reading ? 'standard' : 'written', reading: item.reading || item.word, phonemes: item.phonemes, layer: item.reading ? 'standard' : 'written' }]
-            : [];
-        return dedupeKoreanPronunciationCandidates([...compoundCandidates, ...storedCandidates, ...baseCandidate]);
-    }
-
-    if (Array.isArray(item.pronunciations) && item.pronunciations.length > 0) {
-        return item.pronunciations
-            .map(row => {
-                if (!Array.isArray(row)) return null;
-                return {
-                    label: row[0] || '표준발음',
-                    reading: row[1] || '',
-                    phonemes: Array.isArray(row[2]) ? row[2] : [],
-                    layer: row[0] === '표기' ? 'written' : 'standard'
-                };
-            })
-            .filter(candidate => candidate.phonemes.length > 0);
-    }
-
-    if (Array.isArray(item.phonemes) && item.phonemes.length > 0) {
-        return [{
-            label: item.reading ? '표준발음' : '표기',
-            reading: item.reading || item.word,
-            phonemes: item.phonemes,
-            layer: item.reading ? 'standard' : 'written'
-        }];
-    }
-
-    return [];
-}
-
-function calculatePronunciationScore(item, queryPhonemeData, detailMultipliers, mode) {
-    const nativePhonemes = item.phonemes || item.vowels || [];
-    const queryNative = queryPhonemeData.phonemes || [];
-    const queryKoreanizedCandidates = queryPhonemeData.koreanizedCandidates || [
-        { phonemes: queryPhonemeData.koreanizedPhonemes || queryNative, label: '한국식' }
-    ];
-
-    if (item.lang === 'ko') {
-        const queryCandidates = dedupeKoreanPronunciationCandidates([
-            ...(queryPhonemeData.koreanPronunciationCandidates || [
-                { phonemes: queryNative, label: '표준발음', reading: queryPhonemeData.reading || '' }
-            ]),
-            ...((queryPhonemeData.koreanizedCandidates || []).map(candidate => ({
-                phonemes: candidate.phonemes,
-                label: `query-koreanized:${candidate.label || ''}`,
-                reading: candidate.form || queryPhonemeData.query || '',
-                layer: 'query-koreanized'
-            })))
-        ]);
-        const storedCandidates = getStoredKoreanPronunciationCandidates(item);
-        const generatedTargetCandidates = storedCandidates.length > 0
-            ? storedCandidates
-            : typeof getKoreanStandardPronunciationCandidates === 'function'
-                ? getKoreanStandardPronunciationCandidates(item.word)
-                : [];
-        const targetCandidates = dedupeKoreanPronunciationCandidates([
-            ...generatedTargetCandidates,
-            ...getKoreanContextualPronunciationCandidates(item.word)
-        ]);
-        const koCandidates = [];
-        (targetCandidates.length > 0 ? targetCandidates : [{ phonemes: nativePhonemes, label: '표기', layer: 'written' }]).forEach(targetCandidate => {
-            queryCandidates.forEach(queryCandidate => {
-                const candidateDetailMultipliers = remapDetailMultipliers(detailMultipliers, queryNative.length, queryCandidate.phonemes.length);
-                koCandidates.push(scoreCandidate(
-                    targetCandidate.phonemes,
-                    queryCandidate.phonemes,
-                    candidateDetailMultipliers,
-                    targetCandidate.layer || 'standard',
-                    targetCandidate.label || '',
-                    1,
-                    {
-                        lang: 'ko',
-                        targetText: targetCandidate.reading || item.reading || item.word,
-                        queryText: queryCandidate.reading || queryPhonemeData.reading || ''
-                    }
-                ));
-            });
-        });
-        return getBestPronunciationCandidate(koCandidates);
-    }
-
-    if (item.lang !== 'en') {
-        return scoreCandidate(nativePhonemes, queryNative, detailMultipliers, 'native', '');
-    }
-
-    const koreanizedCandidates = item.koreanizedCandidates || getKoreanizedEnglishCandidates(item.word);
-    item.koreanizedCandidates = koreanizedCandidates;
-
-    const candidates = [];
-    const nativeMetadata = {
-        lang: 'en',
-        targetStress: item.stress || [],
-        queryStress: queryPhonemeData.stress || []
-    };
-
-    if (mode === 'native') {
-        candidates.push(scoreCandidate(nativePhonemes, queryNative, detailMultipliers, 'native', '실제', 1, nativeMetadata));
-    } else if (mode === 'koreanized') {
-        koreanizedCandidates.forEach(targetCandidate => {
-            queryKoreanizedCandidates.forEach(queryCandidate => {
-                const candidateDetailMultipliers = remapDetailMultipliers(detailMultipliers, queryNative.length, queryCandidate.phonemes.length);
-                candidates.push(scoreCandidate(targetCandidate.phonemes, queryCandidate.phonemes, candidateDetailMultipliers, 'koreanized', targetCandidate.label));
-            });
-        });
-    } else {
-        const koreanizedComplement = koreanizedCandidates.reduce((best, targetCandidate) => {
-            return queryKoreanizedCandidates.reduce((innerBest, queryCandidate) => {
-                const result = calculateScore(targetCandidate.phonemes, queryCandidate.phonemes, []);
-                return Math.max(innerBest, result.score || 0);
-            }, best);
-        }, 0);
-        candidates.push(scoreCandidate(nativePhonemes, queryNative, detailMultipliers, 'native', '실제', 0.99, {
-            ...nativeMetadata,
-            dualComplementScore: koreanizedComplement
-        }));
-
-        koreanizedCandidates.forEach(targetCandidate => {
-            queryKoreanizedCandidates.forEach(queryCandidate => {
-                const candidateDetailMultipliers = remapDetailMultipliers(detailMultipliers, queryNative.length, queryCandidate.phonemes.length);
-                candidates.push(scoreCandidate(targetCandidate.phonemes, queryCandidate.phonemes, candidateDetailMultipliers, 'koreanized', targetCandidate.label));
-                candidates.push(scoreCandidate(nativePhonemes, queryCandidate.phonemes, candidateDetailMultipliers, 'bridge', '교차', 0.92));
-                candidates.push(scoreCandidate(targetCandidate.phonemes, queryNative, detailMultipliers, 'bridge', 'native-to-koreanized', 0.90));
-            });
-        });
-    }
-
-    return getBestPronunciationCandidate(candidates);
-}
-
-function applyFrequencyWeight(score, zipf, freqWeight) {
-    if (zipf >= 3.5) {
-        // Positive Zone: Asymptotic gap closing for common words
-        let zipfNorm = Math.min(1.0, (zipf - 3.5) / 4.5); // Normalize 3.5~8.0 to 0.0~1.0
-        let boostFactor = zipfNorm * (freqWeight / 10) * 0.8; // Max 80% gap closing
-        return score + (100 - score) * boostFactor;
-    }
-
-    // Penalty Zone: Exponential reduction for rare words
-    let x = 3.5 - Math.max(0, zipf); // x goes from 0 (at 3.5) to 3.5 (at 0)
-    let penaltyMultiplier = Math.pow(x / 3.5, 2.5);
-    let penalty = penaltyMultiplier * (freqWeight / 10);
-    return score * (1 - penalty);
-}
-
-window.ipaFeatures = ipaFeatures;
-window.ipaConsoFeatures = ipaConsoFeatures;
+globalThis.ipaFeatures = ipaFeatures;
+globalThis.ipaConsoFeatures = ipaConsoFeatures;
